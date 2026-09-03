@@ -1,0 +1,270 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Academy user account profile and completion status",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "fullName": { "type": "string" },
+        "dni": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "role": { "type": "string" },
+        "danceRole": { "type": "string" },
+        "memberCode": { "type": "string" },
+        "level": { "type": "string" },
+        "nivel1Completed": { "type": "boolean" },
+        "nivel2Completed": { "type": "boolean" },
+        "nivel1Date": { "type": "string" },
+        "nivel2Date": { "type": "string" },
+        "activeFormationId": { "type": "string" },
+        "memberSince": { "type": "string" },
+        "status": { "type": "string" },
+        "claimedBenefits": { "type": "array" },
+        "pushEnabled": { "type": "boolean" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "email", "fullName", "role"]
+    },
+    "Announcement": {
+      "title": "Announcement",
+      "description": "Official communication and announcement posts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "authorName": { "type": "string" },
+        "authorRole": { "type": "string" },
+        "date": { "type": "string" },
+        "likes": { "type": "number" },
+        "likedBy": { "type": "array" },
+        "comments": { "type": "array" },
+        "eventDate": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "required": ["id", "title", "category", "content"]
+    },
+    "Benefit": {
+      "title": "Benefit",
+      "description": "Exclusive member benefit discounts and vouchers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "provider": { "type": "string" },
+        "discount": { "type": "string" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "promoCode": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "validUntil": { "type": "string" },
+        "expirationDate": { "type": "string" },
+        "terms": { "type": "string" },
+        "claimedCount": { "type": "number" }
+      },
+      "required": ["id", "title", "provider", "discount", "category"]
+    },
+    "Convocatoria": {
+      "title": "Convocatoria",
+      "description": "Cohort convocatorias for level courses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "levelId": { "type": "string" },
+        "title": { "type": "string" },
+        "period": { "type": "string" },
+        "status": { "type": "string" },
+        "studentIds": { "type": "array" },
+        "activeClassNumber": { "type": "number" }
+      },
+      "required": ["id", "levelId", "title", "status"]
+    },
+    "RegularClass": {
+      "title": "RegularClass",
+      "description": "Regular academy classes with enrolled students and payment grid",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "day": { "type": "string" },
+        "time": { "type": "string" },
+        "address": { "type": "string" },
+        "level": { "type": "string" },
+        "instructor": { "type": "string" },
+        "studentIds": { "type": "array" },
+        "studentRoles": { "type": "object" },
+        "monthlyPayments": { "type": "object" },
+        "studentPayments": { "type": "object" },
+        "schedule": { "type": "string" },
+        "locationName": { "type": "string" },
+        "locationMapUrl": { "type": "string" },
+        "feePrice": { "type": "string" },
+        "paymentMethodId": { "type": "string" },
+        "recaps": { "type": "array" }
+      },
+      "required": ["id", "day", "time", "level"]
+    },
+    "PaymentMethod": {
+      "title": "PaymentMethod",
+      "description": "Academy payment methods for bank transfers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "alias": { "type": "string" },
+        "cbu": { "type": "string" },
+        "holder": { "type": "string" },
+        "bank": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "Formation": {
+      "title": "Formation",
+      "description": "Level configuration and recap versions for formation levels",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "totalClasses": { "type": "number" },
+        "minAttendancePercent": { "type": "number" },
+        "minClassesForCert": { "type": "number" },
+        "activeClassNumber": { "type": "number" },
+        "activeRecapVersionId": { "type": "string" },
+        "recapVersions": { "type": "array" },
+        "recaps": { "type": "array" }
+      },
+      "required": ["id", "name"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "Push notification messages",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "isRead": { "type": "boolean" },
+        "type": { "type": "string" },
+        "linkTab": { "type": "string" }
+      },
+      "required": ["id", "title", "body"]
+    },
+    "CategorySettings": {
+      "title": "CategorySettings",
+      "description": "Category settings stored in database for announcements and benefits",
+      "type": "object",
+      "properties": {
+        "announcementCategories": { "type": "array" },
+        "benefitCategories": { "type": "array" }
+      }
+    },
+    "MerchProduct": {
+      "title": "MerchProduct",
+      "description": "Official academy merchandise products catalog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "sizes": { "type": "array" },
+        "colors": { "type": "array" },
+        "inStock": { "type": "boolean" },
+        "stockCount": { "type": "number" }
+      },
+      "required": ["id", "name", "price"]
+    },
+    "MerchOrder": {
+      "title": "MerchOrder",
+      "description": "User purchases and pre-orders for merchandise",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userFullName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "items": { "type": "array" },
+        "totalAmount": { "type": "number" },
+        "paymentStatus": { "type": "string" },
+        "fulfillmentStatus": { "type": "string" },
+        "paymentMethodId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "items", "totalAmount", "paymentStatus"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "System security and administrative audit log records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string" },
+        "adminId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "details": { "type": "object" }
+      },
+      "required": ["id", "action"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and credentials"
+    },
+    "/announcements/{announcementId}": {
+      "schema": "Announcement",
+      "description": "Official academy announcements"
+    },
+    "/benefits/{benefitId}": {
+      "schema": "Benefit",
+      "description": "Partner benefits and discounts"
+    },
+    "/convocatorias/{convocatoriaId}": {
+      "schema": "Convocatoria",
+      "description": "Formation convocatorias"
+    },
+    "/regularClasses/{classId}": {
+      "schema": "RegularClass",
+      "description": "Regular classes schedule"
+    },
+    "/paymentMethods/{methodId}": {
+      "schema": "PaymentMethod",
+      "description": "Academy payment channels"
+    },
+    "/formations/{formationId}": {
+      "schema": "Formation",
+      "description": "Formation levels config and recap versions"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "Push notification messages"
+    },
+    "/settings/{docId}": {
+      "schema": "CategorySettings",
+      "description": "System settings including category lists"
+    },
+    "/merch_products/{productId}": {
+      "schema": "MerchProduct",
+      "description": "Merchandise products catalog"
+    },
+    "/merch_orders/{orderId}": {
+      "schema": "MerchOrder",
+      "description": "Merchandise student orders"
+    },
+    "/audit_logs/{logId}": {
+      "schema": "AuditLog",
+      "description": "Administrative audit logs"
+    }
+  }
+}

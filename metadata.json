@@ -1,0 +1,6 @@
+{
+  "name": "Bachata Influence - Comunidad y Credencial Digital",
+  "description": "App para la comunidad Bachata Influence de Tomás y Astrid en Argentina: credencial digital, beneficios exclusivos, comunicaciones importantes y notificaciones push.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

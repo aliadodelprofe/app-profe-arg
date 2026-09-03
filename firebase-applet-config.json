@@ -1,0 +1,13 @@
+{
+  "projectId": "ta-bachata-academy",
+  "appId": "1:740883094766:web:b92a16c10a0eba2c47e7ff",
+  "apiKey": "AIzaSyCu1AtaQZcQmmv5HHiD2XdstsKeNGNYBxk",
+  "authDomain": "ta-bachata-academy.firebaseapp.com",
+  "databaseURL": "https://ta-bachata-academy-default-rtdb.firebaseio.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "ta-bachata-academy.firebasestorage.app",
+  "messagingSenderId": "740883094766",
+  "measurementId": "G-SWLMQT8SXM",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": ""
+}

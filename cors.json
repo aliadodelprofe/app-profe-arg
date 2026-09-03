@@ -1,0 +1,14 @@
+[
+  {
+    "origin": [
+      "https://www.tabachata-academy.com",
+      "https://tabachata-academy.com",
+      "https://ta-bachata-academy.web.app",
+      "https://ta-bachata-academy.firebaseapp.com",
+      "http://localhost:3000"
+    ],
+    "method": ["GET", "HEAD"],
+    "maxAgeSeconds": 3600,
+    "responseHeader": ["Content-Type", "Content-Range", "Content-Length", "Accept-Ranges"]
+  }
+]

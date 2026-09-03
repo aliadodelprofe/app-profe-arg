@@ -1,0 +1,59 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'admin' ||
+        (
+          request.auth.token.email in [
+            'tomas.astrid.bachata@gmail.com',
+            'tomaselmore93@gmail.com'
+          ] &&
+          request.auth.token.email_verified == true
+        )
+      );
+    }
+
+    match /avatars/{userId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAuthenticated() && request.auth.uid == userId) || isAdmin() &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/(jpeg|png|webp|jpg)');
+    }
+
+    match /comprobantes/{userId}/{fileName} {
+      allow read: if (isAuthenticated() && request.auth.uid == userId) || isAdmin();
+      allow write: if isAuthenticated() && request.auth.uid == userId &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        request.resource.contentType.matches('(image/(jpeg|png|webp|jpg)|application/pdf)');
+    }
+
+    match /academy_assets/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.size < 15 * 1024 * 1024 &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // Recap videos (formations & regular classes): only logged-in students can read,
+    // so a leaked/shared download link is useless without a valid Firebase Auth session.
+    match /formation_recaps/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.size < 500 * 1024 * 1024 &&
+        request.resource.contentType.matches('video/.*');
+    }
+
+    match /regular_classes_recaps/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() &&
+        request.resource.size < 500 * 1024 * 1024 &&
+        request.resource.contentType.matches('video/.*');
+    }
+  }
+}

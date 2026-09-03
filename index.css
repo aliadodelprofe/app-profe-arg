@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-dark: #111111;
+  --color-brand-taupe: #56554e;
+  --color-brand-sand: #e7d9cf;
+  --color-brand-cream: #eeede9;
+}
+
+body {
+  background-color: #111111;
+  color: #eeede9;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Custom glow and scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #111111;
+}
+::-webkit-scrollbar-thumb {
+  background: #56554e;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e7d9cf;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #56554e #161615;
+  -webkit-overflow-scrolling: touch;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #161615;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #56554e;
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #e7d9cf;
+}
+
+/* Prevent mobile browser auto-zoom on input focus */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
