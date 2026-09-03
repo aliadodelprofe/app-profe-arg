@@ -34,3 +34,4 @@ yarn-error.log*
 # Restos del export de AI Studio
 cookie.txt
 _para_borrar/
+_tmp_lock/
