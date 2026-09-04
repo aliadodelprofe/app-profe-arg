@@ -29,7 +29,7 @@ está en `CLAUDE.md`, en la raíz.
 | `0001_fundacion_multitenant.sql` | `tenants`, `tenant_members`, función `my_tenant_ids()`, RLS y políticas, `create_tenant()` | Aplicada |
 | `0002_corrige_recursion_politicas.sql` | Fix de recursión infinita (error 42P17). Agrega `my_owned_tenant_ids()` | Aplicada |
 | `0003_nucleo_academico.sql` | `students`, `groups`, `sessions`, `enrollments`, `attendance` | Aplicada |
-| `0004_cargos_y_pagos.sql` | `charges`, `payments`, `payment_allocations`, vista `student_account` | **Pendiente de correr** |
+| `0004_cargos_y_pagos.sql` | `charges`, `payments`, `payment_allocations`, vista `student_account` | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -51,20 +51,24 @@ está en `CLAUDE.md`, en la raíz.
 | Archivo | Cuándo correrlo |
 |---|---|
 | `supabase/tests/control_general.sql` | Después de **cada** migración. Ninguna tabla puede decir `ABIERTA` |
-| `supabase/tests/aislamiento.sql` | La prueba de los dos profesores. La Parte 1 se corre una sola vez; la Parte 2 es repetible |
+| `supabase/tests/aislamiento.sql` | La prueba de los dos profesores sobre `tenants` y `tenant_members`. La Parte 1 se corre una sola vez; la Parte 2 es repetible |
+| `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
 
-Último resultado del aislamiento: **3 de 3 PASA**.
+Últimos resultados (4 de septiembre de 2026):
+- `aislamiento.sql` Parte 2 → **3 de 3 PASA**
+- `aislamiento_cargos.sql` → **5 de 5 PASA**
+- `control_general.sql` → **10 tablas en `ok`**
 
 ---
 
 ## Próximo paso exacto
 
-1. Correr `0004_cargos_y_pagos.sql` en `aliado-dev`
-2. Correr `control_general.sql` → deben aparecer **10 tablas en `ok`**
-   (la vista `student_account` no aparece en esa lista: no es una tabla)
-3. Migración `0005`: `announcements` y `benefits`
-4. Políticas del portal del alumno — quedaron pendientes a propósito en la 0003
-5. Recién ahí: conectar la app con Supabase (ese es el momento de pasar a Claude Code)
+1. Migración `0005`: `announcements` y `benefits`
+2. Políticas del portal del alumno — quedaron pendientes a propósito en la 0003
+3. Recién ahí: conectar la app con Supabase (ese es el momento de pasar a Claude Code)
+
+Nota: `control_general.sql` lista 10 tablas. La vista `student_account` no aparece
+ahí y está bien: no es una tabla.
 
 ---
 
