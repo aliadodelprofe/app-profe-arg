@@ -22,6 +22,30 @@ está en `CLAUDE.md`, en la raíz.
 
 ---
 
+## Cómo se levanta la app
+
+```
+cd ~/Documents/GitHub/app-profe-arg
+npm run dev
+```
+
+| Dirección | Qué carga |
+|---|---|
+| `localhost:3000/profe` | La app nueva, contra Supabase |
+| cualquier otra | La app de la comunidad, contra Firebase (producción) |
+
+`src/main.tsx` decide cuál montar según la dirección, con import dinámico: entrando
+por `/profe` el código de Firebase **no se descarga**, así que no hay forma de tocar
+la base de producción mientras se desarrolla.
+
+Las credenciales viven en `.env.local` (fuera de git). Vite las lee **una sola vez al
+arrancar**: si se tocan, hay que cortar con `Ctrl+C` y volver a levantar.
+
+Node.js LTS instalado y `@supabase/supabase-js` como dependencia. El proyecto usa
+npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
+
+---
+
 ## Migraciones aplicadas en `aliado-dev`
 
 | Archivo | Qué hace | Estado |
@@ -66,19 +90,23 @@ está en `CLAUDE.md`, en la raíz.
 
 ## Próximo paso exacto
 
-**Conectar la app con Supabase.** El esquema de las dos prioridades del orden de
-construcción (formato `regular` y conciliación de transferencias) ya está completo
-y probado. Lo que falta no son más tablas: es la app dejando de hablarle a Firebase.
+**El loop diario del profesor**, que es lo mínimo que se le muestra a otro profesor
+para que pague: *mis grupos → tomar asistencia → quién me debe → confirmar un pago*.
 
-Primero hace falta resolver el enlace alumno ↔ usuario: `students.user_id` hoy está
-vacío en todas las fichas, y hasta que no se cargue, las reglas de la 0005 no le
-abren la puerta a ningún alumno. Ese flujo (el profe invita, el alumno se registra)
-es trabajo de la app.
+Se construye en `src/profe/`, contra el modelo nuevo. Ya está hecho el cimiento:
+ingreso con email y contraseña, y una consulta leyendo con RLS puesto
+(`AppProfe.tsx` lista los espacios del profesor sin filtrar por profesor: filtra la base).
 
-`announcements` y `benefits` quedan para después, a propósito: las pantallas
-`AnnouncementsFeed` y `BenefitsCatalog` siguen funcionando en la app vieja sobre
-Firebase, y `CLAUDE.md` manda el club de beneficios a la fila de espera hasta tener
-tres profesores pagando.
+Decisión tomada el 4/9/2026: **no se migra `AuthContext.tsx`.** Sus 2.929 líneas
+manejan diez colecciones de Firestore (`users`, `merch_*`, `convocatorias`,
+`notifications`…) que no se cruzan con el modelo nuevo, y nada de eso está en la ruta
+a los tres profesores pagando. La app de la comunidad sigue viva en Firebase mientras
+tanto, y por eso `announcements` y `benefits` tampoco se migran todavía.
+
+Pendiente de diseño, para cuando toque el portal del alumno: el enlace alumno ↔
+usuario. `students.user_id` está vacío en todas las fichas, y hasta que no se cargue,
+las reglas de la 0005 no le abren la puerta a ningún alumno. Ese flujo (el profe
+invita, el alumno se registra) es trabajo de la app.
 
 Nota: `control_general.sql` lista 10 tablas. La vista `student_account` no aparece
 ahí y está bien: no es una tabla.
@@ -96,7 +124,7 @@ ahí y está bien: no es una tabla.
 
 ## Pendientes sueltos
 
-- [ ] Instalar Node.js (nodejs.org, versión LTS) — necesario para levantar la app
+- [x] Instalar Node.js — hecho (v24.20.0, npm 11.19.0)
 - [ ] Cambiar la contraseña del admin en la app vieja (hoy es `admin`, en texto plano)
 - [ ] No tocar el proyecto Supabase `axzyhjprterixsgqhddv` — sirve los videos de la app en producción
 - [ ] La app vieja tiene `firestore.rules` con `allow read, write: if true` (base abierta). Se resuelve solo con la migración a Supabase
