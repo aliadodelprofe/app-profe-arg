@@ -245,12 +245,12 @@ begin;
     from public.sessions
 
   union all
-  select 'NO ve la inscripcion de su companera',
+  select 'Ve UNA sola inscripcion, la suya (no la de su companera)',
          case when count(*) = 1 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
     from public.enrollments
 
   union all
-  select 'NO ve la asistencia de su companera',
+  select 'Ve UNA sola asistencia, la suya (no la de su companera)',
          case when count(*) = 1 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
     from public.attendance
 

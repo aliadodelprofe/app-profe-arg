@@ -18,7 +18,7 @@ está en `CLAUDE.md`, en la raíz.
 
 **Seguridad de los proyectos Supabase:** Data API, expose new tables y automatic RLS activados en ambos. La integración con GitHub NO está conectada, a propósito.
 
-**Usuarios de prueba en `aliado-dev`:** `profe1@prueba.com` y `profe2@prueba.com`.
+**Usuarios de prueba en `aliado-dev`:** `profe1@prueba.com`, `profe2@prueba.com` y `alumno1@prueba.com`.
 
 ---
 
@@ -30,6 +30,7 @@ está en `CLAUDE.md`, en la raíz.
 | `0002_corrige_recursion_politicas.sql` | Fix de recursión infinita (error 42P17). Agrega `my_owned_tenant_ids()` | Aplicada |
 | `0003_nucleo_academico.sql` | `students`, `groups`, `sessions`, `enrollments`, `attendance` | Aplicada |
 | `0004_cargos_y_pagos.sql` | `charges`, `payments`, `payment_allocations`, vista `student_account` | Aplicada |
+| `0005_portal_del_alumno.sql` | Políticas del alumno: cuatro funciones `my_student_*`, nueve reglas de lectura y la de declarar un pago | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -53,19 +54,31 @@ está en `CLAUDE.md`, en la raíz.
 | `supabase/tests/control_general.sql` | Después de **cada** migración. Ninguna tabla puede decir `ABIERTA` |
 | `supabase/tests/aislamiento.sql` | La prueba de los dos profesores sobre `tenants` y `tenant_members`. La Parte 1 se corre una sola vez; la Parte 2 es repetible |
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
+| `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
 
 Últimos resultados (4 de septiembre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
+- `aislamiento_alumno.sql` → **16 de 16 PASA**
 - `control_general.sql` → **10 tablas en `ok`**
 
 ---
 
 ## Próximo paso exacto
 
-1. Migración `0005`: `announcements` y `benefits`
-2. Políticas del portal del alumno — quedaron pendientes a propósito en la 0003
-3. Recién ahí: conectar la app con Supabase (ese es el momento de pasar a Claude Code)
+**Conectar la app con Supabase.** El esquema de las dos prioridades del orden de
+construcción (formato `regular` y conciliación de transferencias) ya está completo
+y probado. Lo que falta no son más tablas: es la app dejando de hablarle a Firebase.
+
+Primero hace falta resolver el enlace alumno ↔ usuario: `students.user_id` hoy está
+vacío en todas las fichas, y hasta que no se cargue, las reglas de la 0005 no le
+abren la puerta a ningún alumno. Ese flujo (el profe invita, el alumno se registra)
+es trabajo de la app.
+
+`announcements` y `benefits` quedan para después, a propósito: las pantallas
+`AnnouncementsFeed` y `BenefitsCatalog` siguen funcionando en la app vieja sobre
+Firebase, y `CLAUDE.md` manda el club de beneficios a la fila de espera hasta tener
+tres profesores pagando.
 
 Nota: `control_general.sql` lista 10 tablas. La vista `student_account` no aparece
 ahí y está bien: no es una tabla.
