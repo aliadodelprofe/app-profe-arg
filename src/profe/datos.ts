@@ -165,3 +165,115 @@ export async function marcarAsistencia(params: {
   );
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// ESTADO DE CUENTA — quién debe y cuánto
+//
+// Sale de la vista student_account de la migración 0004: suma los cargos
+// vigentes, suma lo que se imputó de los pagos, y resta.
+//
+// Dos cosas para tener presentes al leer un saldo:
+//
+//   1. Un pago DECLARADO y todavía no confirmado no baja el saldo. Está bien
+//      que sea así: hasta que no lo confirmás, no entró. Por eso más abajo se
+//      traen aparte, para poder avisar "debe, pero hay algo esperándote".
+//
+//   2. La vista solo conoce alumnos que tienen algún cargo. Un alumno sin
+//      cargos no aparece, y hay que tratarlo como saldo cero.
+// ---------------------------------------------------------------------------
+export type Cuenta = {
+  student_id: string;
+  total_cargos: number;
+  total_pagado: number;
+  saldo: number;
+};
+
+export type Alumno = { id: string; full_name: string; status: string };
+
+export type PagoPendiente = {
+  id: string;
+  student_id: string;
+  amount: number;
+  paid_on: string | null;
+  declared_at: string;
+  note: string | null;
+};
+
+// Postgres devuelve los "numeric" con toda su precisión y a veces como texto.
+// Los pasamos a número una sola vez, acá, y no en cada pantalla.
+const num = (v: unknown): number => Number(v ?? 0);
+
+export async function traerAlumnos(espacioId: string): Promise<Alumno[]> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, status')
+    .eq('tenant_id', espacioId)
+    .order('full_name');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Alumno[];
+}
+
+export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
+  const { data, error } = await supabase
+    .from('student_account')
+    .select('student_id, total_cargos, total_pagado, saldo')
+    .eq('tenant_id', espacioId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((c) => ({
+    student_id: String((c as Record<string, unknown>).student_id),
+    total_cargos: num((c as Record<string, unknown>).total_cargos),
+    total_pagado: num((c as Record<string, unknown>).total_pagado),
+    saldo: num((c as Record<string, unknown>).saldo),
+  }));
+}
+
+export async function traerPagosPendientes(espacioId: string): Promise<PagoPendiente[]> {
+  const { data, error } = await supabase
+    .from('payments')
+    .select('id, student_id, amount, paid_on, declared_at, note')
+    .eq('tenant_id', espacioId)
+    .eq('status', 'declared')
+    .order('declared_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((p) => {
+    const r = p as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      student_id: String(r.student_id),
+      amount: num(r.amount),
+      paid_on: (r.paid_on as string) ?? null,
+      declared_at: String(r.declared_at),
+      note: (r.note as string) ?? null,
+    };
+  });
+}
+
+// Junta las tres cosas en una sola lista lista para mostrar.
+// El cruce se hace acá y no en la base porque la vista student_account no
+// trae el nombre del alumno, y agregarlo pedía una migración nueva para algo
+// que con esta cantidad de alumnos se resuelve en el navegador sin costo.
+export type FilaDeuda = {
+  alumno: Alumno;
+  saldo: number;
+  pendiente: number;
+};
+
+export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
+  const [alumnos, cuentas, pagos] = await Promise.all([
+    traerAlumnos(espacioId),
+    traerCuentas(espacioId),
+    traerPagosPendientes(espacioId),
+  ]);
+
+  const saldoPorAlumno = new Map(cuentas.map((c) => [c.student_id, c.saldo]));
+  const pendientePorAlumno = new Map<string, number>();
+  pagos.forEach((p) => {
+    pendientePorAlumno.set(p.student_id, (pendientePorAlumno.get(p.student_id) ?? 0) + p.amount);
+  });
+
+  return alumnos.map((a) => ({
+    alumno: a,
+    saldo: saldoPorAlumno.get(a.id) ?? 0,
+    pendiente: pendientePorAlumno.get(a.id) ?? 0,
+  }));
+}

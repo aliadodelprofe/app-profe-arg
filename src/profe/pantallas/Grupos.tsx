@@ -6,10 +6,12 @@ export default function Grupos({
   espacio,
   alVolver,
   alElegir,
+  alVerDeudas,
 }: {
   espacio: Espacio;
   alVolver: () => void;
   alElegir: (grupo: Grupo) => void;
+  alVerDeudas: () => void;
 }) {
   const { datos, error } = useCarga(() => traerGrupos(espacio.id), [espacio.id]);
 
@@ -20,6 +22,14 @@ export default function Grupos({
         bajada={espacio.name}
         volver={{ texto: 'Mis espacios', alTocar: alVolver }}
       />
+
+      <button
+        onClick={alVerDeudas}
+        className="mb-5 w-full rounded-xl border border-brand-sand/30 bg-brand-sand/5 px-4 py-3 text-left hover:border-brand-sand/60"
+      >
+        <p className="text-brand-sand">Quién me debe →</p>
+        <p className="text-sm text-brand-taupe">Estado de cuenta de todo el espacio</p>
+      </button>
 
       {error && <Aviso>{error}</Aviso>}
       {!datos && !error && <Vacio>Buscando…</Vacio>}

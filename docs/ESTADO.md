@@ -90,12 +90,21 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 
 ## Próximo paso exacto
 
-**El loop diario del profesor**, que es lo mínimo que se le muestra a otro profesor
-para que pague: *mis grupos → tomar asistencia → quién me debe → confirmar un pago*.
+**Confirmar un pago** — la última pieza del loop diario del profesor, y el corazón
+de la conciliación: el alumno declara la transferencia, el profe la confirma con un
+toque, el estado de cuenta se actualiza solo.
 
-Se construye en `src/profe/`, contra el modelo nuevo. Ya está hecho el cimiento:
-ingreso con email y contraseña, y una consulta leyendo con RLS puesto
-(`AppProfe.tsx` lista los espacios del profesor sin filtrar por profesor: filtra la base).
+Del loop *mis grupos → tomar asistencia → quién me debe → confirmar un pago* ya están
+hechas las tres primeras, en `src/profe/`:
+
+| Pantalla | Qué hace |
+|---|---|
+| Ingreso | Email y contraseña contra Supabase Auth |
+| Espacios | Los espacios del profesor. La consulta no filtra por profesor: filtra RLS |
+| Grupos | Los grupos del espacio, con su formato |
+| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su recap |
+| Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista** |
+| Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
 
 Decisión tomada el 4/9/2026: **no se migra `AuthContext.tsx`.** Sus 2.929 líneas
 manejan diez colecciones de Firestore (`users`, `merch_*`, `convocatorias`,
@@ -119,6 +128,60 @@ ahí y está bien: no es una tabla.
 2. Formato `regular` — sin esto no hay producto para la mayoría del mercado
 3. Conciliación de transferencias
 4. Nada más hasta tener **tres profesores pagando**
+
+---
+
+## Decisiones de producto pendientes
+
+Anotadas el 5 de septiembre de 2026, a partir del problema real: **un alumno toma
+la clase y se va sin pagar.**
+
+### 1. Saldo a favor del alumno — pieza faltante del modelo
+
+Hoy un pago se imputa a un cargo. Eso deja dos situaciones sin lugar donde vivir:
+
+- El alumno paga **antes** de que exista el cargo. El pago queda flotando, sin nada
+  a qué imputarse, y el saldo no lo refleja.
+- El **pack de 4 clases** pagado por adelantado. Tomó una, ¿dónde dice que le quedan
+  tres? En ningún lado.
+
+Las dos son el mismo concepto: el alumno tiene plata a favor todavía no consumida.
+Resolverlo una vez habilita el pago anticipado, el pack y el crédito por una clase
+suspendida. Hacerlos por separado deja tres parches sobre un modelo que no los
+contempla.
+
+### 2. QR en la puerta — versión dos, no ahora
+
+Idea: que el profe escanee al alumno al entrar y la app diga si pagó o si tiene pack
+vigente. La credencial con QR **ya existe** en la app vieja (`DigitalPassModal`,
+`QRCodeRenderer`, `PublicMemberVerification`), así que no se arranca de cero.
+
+Lo que le falta para servir: que las fichas estén enlazadas a usuarios
+(`students.user_id` sigue vacío) y que exista el saldo a favor del punto 1.
+
+Límite a tener presente: el software no puede impedir que alguien baile. Bloquear es
+teatro salvo que haya molinete. Lo que sí puede es que el profe tenga el número
+adelante en el momento de tomar asistencia — **eso ya está hecho**.
+
+### 3. Cobro por adelantado con corte antes de la clase — no se adopta por ahora
+
+Idea evaluada: exigir la clase paga hasta una hora antes, para liberar el cupo y ver
+anticipadamente cuánta gente viene. Se descartó para esta etapa por tres motivos:
+
+- El corte automático se apoya en una **confirmación manual** del profe. Si el alumno
+  transfiere a las 19:00 y el profe confirma a las 19:45, el reloj corre contra el
+  alumno por una demora ajena. Un corte duro necesita cobro instantáneo, y el producto
+  decidió a propósito no procesar pagos.
+- Introduce un concepto que el modelo no tiene: *anotarse a una clase*.
+- `CLAUDE.md` posiciona el producto como software de formaciones y grupos, **no de
+  reservas**, y la regla 4 dice "nada más hasta tener tres profesores pagando".
+
+### 4. Generación automática de cargos por asistencia — en pausa
+
+`CLAUDE.md` dice que los cargos se generan por asistencia para quien paga por clase.
+La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo termina
+naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
+cuando se resuelva el saldo a favor.
 
 ---
 

@@ -4,12 +4,23 @@
 // Cada toque guarda al instante, sin botón de "guardar". Es a propósito: esto
 // se usa parado en el medio de una sala, con el celular en una mano. Un
 // formulario que hay que confirmar es un formulario que se pierde.
+//
+// Al lado de cada nombre va la deuda. Es lo que evita que alguien tome la
+// clase y se vaya sin pagar: no porque la app lo impida —no puede, la persona
+// está parada en la sala— sino porque en el momento exacto en que le tomás
+// asistencia tenés el número adelante y preguntás.
 // ============================================================================
 import { useEffect, useState } from 'react';
 import {
-  traerInscripciones, traerAsistencias, marcarAsistencia, nombreAsistencia, fecha,
+  traerInscripciones, traerAsistencias, marcarAsistencia, traerDeudas,
+  nombreAsistencia, fecha, plata,
 } from '../datos';
-import type { Espacio, Grupo, Clase, Inscripcion, Asistencia as TipoAsistencia, EstadoAsistencia } from '../datos';
+import type {
+  Espacio, Grupo, Clase, Inscripcion, FilaDeuda,
+  Asistencia as TipoAsistencia, EstadoAsistencia,
+} from '../datos';
+
+type Cuenta = { saldo: number; pendiente: number };
 import { Marco, Encabezado, Aviso, Vacio, Tarjeta } from '../ui';
 
 const ESTADOS: EstadoAsistencia[] = ['present', 'absent', 'excused'];
@@ -29,22 +40,32 @@ export default function Asistencia({
   // Lo marcado hasta ahora, por alumno. Se actualiza apenas tocás, sin
   // esperar a la base: si la base rechaza, se vuelve atrás y se avisa.
   const [marcas, setMarcas] = useState<Record<string, EstadoAsistencia>>({});
+  const [cuentas, setCuentas] = useState<Record<string, Cuenta>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
     setError(null);
-    Promise.all([traerInscripciones(grupo.id), traerAsistencias(clase.id)])
-      .then(([ins, asis]: [Inscripcion[], TipoAsistencia[]]) => {
+    Promise.all([
+      traerInscripciones(grupo.id),
+      traerAsistencias(clase.id),
+      traerDeudas(espacio.id),
+    ])
+      .then(([ins, asis, deudas]: [Inscripcion[], TipoAsistencia[], FilaDeuda[]]) => {
         if (!vivo) return;
         setInscriptos(ins.filter((i) => i.status === 'active'));
         const previas: Record<string, EstadoAsistencia> = {};
         asis.forEach((a) => { previas[a.student_id] = a.status; });
         setMarcas(previas);
+        const cuenta: Record<string, Cuenta> = {};
+        deudas.forEach((d) => {
+          cuenta[d.alumno.id] = { saldo: d.saldo, pendiente: d.pendiente };
+        });
+        setCuentas(cuenta);
       })
       .catch((e: Error) => vivo && setError(e.message));
     return () => { vivo = false; };
-  }, [grupo.id, clase.id]);
+  }, [grupo.id, clase.id, espacio.id]);
 
   async function marcar(alumnoId: string, estado: EstadoAsistencia) {
     const anterior = marcas[alumnoId];
@@ -96,10 +117,26 @@ export default function Asistencia({
           if (!i.alumno) return null;
           const alumno = i.alumno;
           const actual = marcas[alumno.id];
+          const cuenta = cuentas[alumno.id];
+          const debe = (cuenta?.saldo ?? 0) > 0;
           return (
             <li key={i.id}>
               <Tarjeta>
-                <p className="mb-2 text-brand-cream">{alumno.full_name}</p>
+                <div className="mb-2 flex items-start justify-between gap-3">
+                  <p className="text-brand-cream">{alumno.full_name}</p>
+                  <div className="shrink-0 text-right">
+                    {debe ? (
+                      <p className="text-red-300">debe {plata(cuenta.saldo)}</p>
+                    ) : (
+                      <p className="text-sm text-brand-taupe">al día</p>
+                    )}
+                    {cuenta?.pendiente > 0 && (
+                      <p className="text-xs text-brand-sand">
+                        declaró {plata(cuenta.pendiente)}
+                      </p>
+                    )}
+                  </div>
+                </div>
                 <div className="flex gap-2">
                   {ESTADOS.map((e) => {
                     const elegido = actual === e;
