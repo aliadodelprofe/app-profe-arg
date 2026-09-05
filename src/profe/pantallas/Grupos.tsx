@@ -6,16 +6,21 @@ import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
   Campo, Texto, Opciones, Boton, BotonSecundario,
 } from '../ui';
+import Salir from './Salir';
 
 export default function Grupos({
   espacio,
+  email,
   alVolver,
   alElegir,
   alVerDeudas,
   alVerPagos,
 }: {
   espacio: Espacio;
-  alVolver: () => void;
+  email: string;
+  // Sin alVolver, esta es la pantalla de inicio: el profesor tiene un solo
+  // espacio y no hay lista adonde volver.
+  alVolver?: () => void;
   alElegir: (grupo: Grupo) => void;
   alVerDeudas: () => void;
   alVerPagos: () => void;
@@ -27,8 +32,9 @@ export default function Grupos({
     <Marco>
       <Encabezado
         titulo="Mis grupos"
-        bajada={espacio.name}
-        volver={{ texto: 'Mis espacios', alTocar: alVolver }}
+        bajada={alVolver ? espacio.name : `${espacio.name} · ${email}`}
+        volver={alVolver ? { texto: 'Mis espacios', alTocar: alVolver } : undefined}
+        derecha={alVolver ? undefined : <Salir />}
       />
 
       <div className="mb-5 flex flex-col gap-2">

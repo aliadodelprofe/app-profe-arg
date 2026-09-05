@@ -5,15 +5,19 @@
 // código de Firebase ni siquiera se descarga, así que no hay forma de tocar
 // la base de producción de la comunidad desde acá.
 //
-// La navegación es a mano, sin librería de rutas: son pocas pantallas y una
-// sola línea de profundidad. Si algún día son muchas, se cambia; hoy sería
-// una dependencia de más.
+// Sobre el "espacio": es la cuenta del profesor, no la sala donde da clase.
+// Casi todos van a tener uno solo y para siempre, así que la app no los hace
+// elegir de una lista de uno: si hay un solo espacio, se entra derecho a los
+// grupos. La pantalla de espacios aparece únicamente cuando hay más de uno
+// —una dupla con proyectos separados, o el plan Multi—. El concepto sigue
+// existiendo en la base; deja de estorbar arriba.
 // ============================================================================
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { traerEspacios } from './datos';
 import type { Espacio, Grupo, Clase } from './datos';
-import { Marco, Vacio } from './ui';
+import { Marco, Vacio, Aviso, useCarga } from './ui';
 import Ingreso from './pantallas/Ingreso';
 import Espacios from './pantallas/Espacios';
 import Grupos from './pantallas/Grupos';
@@ -21,6 +25,27 @@ import DetalleGrupo from './pantallas/DetalleGrupo';
 import Asistencia from './pantallas/Asistencia';
 import Deudas from './pantallas/Deudas';
 import Pagos from './pantallas/Pagos';
+
+export default function AppProfe() {
+  const [sesion, setSesion] = useState<Session | null>(null);
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSesion(data.session);
+      setCargando(false);
+    });
+    const { data } = supabase.auth.onAuthStateChange((_evento, s) => setSesion(s));
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  if (cargando) return <Marco><Vacio>Cargando…</Vacio></Marco>;
+  if (!sesion) return <Ingreso />;
+
+  // La clave fuerza a rearmar todo cuando cambia el usuario: nunca hay que
+  // quedar parado en la pantalla de un espacio que ya no es tuyo.
+  return <Adentro key={sesion.user.id} sesion={sesion} />;
+}
 
 type Vista =
   | { pantalla: 'espacios' }
@@ -30,48 +55,49 @@ type Vista =
   | { pantalla: 'deudas'; espacio: Espacio }
   | { pantalla: 'pagos'; espacio: Espacio };
 
-export default function AppProfe() {
-  const [sesion, setSesion] = useState<Session | null>(null);
-  const [cargando, setCargando] = useState(true);
-  const [vista, setVista] = useState<Vista>({ pantalla: 'espacios' });
+function Adentro({ sesion }: { sesion: Session }) {
+  const espacios = useCarga(traerEspacios, []);
+  const [vista, setVista] = useState<Vista | null>(null);
 
+  // Con los espacios en la mano, decidir por dónde se entra.
   useEffect(() => {
-    // ¿Hay alguien ya logueado? Supabase guarda la sesión en el navegador.
-    supabase.auth.getSession().then(({ data }) => {
-      setSesion(data.session);
-      setCargando(false);
-    });
+    if (!espacios.datos || vista) return;
+    setVista(
+      espacios.datos.length === 1
+        ? { pantalla: 'grupos', espacio: espacios.datos[0] }
+        : { pantalla: 'espacios' },
+    );
+  }, [espacios.datos, vista]);
 
-    // Y avisá cada vez que alguien entra o sale.
-    const { data } = supabase.auth.onAuthStateChange((_evento, s) => {
-      setSesion(s);
-      // Al cambiar de usuario se vuelve al principio: nunca hay que quedar
-      // parado en la pantalla de un espacio que ya no es tuyo.
-      setVista({ pantalla: 'espacios' });
-    });
-    return () => data.subscription.unsubscribe();
-  }, []);
+  const email = sesion.user.email ?? '';
+  const unico = espacios.datos?.length === 1;
 
-  if (cargando) return <Marco><Vacio>Cargando…</Vacio></Marco>;
-  if (!sesion) return <Ingreso />;
+  if (espacios.error) return <Marco><Aviso>{espacios.error}</Aviso></Marco>;
+  if (!vista) return <Marco><Vacio>Cargando…</Vacio></Marco>;
 
   if (vista.pantalla === 'espacios') {
     return (
       <Espacios
-        email={sesion.user.email ?? ''}
+        email={email}
+        espacios={espacios.datos ?? []}
+        alCrear={espacios.recargar}
         alElegir={(espacio) => setVista({ pantalla: 'grupos', espacio })}
       />
     );
   }
 
+  // Si hay un solo espacio no hay adónde volver: esta es la pantalla de inicio.
+  const volverAEspacios = unico
+    ? undefined
+    : () => setVista({ pantalla: 'espacios' });
+
   if (vista.pantalla === 'grupos') {
     return (
       <Grupos
         espacio={vista.espacio}
-        alVolver={() => setVista({ pantalla: 'espacios' })}
-        alElegir={(grupo) =>
-          setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo })
-        }
+        email={email}
+        alVolver={volverAEspacios}
+        alElegir={(grupo) => setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo })}
         alVerDeudas={() => setVista({ pantalla: 'deudas', espacio: vista.espacio })}
         alVerPagos={() => setVista({ pantalla: 'pagos', espacio: vista.espacio })}
       />
@@ -103,12 +129,7 @@ export default function AppProfe() {
         grupo={vista.grupo}
         alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
         alTomarAsistencia={(clase) =>
-          setVista({
-            pantalla: 'asistencia',
-            espacio: vista.espacio,
-            grupo: vista.grupo,
-            clase,
-          })
+          setVista({ pantalla: 'asistencia', espacio: vista.espacio, grupo: vista.grupo, clase })
         }
       />
     );

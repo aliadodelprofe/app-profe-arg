@@ -414,3 +414,23 @@ export async function guardarRecap(claseId: string, recap: string): Promise<void
     .eq('id', claseId);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// CREAR UN ESPACIO
+//
+// Va por la función create_tenant de la migración 0001 y no por un insert
+// común, porque crear el espacio y dejarte como dueño tienen que pasar juntos.
+// De hecho la tabla tenants no tiene regla de INSERT: esta función es la única
+// puerta, justamente para que no pueda quedar un espacio sin dueño.
+// ---------------------------------------------------------------------------
+export async function crearEspacio(
+  nombre: string,
+  disciplina: string | null,
+): Promise<string> {
+  const { data, error } = await supabase.rpc('create_tenant', {
+    p_name: nombre,
+    p_discipline: disciplina,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}

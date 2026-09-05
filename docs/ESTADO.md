@@ -112,10 +112,10 @@ Las pantallas hechas, en `src/profe/`:
 | Pantalla | Qué hace |
 |---|---|
 | Ingreso | Email y contraseña contra Supabase Auth |
-| Espacios | Los espacios del profesor. La consulta no filtra por profesor: filtra RLS |
+| Espacios | Solo aparece con más de un espacio, o con ninguno (ahí ofrece crear el primero). Con uno solo la app entra derecho a los grupos |
 | Grupos | Los grupos del espacio, con su formato |
-| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su recap |
-| Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista** |
+| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su recap. Da de alta alumnos y clases |
+| Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista**. Al pie, el recap de la clase |
 | Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
 | Pagos por confirmar | Las transferencias declaradas. Un toque llama a `confirmar_pago()` e informa cuánto se imputó y cuánto quedó a favor |
 
@@ -195,6 +195,25 @@ anticipadamente cuánta gente viene. Se descartó para esta etapa por tres motiv
 La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo termina
 naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
 cuando se resuelva el saldo a favor.
+
+### 5. Clases en serie para grupos regulares — pedido, con dos piezas faltantes
+
+Idea de Tomás (5/9/2026): un grupo regular sucede siempre el mismo día, a la misma
+hora y en el mismo lugar. El profe debería cargar eso **una sola vez** y que las
+clases se creen solas, con la posibilidad de corregir alguna puntual.
+
+Es correcto y aplica justo a `regular`, que es el formato que sí es fijo. Antes hacen
+falta dos cosas que hoy no existen:
+
+- **Corregir o cancelar una clase puntual.** Hoy de una clase ya creada solo se puede
+  editar el recap: no la fecha, no la hora, y no hay forma de cancelarla por feriado
+  o por lluvia. Sin esto, generar en serie es generar problemas en serie.
+- **El lugar.** No existe en el modelo, ni en `groups` ni en `sessions`. Pide una
+  migración. Lo razonable: el lugar por defecto en el grupo, y que la clase pueda
+  pisarlo cuando ese día se dio en otro lado.
+
+Detalle de diseño: pedir **cuántas clases** en vez de "un mes". Un mes tiene 4 o 5
+martes según cuál sea; un número es predecible y no sorprende a nadie.
 
 ---
 
