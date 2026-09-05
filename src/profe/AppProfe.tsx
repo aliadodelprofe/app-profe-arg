@@ -79,6 +79,7 @@ function Adentro({ sesion }: { sesion: Session }) {
     return (
       <Espacios
         email={email}
+        userId={sesion.user.id}
         espacios={espacios.datos ?? []}
         alCrear={espacios.recargar}
         alElegir={(espacio) => setVista({ pantalla: 'grupos', espacio })}

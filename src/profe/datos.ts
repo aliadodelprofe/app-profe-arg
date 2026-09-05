@@ -448,3 +448,22 @@ export async function crearEspacio(
   if (error) throw new Error(error.message);
   return String(data);
 }
+
+// ¿Esta persona es alumno de alguien?
+//
+// Sirve para saber quién está parado del otro lado de la pantalla cuando no
+// tiene ningún espacio. Sin espacios puede ser dos cosas muy distintas: un
+// profesor nuevo que se está registrando, o un alumno que entró por la puerta
+// equivocada. A uno hay que ofrecerle crear su espacio; al otro no.
+//
+// No son categorías excluyentes: un profesor puede ser alumno de otro. Por eso
+// esto decide qué se OFRECE, no qué se permite.
+export async function soyAlumnoDeAlguien(userId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id')
+    .eq('user_id', userId)
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data ?? []).length > 0;
+}

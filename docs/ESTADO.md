@@ -244,6 +244,19 @@ muestra el tablero equivocado a la persona equivocada. Quedó agregada a
 `aislamiento_alumno.sql` la fila que lo detecta: un alumno no puede figurar en
 `tenant_members`.
 
+**Coletazo: ¿quién puede crear un espacio?** Con el arreglo, un alumno sin espacios
+caía en el formulario de "creá tu espacio". La regla intuitiva —"que solo los
+profesores puedan crear espacios"— se muerde la cola: alguien es profesor porque está
+en `tenant_members`, y entra ahí al crear su espacio. Con esa regla nadie llegaría a
+ser profesor nunca. Y las dos condiciones no se excluyen: un profesor puede ser alumno
+de otro.
+
+Lo que se hizo: sin espacios, la app se fija si la persona es alumno de alguien
+(`students.user_id`). Si lo es, le dice que esta es la app del profesor y que el portal
+del alumno está en construcción, con un enlace discreto por si además da clases. Si no
+es nada, es un profesor nuevo registrándose y se le ofrece crear su espacio de una.
+**Decide qué se ofrece, no qué se permite.**
+
 ---
 
 ## Pendientes sueltos
