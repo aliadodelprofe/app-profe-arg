@@ -323,3 +323,61 @@ export async function rechazarPago(pagoId: string): Promise<void> {
     .eq('status', 'declared');
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// ALTAS — crear grupo, anotar alumno, inscribirlo
+//
+// El tenant_id se manda explícito en cada alta. No es opcional: las tablas lo
+// exigen, y la regla de RLS lo compara contra tus espacios. Si mandaras el de
+// otro profesor, la base rechazaría la escritura.
+// ---------------------------------------------------------------------------
+export async function crearGrupo(
+  espacioId: string,
+  datos: {
+    name: string;
+    format: Formato;
+    level: string | null;
+    capacity: number | null;
+    start_date: string | null;
+    end_date: string | null;
+  },
+): Promise<Grupo> {
+  const { data, error } = await supabase
+    .from('groups')
+    .insert({ tenant_id: espacioId, ...datos })
+    .select('id, name, format, level, capacity, start_date, end_date, status')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Grupo;
+}
+
+export async function crearAlumno(
+  espacioId: string,
+  datos: { full_name: string; email: string | null; phone: string | null },
+): Promise<Alumno> {
+  const { data, error } = await supabase
+    .from('students')
+    .insert({ tenant_id: espacioId, ...datos })
+    .select('id, full_name, status')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Alumno;
+}
+
+// Inscribir es lo que decide CÓMO PAGA ese alumno en ese grupo. Por eso el
+// modo de cobro y el precio viven acá y no en el grupo: dentro del mismo
+// grupo puede haber uno pagando por clase y otro pagando el mes.
+export async function inscribir(
+  espacioId: string,
+  datos: {
+    group_id: string;
+    student_id: string;
+    billing_mode: ModoCobro;
+    agreed_price: number | null;
+  },
+): Promise<void> {
+  const { error } = await supabase
+    .from('enrollments')
+    .insert({ tenant_id: espacioId, ...datos });
+  if (error) throw new Error(error.message);
+}

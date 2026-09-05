@@ -3,6 +3,7 @@
 // ============================================================================
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import type React from 'react';
 
 export function Marco({ children }: { children: ReactNode }) {
   return (
@@ -80,6 +81,8 @@ export function Tarjeta({
 export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
   const [datos, setDatos] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Se incrementa para pedir los datos de nuevo, después de crear algo.
+  const [vuelta, setVuelta] = useState(0);
 
   useEffect(() => {
     let vivo = true;
@@ -90,7 +93,93 @@ export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
       .catch((e: Error) => { if (vivo) setError(e.message); });
     return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, claves);
+  }, [...claves, vuelta]);
 
-  return { datos, error };
+  return { datos, error, recargar: () => setVuelta((v) => v + 1) };
+}
+
+// ---------------------------------------------------------------------------
+// Piezas de formulario
+// ---------------------------------------------------------------------------
+const claseInput =
+  'w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-brand-cream outline-none focus:border-brand-sand';
+
+export function Campo({
+  etiqueta,
+  ayuda,
+  children,
+}: {
+  etiqueta: string;
+  ayuda?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-sm text-brand-taupe">{etiqueta}</span>
+      {children}
+      {ayuda && <span className="text-xs text-brand-taupe/70">{ayuda}</span>}
+    </label>
+  );
+}
+
+export function Texto(props: React.InputHTMLAttributes<HTMLInputElement>) {
+  return <input {...props} className={claseInput} />;
+}
+
+export function Opciones<T extends string>({
+  valor,
+  opciones,
+  alElegir,
+}: {
+  valor: T;
+  opciones: { valor: T; texto: string }[];
+  alElegir: (v: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opciones.map((o) => (
+        <button
+          key={o.valor}
+          type="button"
+          onClick={() => alElegir(o.valor)}
+          className={
+            'rounded-lg border px-3 py-1.5 text-sm ' +
+            (valor === o.valor
+              ? 'border-brand-sand bg-brand-sand text-brand-dark'
+              : 'border-white/15 text-brand-taupe hover:border-brand-sand/40')
+          }
+        >
+          {o.texto}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export function Boton({
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className="rounded-lg bg-brand-sand px-3 py-2 font-medium text-brand-dark disabled:opacity-50"
+    >
+      {children}
+    </button>
+  );
+}
+
+export function BotonSecundario({
+  children,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      {...props}
+      className="rounded-lg border border-white/15 px-3 py-2 text-sm text-brand-taupe hover:border-brand-sand/40"
+    >
+      {children}
+    </button>
+  );
 }
