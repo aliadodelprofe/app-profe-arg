@@ -115,3 +115,53 @@ export function plata(n: number | null): string {
   if (n === null) return '—';
   return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 }
+
+// ---------------------------------------------------------------------------
+// ASISTENCIA
+// ---------------------------------------------------------------------------
+export type EstadoAsistencia = 'present' | 'absent' | 'excused';
+
+export type Asistencia = {
+  id: string;
+  student_id: string;
+  status: EstadoAsistencia;
+};
+
+export const nombreAsistencia: Record<EstadoAsistencia, string> = {
+  present: 'Presente',
+  absent: 'Ausente',
+  excused: 'Justificado',
+};
+
+export async function traerAsistencias(claseId: string): Promise<Asistencia[]> {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('id, student_id, status')
+    .eq('session_id', claseId);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Asistencia[];
+}
+
+// Marca (o corrige) la asistencia de un alumno en una clase.
+//
+// Es un "upsert": si ya existe la fila la pisa, si no la crea. Puede hacerlo
+// porque la migración 0003 declara que no puede haber dos asistencias del
+// mismo alumno en la misma clase — unique (session_id, student_id). Sin esa
+// regla en la base, tocar dos veces dejaría dos filas contradictorias.
+export async function marcarAsistencia(params: {
+  espacioId: string;
+  claseId: string;
+  alumnoId: string;
+  estado: EstadoAsistencia;
+}): Promise<void> {
+  const { error } = await supabase.from('attendance').upsert(
+    {
+      tenant_id: params.espacioId,
+      session_id: params.claseId,
+      student_id: params.alumnoId,
+      status: params.estado,
+    },
+    { onConflict: 'session_id,student_id' },
+  );
+  if (error) throw new Error(error.message);
+}

@@ -12,17 +12,19 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Espacio, Grupo } from './datos';
+import type { Espacio, Grupo, Clase } from './datos';
 import { Marco, Vacio } from './ui';
 import Ingreso from './pantallas/Ingreso';
 import Espacios from './pantallas/Espacios';
 import Grupos from './pantallas/Grupos';
 import DetalleGrupo from './pantallas/DetalleGrupo';
+import Asistencia from './pantallas/Asistencia';
 
 type Vista =
   | { pantalla: 'espacios' }
   | { pantalla: 'grupos'; espacio: Espacio }
-  | { pantalla: 'grupo'; espacio: Espacio; grupo: Grupo };
+  | { pantalla: 'grupo'; espacio: Espacio; grupo: Grupo }
+  | { pantalla: 'asistencia'; espacio: Espacio; grupo: Grupo; clase: Clase };
 
 export default function AppProfe() {
   const [sesion, setSesion] = useState<Session | null>(null);
@@ -70,11 +72,32 @@ export default function AppProfe() {
     );
   }
 
+  if (vista.pantalla === 'grupo') {
+    return (
+      <DetalleGrupo
+        espacio={vista.espacio}
+        grupo={vista.grupo}
+        alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
+        alTomarAsistencia={(clase) =>
+          setVista({
+            pantalla: 'asistencia',
+            espacio: vista.espacio,
+            grupo: vista.grupo,
+            clase,
+          })
+        }
+      />
+    );
+  }
+
   return (
-    <DetalleGrupo
+    <Asistencia
       espacio={vista.espacio}
       grupo={vista.grupo}
-      alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
+      clase={vista.clase}
+      alVolver={() =>
+        setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo: vista.grupo })
+      }
     />
   );
 }

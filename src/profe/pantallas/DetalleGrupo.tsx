@@ -2,17 +2,19 @@ import {
   traerInscripciones, traerClases,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
-import type { Espacio, Grupo } from '../datos';
+import type { Espacio, Grupo, Clase } from '../datos';
 import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../ui';
 
 export default function DetalleGrupo({
   espacio,
   grupo,
   alVolver,
+  alTomarAsistencia,
 }: {
   espacio: Espacio;
   grupo: Grupo;
   alVolver: () => void;
+  alTomarAsistencia: (clase: Clase) => void;
 }) {
   const inscripciones = useCarga(() => traerInscripciones(grupo.id), [grupo.id]);
   const clases = useCarga(() => traerClases(grupo.id), [grupo.id]);
@@ -64,6 +66,7 @@ export default function DetalleGrupo({
       {/* ---------------------------------------------------------------
           Clases. El recap es el motivo principal por el que un alumno
           abre la app, así que se muestra acá y no escondido.
+          Tocar una clase abre la asistencia de esa clase.
          --------------------------------------------------------------- */}
       <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
         Clases
@@ -78,7 +81,7 @@ export default function DetalleGrupo({
       <ul className="flex flex-col gap-2">
         {clases.datos?.map((c) => (
           <li key={c.id}>
-            <Tarjeta>
+            <Tarjeta alTocar={() => alTomarAsistencia(c)}>
               <div className="flex items-center justify-between gap-3">
                 <p className="text-brand-cream">{c.title ?? 'Clase'}</p>
                 <p className="shrink-0 text-sm text-brand-taupe">
