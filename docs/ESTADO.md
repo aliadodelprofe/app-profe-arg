@@ -55,6 +55,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0003_nucleo_academico.sql` | `students`, `groups`, `sessions`, `enrollments`, `attendance` | Aplicada |
 | `0004_cargos_y_pagos.sql` | `charges`, `payments`, `payment_allocations`, vista `student_account` | Aplicada |
 | `0005_portal_del_alumno.sql` | Políticas del alumno: cuatro funciones `my_student_*`, nueve reglas de lectura y la de declarar un pago | Aplicada |
+| `0006_confirmar_pago.sql` | Función `confirmar_pago()`: marca el pago e imputa el monto a los cargos abiertos, del más viejo al más nuevo | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -79,23 +80,34 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/aislamiento.sql` | La prueba de los dos profesores sobre `tenants` y `tenant_members`. La Parte 1 se corre una sola vez; la Parte 2 es repetible |
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
 | `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
+| `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 
 Últimos resultados (4 de septiembre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
 - `aislamiento_alumno.sql` → **16 de 16 PASA**
+- `confirmar_pago.sql` → **6 de 6 PASA**
 - `control_general.sql` → **10 tablas en `ok`**
 
 ---
 
 ## Próximo paso exacto
 
-**Confirmar un pago** — la última pieza del loop diario del profesor, y el corazón
-de la conciliación: el alumno declara la transferencia, el profe la confirma con un
-toque, el estado de cuenta se actualiza solo.
+**El loop diario del profesor está completo.** *Mis grupos → tomar asistencia →
+quién me debe → confirmar un pago* funciona de punta a punta contra Supabase.
 
-Del loop *mis grupos → tomar asistencia → quién me debe → confirmar un pago* ya están
-hechas las tres primeras, en `src/profe/`:
+Lo que sigue es la decisión de producto, no más pantallas: hoy los cargos y los pagos
+declarados se siembran a mano (`supabase/seeds/pago_declarado.sql`). Para que el loop
+se alimente solo hacen falta dos cosas, en este orden:
+
+1. **Resolver el saldo a favor** (ver Decisiones de producto pendientes). Destraba el
+   pago anticipado, el pack de 4 clases y el sobrante que hoy la app informa pero no
+   sabe dónde guardar.
+2. **Enlazar alumnos con usuarios** (`students.user_id`), que es lo que le da entrada
+   al portal del alumno y hace que las transferencias las declare el alumno en vez de
+   sembrarlas nosotros.
+
+Las pantallas hechas, en `src/profe/`:
 
 | Pantalla | Qué hace |
 |---|---|
@@ -105,6 +117,7 @@ hechas las tres primeras, en `src/profe/`:
 | Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su recap |
 | Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista** |
 | Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
+| Pagos por confirmar | Las transferencias declaradas. Un toque llama a `confirmar_pago()` e informa cuánto se imputó y cuánto quedó a favor |
 
 Decisión tomada el 4/9/2026: **no se migra `AuthContext.tsx`.** Sus 2.929 líneas
 manejan diez colecciones de Firestore (`users`, `merch_*`, `convocatorias`,

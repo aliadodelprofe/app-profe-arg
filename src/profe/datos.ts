@@ -197,6 +197,7 @@ export type PagoPendiente = {
   paid_on: string | null;
   declared_at: string;
   note: string | null;
+  receipt_url: string | null;
 };
 
 // Postgres devuelve los "numeric" con toda su precisión y a veces como texto.
@@ -230,7 +231,7 @@ export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
 export async function traerPagosPendientes(espacioId: string): Promise<PagoPendiente[]> {
   const { data, error } = await supabase
     .from('payments')
-    .select('id, student_id, amount, paid_on, declared_at, note')
+    .select('id, student_id, amount, paid_on, declared_at, note, receipt_url')
     .eq('tenant_id', espacioId)
     .eq('status', 'declared')
     .order('declared_at', { ascending: false });
@@ -244,6 +245,7 @@ export async function traerPagosPendientes(espacioId: string): Promise<PagoPendi
       paid_on: (r.paid_on as string) ?? null,
       declared_at: String(r.declared_at),
       note: (r.note as string) ?? null,
+      receipt_url: (r.receipt_url as string) ?? null,
     };
   });
 }
@@ -276,4 +278,48 @@ export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
     saldo: saldoPorAlumno.get(a.id) ?? 0,
     pendiente: pendientePorAlumno.get(a.id) ?? 0,
   }));
+}
+
+// ---------------------------------------------------------------------------
+// CONFIRMAR UN PAGO — el corazón de la conciliación
+// ---------------------------------------------------------------------------
+export type PagoPorConfirmar = PagoPendiente & { alumno: string };
+
+export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPorConfirmar[]> {
+  const [pagos, alumnos] = await Promise.all([
+    traerPagosPendientes(espacioId),
+    traerAlumnos(espacioId),
+  ]);
+  const nombre = new Map(alumnos.map((a) => [a.id, a.full_name]));
+  return pagos.map((p) => ({ ...p, alumno: nombre.get(p.student_id) ?? 'Alumno' }));
+}
+
+export type ResultadoConfirmacion = { imputado: number; sinImputar: number };
+
+// Llama a la función confirmar_pago de la migración 0006.
+//
+// Toda la lógica vive en la base a propósito: confirmar es cambiar el estado
+// del pago Y repartirlo entre los cargos abiertos, y esos dos pasos tienen que
+// pasar juntos o no pasar. Desde acá es un solo llamado que no se puede
+// cortar por la mitad.
+export async function confirmarPago(pagoId: string): Promise<ResultadoConfirmacion> {
+  const { data, error } = await supabase.rpc('confirmar_pago', { p_pago_id: pagoId });
+  if (error) throw new Error(error.message);
+  const fila = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null;
+  return {
+    imputado: num(fila?.imputado),
+    sinImputar: num(fila?.sin_imputar),
+  };
+}
+
+// Rechazar es un solo paso, así que va directo: no hace falta una función.
+// El .eq('status','declared') es una red: si el pago ya se confirmó mientras
+// mirabas la pantalla, esto no lo toca en vez de pisarlo.
+export async function rechazarPago(pagoId: string): Promise<void> {
+  const { error } = await supabase
+    .from('payments')
+    .update({ status: 'rejected' })
+    .eq('id', pagoId)
+    .eq('status', 'declared');
+  if (error) throw new Error(error.message);
 }

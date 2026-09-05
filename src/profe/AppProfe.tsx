@@ -20,13 +20,15 @@ import Grupos from './pantallas/Grupos';
 import DetalleGrupo from './pantallas/DetalleGrupo';
 import Asistencia from './pantallas/Asistencia';
 import Deudas from './pantallas/Deudas';
+import Pagos from './pantallas/Pagos';
 
 type Vista =
   | { pantalla: 'espacios' }
   | { pantalla: 'grupos'; espacio: Espacio }
   | { pantalla: 'grupo'; espacio: Espacio; grupo: Grupo }
   | { pantalla: 'asistencia'; espacio: Espacio; grupo: Grupo; clase: Clase }
-  | { pantalla: 'deudas'; espacio: Espacio };
+  | { pantalla: 'deudas'; espacio: Espacio }
+  | { pantalla: 'pagos'; espacio: Espacio };
 
 export default function AppProfe() {
   const [sesion, setSesion] = useState<Session | null>(null);
@@ -71,6 +73,16 @@ export default function AppProfe() {
           setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo })
         }
         alVerDeudas={() => setVista({ pantalla: 'deudas', espacio: vista.espacio })}
+        alVerPagos={() => setVista({ pantalla: 'pagos', espacio: vista.espacio })}
+      />
+    );
+  }
+
+  if (vista.pantalla === 'pagos') {
+    return (
+      <Pagos
+        espacio={vista.espacio}
+        alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
       />
     );
   }
