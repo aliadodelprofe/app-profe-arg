@@ -230,6 +230,11 @@ begin;
     from public.students where user_id is distinct from auth.uid()
 
   union all
+  select 'NO figura como miembro del equipo de ningun espacio',
+         case when count(*) = 0 then 'PASA' else 'FALLA - lo tomarian por profesor' end, count(*)
+    from public.tenant_members
+
+  union all
   select 'SI ve su escuela',
          case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
     from public.tenants

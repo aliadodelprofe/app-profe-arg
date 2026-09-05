@@ -212,8 +212,37 @@ falta dos cosas que hoy no existen:
   migración. Lo razonable: el lugar por defecto en el grupo, y que la clase pueda
   pisarlo cuando ese día se dio en otro lado.
 
-Detalle de diseño: pedir **cuántas clases** en vez de "un mes". Un mes tiene 4 o 5
-martes según cuál sea; un número es predecible y no sorprende a nadie.
+Detalle de diseño, resuelto con Tomás: se generan **4 clases por defecto**, una por
+semana. Si en ese mes el día elegido cae 5 veces, la app **se da cuenta y le avisa al
+profe**, ofreciéndole agregar la quinta con los mismos datos en vez de hacérsela cargar
+a mano. El profe decide; el sistema no inventa una clase de más ni se hace el
+distraído.
+
+---
+
+## Errores encontrados y qué enseñaron
+
+### La app del profesor le mostraba la interfaz de profesor a un alumno (5/9/2026)
+
+`traerEspacios()` le preguntaba a `tenants` **qué espacios puede ver** el usuario. La
+0005 le da al alumno permiso para ver su escuela —lo necesita, si no el portal no
+puede decirle de quién es su clase—, así que un alumno logueado en `/profe` contaba
+un espacio y entraba derecho al panel del profesor.
+
+**No hubo fuga de datos.** Lo que veía era suyo: su ficha, su grupo, su propia deuda.
+Y no podía escribir nada: crear grupos, anotar alumnos, marcar asistencia y confirmar
+pagos le daban error, tal como dicen las pruebas. Lo que falló fue la interfaz, no el
+candado.
+
+La corrección: preguntarle a `tenant_members` —de qué espacios sos parte del equipo—
+en vez de a `tenants` —qué espacios alcanzás a ver—.
+
+**La lección, que vale para todo lo que sigue:** todas las pruebas preguntaban "¿puede
+alguien ver datos ajenos?". Ninguna preguntaba "¿la app asume que su usuario es
+profesor?". Row Level Security protege los datos; no protege de un front-end que le
+muestra el tablero equivocado a la persona equivocada. Quedó agregada a
+`aislamiento_alumno.sql` la fila que lo detecta: un alumno no puede figurar en
+`tenant_members`.
 
 ---
 

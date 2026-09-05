@@ -50,13 +50,27 @@ export type Clase = {
   recap: string | null;
 };
 
+// Los espacios donde esta persona es parte del EQUIPO, no los que alcanza a ver.
+//
+// La diferencia importa y ya nos mordió una vez. Preguntarle a "tenants" qué
+// espacios ve devuelve también la escuela donde alguien es ALUMNO: la 0005 le
+// da ese permiso a propósito, porque el portal del alumno necesita saber de
+// quién es su clase. Con esa pregunta, un alumno entraba a la app del profesor
+// y veía su propia escuela puesta en un marco de profesor.
+//
+// Preguntándole a "tenant_members" la respuesta es la correcta: solo los
+// espacios donde esta persona es dueña, profesora o asistente. Un alumno no
+// es miembro de nada y recibe una lista vacía.
 export async function traerEspacios(): Promise<Espacio[]> {
   const { data, error } = await supabase
-    .from('tenants')
-    .select('id, name, discipline, plan')
-    .order('name');
+    .from('tenant_members')
+    .select('espacio:tenants(id, name, discipline, plan)');
   if (error) throw new Error(error.message);
-  return (data ?? []) as Espacio[];
+  const filas = (data ?? []) as unknown as { espacio: Espacio | null }[];
+  return filas
+    .map((f) => f.espacio)
+    .filter((e): e is Espacio => e !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
