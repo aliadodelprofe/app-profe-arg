@@ -12,7 +12,7 @@
 // ============================================================================
 import { useEffect, useState } from 'react';
 import {
-  traerInscripciones, traerAsistencias, marcarAsistencia, traerDeudas,
+  traerInscripciones, traerAsistencias, marcarAsistencia, traerDeudas, guardarRecap,
   nombreAsistencia, fecha, plata,
 } from '../datos';
 import type {
@@ -21,7 +21,7 @@ import type {
 } from '../datos';
 
 type Cuenta = { saldo: number; pendiente: number };
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta } from '../ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton } from '../ui';
 
 const ESTADOS: EstadoAsistencia[] = ['present', 'absent', 'excused'];
 
@@ -161,6 +161,60 @@ export default function Asistencia({
           );
         })}
       </ul>
+
+      <Recap clase={clase} />
     </Marco>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// El recap va acá y no en un formulario aparte porque es el mismo momento
+// real: terminó la clase, marcás quién vino y anotás lo que diste. Un profesor
+// no va a entrar dos veces.
+//
+// Y no se guarda en cada tecla, como sí hace la asistencia: un texto a medio
+// escribir no es un dato, es un borrador. Por eso acá sí hay botón.
+// ----------------------------------------------------------------------------
+function Recap({ clase }: { clase: Clase }) {
+  const [texto, setTexto] = useState(clase.recap ?? '');
+  const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar() {
+    setGuardando(true);
+    setGuardado(false);
+    setError(null);
+    try {
+      await guardarRecap(clase.id, texto);
+      setGuardado(true);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setGuardando(false);
+  }
+
+  return (
+    <div className="mt-8">
+      <Campo
+        etiqueta="Qué se vio en esta clase"
+        ayuda="Es lo que tus alumnos van a leer después. Para muchos es el motivo por el que abren la app."
+      >
+        <Area
+          value={texto}
+          placeholder="Figuras vistas: paseo, sombrero, doble giro"
+          onChange={(e) => { setTexto(e.target.value); setGuardado(false); }}
+        />
+      </Campo>
+
+      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+
+      <div className="mt-2 flex items-center gap-3">
+        <Boton type="button" onClick={guardar} disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar recap'}
+        </Boton>
+        {guardado && <span className="text-sm text-brand-sand">Guardado</span>}
+      </div>
+    </div>
   );
 }

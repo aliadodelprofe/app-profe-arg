@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
-  traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir,
+  traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import type { Espacio, Grupo, Clase, Alumno, ModoCobro } from '../datos';
@@ -24,6 +24,7 @@ export default function DetalleGrupo({
   const inscripciones = useCarga(() => traerInscripciones(grupo.id), [grupo.id]);
   const clases = useCarga(() => traerClases(grupo.id), [grupo.id]);
   const [anotando, setAnotando] = useState(false);
+  const [cargandoClase, setCargandoClase] = useState(false);
 
   return (
     <Marco>
@@ -93,6 +94,19 @@ export default function DetalleGrupo({
       <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
         Clases
       </h2>
+
+      <div className="mb-3">
+        {cargandoClase ? (
+          <FormularioClase
+            espacio={espacio}
+            grupo={grupo}
+            alCerrar={() => setCargandoClase(false)}
+            alCrear={() => { setCargandoClase(false); clases.recargar(); }}
+          />
+        ) : (
+          <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
+        )}
+      </div>
 
       {clases.error && <Aviso>{clases.error}</Aviso>}
       {!clases.datos && !clases.error && <Vacio>Buscando…</Vacio>}
@@ -265,6 +279,86 @@ function FormularioAlumno({
       <div className="flex gap-2">
         <Boton type="submit" disabled={guardando}>
           {guardando ? 'Anotando…' : 'Anotar'}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Cargar una clase
+//
+// El recap no se pide acá: se escribe cuando la clase terminó, y para eso
+// está la pantalla de asistencia. Pedirlo antes sería pedirle al profe que
+// adivine lo que va a dar.
+// ----------------------------------------------------------------------------
+function FormularioClase({
+  espacio,
+  grupo,
+  alCerrar,
+  alCrear,
+}: {
+  espacio: Espacio;
+  grupo: Grupo;
+  alCerrar: () => void;
+  alCrear: () => void;
+}) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [dia, setDia] = useState(hoy);
+  const [hora, setHora] = useState('');
+  const [duracion, setDuracion] = useState('');
+  const [titulo, setTitulo] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      await crearClase(espacio.id, {
+        group_id: grupo.id,
+        date: dia,
+        start_time: hora || null,
+        duration_min: duracion ? Number(duracion) : null,
+        title: titulo.trim() || null,
+      });
+      alCrear();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={guardar}
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+    >
+      <p className="text-brand-cream">Nueva clase de {grupo.name}</p>
+
+      <Campo etiqueta="Día">
+        <Texto type="date" required value={dia} onChange={(e) => setDia(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Hora (opcional)">
+        <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Duración en minutos (opcional)">
+        <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Título (opcional)" ayuda="Lo que se vio se anota después, al tomar asistencia.">
+        <Texto value={titulo} placeholder="Clase 3" onChange={(e) => setTitulo(e.target.value)} />
+      </Campo>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando}>
+          {guardando ? 'Cargando…' : 'Cargar clase'}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>

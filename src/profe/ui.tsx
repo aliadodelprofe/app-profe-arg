@@ -126,6 +126,10 @@ export function Texto(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={claseInput} />;
 }
 
+export function Area(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea {...props} className={claseInput + ' min-h-24 resize-y'} />;
+}
+
 export function Opciones<T extends string>({
   valor,
   opciones,

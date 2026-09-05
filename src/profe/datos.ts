@@ -381,3 +381,36 @@ export async function inscribir(
     .insert({ tenant_id: espacioId, ...datos });
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// CLASES — cargar una, y escribir su recap
+//
+// El recap se guarda aparte de la creación porque se escribe en otro momento:
+// la clase se carga antes (o al empezar), y lo que se vio se anota al final.
+// ---------------------------------------------------------------------------
+export async function crearClase(
+  espacioId: string,
+  datos: {
+    group_id: string;
+    date: string;
+    start_time: string | null;
+    duration_min: number | null;
+    title: string | null;
+  },
+): Promise<Clase> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .insert({ tenant_id: espacioId, ...datos })
+    .select('id, date, start_time, title, recap')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Clase;
+}
+
+export async function guardarRecap(claseId: string, recap: string): Promise<void> {
+  const { error } = await supabase
+    .from('sessions')
+    .update({ recap: recap.trim() || null })
+    .eq('id', claseId);
+  if (error) throw new Error(error.message);
+}
