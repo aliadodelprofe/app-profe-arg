@@ -214,9 +214,10 @@ descartó: si los del martes y los del jueves pueden ser gente distinta, entonce
 dos grupos, porque un grupo es *quiénes cursan juntos*, no el contenido. No hace falta
 ninguna tabla de horarios; el generador pregunta día y hora cada vez.
 
-Consecuencia a vigilar: un alumno que va a los dos días queda inscripto en los dos
-grupos. Con cobro por clase da igual; con cobro por mes le entrarían **dos cuotas**.
-Si eso no es lo que el profesor espera, hay que volver sobre el modelo.
+Consecuencia, confirmada por Tomás el 7/9/2026: un alumno que va a los dos días queda
+inscripto en los dos grupos y, con cobro mensual, **paga dos cuotas**. Está bien que sea
+así. Lo que tiene que poder hacer es pagarlas de una sola vez, o por separado — ver
+"Cómo se paga cuando hay varias cuotas", abajo.
 
 Falta todavía: **el generador en sí.**
 
@@ -225,6 +226,30 @@ semana. Si en ese mes el día elegido cae 5 veces, la app **se da cuenta y le av
 profe**, ofreciéndole agregar la quinta con los mismos datos en vez de hacérsela cargar
 a mano. El profe decide; el sistema no inventa una clase de más ni se hace el
 distraído.
+
+### 6. Cómo se paga cuando hay varias cuotas
+
+Planteado por Tomás el 7/9/2026. Son tres casos y no corren la misma suerte:
+
+**Un pago que cubre varias cuotas del mismo profesor — ya funciona.** Es lo que hace
+`confirmar_pago` (migración 0006): reparte el monto entre todos los cargos abiertos del
+alumno, del más viejo al más nuevo, sin importar de qué grupo venga cada uno.
+
+**Un pago que se reparta entre profesores distintos — no es posible.** No es una
+limitación de la app sino del medio de cobro: una transferencia va a una cuenta
+bancaria. Si el alumno cursa con dos profesores, su plata sale hacia dos CBU distintos.
+Partir una transferencia exigiría que el producto procese los pagos y después reparta,
+que es justamente lo que `CLAUDE.md` decidió no hacer y lo que sostiene el "sin comisión
+por transacción".
+
+Lo viable y valioso es lo otro: que el **portal del alumno** le muestre todo junto —
+"le debés $8.000 a Tomás y $6.000 a Carla"— con un botón para pagar cada una. Un tablero
+unificado, no una billetera unificada.
+
+**Pagar una cuota puntual — falta, y es chico.** Hoy la imputación es automática y
+siempre al cargo más viejo. El alumno no tiene forma de decir "estos $6.000 son la cuota
+de jueves". Se resuelve dándole a `confirmar_pago` un cargo objetivo opcional: si viene,
+se imputa primero ahí y el resto sigue el orden de siempre.
 
 ---
 
