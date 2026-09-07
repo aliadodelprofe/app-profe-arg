@@ -30,6 +30,8 @@ export type Grupo = {
   start_date: string | null;
   end_date: string | null;
   status: string;
+  venue: string | null;
+  address: string | null;
 };
 
 export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
@@ -46,8 +48,13 @@ export type Clase = {
   id: string;
   date: string;
   start_time: string | null;
+  duration_min: number | null;
   title: string | null;
   recap: string | null;
+  status: 'scheduled' | 'cancelled';
+  // Vacíos significan "donde siempre", o sea el lugar del grupo.
+  venue: string | null;
+  address: string | null;
 };
 
 // Los espacios donde esta persona es parte del EQUIPO, no los que alcanza a ver.
@@ -76,7 +83,7 @@ export async function traerEspacios(): Promise<Espacio[]> {
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, name, format, level, capacity, start_date, end_date, status')
+    .select('id, name, format, level, capacity, start_date, end_date, status, venue, address')
     .eq('tenant_id', espacioId)
     .order('name');
   if (error) throw new Error(error.message);
@@ -98,7 +105,7 @@ export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]
 export async function traerClases(grupoId: string): Promise<Clase[]> {
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, date, start_time, title, recap')
+    .select('id, date, start_time, duration_min, title, recap, status, venue, address')
     .eq('group_id', grupoId)
     .order('date', { ascending: false });
   if (error) throw new Error(error.message);
@@ -354,12 +361,14 @@ export async function crearGrupo(
     capacity: number | null;
     start_date: string | null;
     end_date: string | null;
+    venue: string | null;
+    address: string | null;
   },
 ): Promise<Grupo> {
   const { data, error } = await supabase
     .from('groups')
     .insert({ tenant_id: espacioId, ...datos })
-    .select('id, name, format, level, capacity, start_date, end_date, status')
+    .select('id, name, format, level, capacity, start_date, end_date, status, venue, address')
     .single();
   if (error) throw new Error(error.message);
   return data as Grupo;
@@ -410,12 +419,14 @@ export async function crearClase(
     start_time: string | null;
     duration_min: number | null;
     title: string | null;
+    venue: string | null;
+    address: string | null;
   },
 ): Promise<Clase> {
   const { data, error } = await supabase
     .from('sessions')
     .insert({ tenant_id: espacioId, ...datos })
-    .select('id, date, start_time, title, recap')
+    .select('id, date, start_time, duration_min, title, recap, status, venue, address')
     .single();
   if (error) throw new Error(error.message);
   return data as Clase;
@@ -466,4 +477,53 @@ export async function soyAlumnoDeAlguien(userId: string): Promise<boolean> {
     .limit(1);
   if (error) throw new Error(error.message);
   return (data ?? []).length > 0;
+}
+
+// ---------------------------------------------------------------------------
+// EDITAR Y CANCELAR UNA CLASE
+// ---------------------------------------------------------------------------
+export async function editarClase(
+  claseId: string,
+  datos: {
+    date: string;
+    start_time: string | null;
+    duration_min: number | null;
+    title: string | null;
+    venue: string | null;
+    address: string | null;
+  },
+): Promise<void> {
+  const { error } = await supabase.from('sessions').update(datos).eq('id', claseId);
+  if (error) throw new Error(error.message);
+}
+
+// Cancelar no borra: la clase estaba anunciada, y de ella cuelgan asistencias
+// y cargos. Se marca, y se puede volver atrás.
+export async function cambiarEstadoClase(
+  claseId: string,
+  estado: 'scheduled' | 'cancelled',
+): Promise<void> {
+  const { error } = await supabase
+    .from('sessions')
+    .update({ status: estado })
+    .eq('id', claseId);
+  if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// EL LUGAR
+//
+// Guardamos la dirección en texto y el link al mapa lo armamos acá. Un link
+// pegado se rompe y caduca; una dirección escrita sirve para siempre.
+// ---------------------------------------------------------------------------
+export function linkMapa(direccion: string): string {
+  return 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(direccion);
+}
+
+// Dónde es realmente una clase: lo suyo si lo tiene, y si no lo del grupo.
+export function lugarDe(clase: Clase, grupo: Grupo): { venue: string | null; address: string | null } {
+  const propio = clase.venue || clase.address;
+  return propio
+    ? { venue: clase.venue, address: clase.address }
+    : { venue: grupo.venue, address: grupo.address };
 }

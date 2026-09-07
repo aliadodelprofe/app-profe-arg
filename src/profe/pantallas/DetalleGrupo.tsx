@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
+  editarClase, cambiarEstadoClase, lugarDe, linkMapa,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import type { Espacio, Grupo, Clase, Alumno, ModoCobro } from '../datos';
@@ -115,16 +116,12 @@ export default function DetalleGrupo({
       <ul className="flex flex-col gap-2">
         {clases.datos?.map((c) => (
           <li key={c.id}>
-            <Tarjeta alTocar={() => alTomarAsistencia(c)}>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-brand-cream">{c.title ?? 'Clase'}</p>
-                <p className="shrink-0 text-sm text-brand-taupe">
-                  {fecha(c.date)}
-                  {c.start_time ? ` · ${c.start_time.slice(0, 5)}` : ''}
-                </p>
-              </div>
-              {c.recap && <p className="mt-1 text-sm text-brand-taupe">{c.recap}</p>}
-            </Tarjeta>
+            <FilaClase
+              clase={c}
+              grupo={grupo}
+              alTomarAsistencia={() => alTomarAsistencia(c)}
+              alCambiar={clases.recargar}
+            />
           </li>
         ))}
       </ul>
@@ -309,6 +306,8 @@ function FormularioClase({
   const [hora, setHora] = useState('');
   const [duracion, setDuracion] = useState('');
   const [titulo, setTitulo] = useState('');
+  const [estudio, setEstudio] = useState('');
+  const [direccion, setDireccion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -323,6 +322,8 @@ function FormularioClase({
         start_time: hora || null,
         duration_min: duracion ? Number(duracion) : null,
         title: titulo.trim() || null,
+        venue: estudio.trim() || null,
+        address: direccion.trim() || null,
       });
       alCrear();
     } catch (err) {
@@ -354,11 +355,209 @@ function FormularioClase({
         <Texto value={titulo} placeholder="Clase 3" onChange={(e) => setTitulo(e.target.value)} />
       </Campo>
 
+      <Campo
+        etiqueta="Otro lugar (opcional)"
+        ayuda={
+          grupo.venue || grupo.address
+            ? `Dejalo vacío si es donde siempre: ${grupo.venue ?? grupo.address}.`
+            : 'Solo si esta clase se da en otro lado que el resto.'
+        }
+      >
+        <Texto value={estudio} placeholder="Estudio" onChange={(e) => setEstudio(e.target.value)} />
+      </Campo>
+
+      {estudio.trim() !== '' && (
+        <Campo etiqueta="Dirección de ese lugar">
+          <Texto value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+        </Campo>
+      )}
+
       {error && <Aviso>{error}</Aviso>}
 
       <div className="flex gap-2">
         <Boton type="submit" disabled={guardando}>
           {guardando ? 'Cargando…' : 'Cargar clase'}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Una clase en la lista
+//
+// Muestra dónde es de verdad: lo propio si lo tiene, y si no lo del grupo.
+// Se puede corregir —cambió la hora, se mudó la sala— y se puede cancelar.
+//
+// Cancelar no borra. La clase estaba anunciada, de ella cuelgan asistencias y
+// cargos, y hacerla desaparecer del calendario de un alumno que la vio
+// anunciada es peor que mostrarla tachada.
+// ----------------------------------------------------------------------------
+function FilaClase({
+  clase,
+  grupo,
+  alTomarAsistencia,
+  alCambiar,
+}: {
+  clase: Clase;
+  grupo: Grupo;
+  alTomarAsistencia: () => void;
+  alCambiar: () => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [trabajando, setTrabajando] = useState(false);
+
+  const cancelada = clase.status === 'cancelled';
+  const lugar = lugarDe(clase, grupo);
+
+  async function cambiarEstado() {
+    setTrabajando(true);
+    setError(null);
+    try {
+      await cambiarEstadoClase(clase.id, cancelada ? 'scheduled' : 'cancelled');
+      alCambiar();
+    } catch (e) {
+      setError((e as Error).message);
+      setTrabajando(false);
+    }
+  }
+
+  if (editando) {
+    return (
+      <FormularioEditarClase
+        clase={clase}
+        alCerrar={() => setEditando(false)}
+        alGuardar={() => { setEditando(false); alCambiar(); }}
+      />
+    );
+  }
+
+  return (
+    <Tarjeta>
+      <div className={cancelada ? 'opacity-50' : undefined}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-brand-cream">
+            {clase.title ?? 'Clase'}
+            {cancelada && (
+              <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-brand-taupe">
+                cancelada
+              </span>
+            )}
+          </p>
+          <p className="shrink-0 text-sm text-brand-taupe">
+            {fecha(clase.date)}
+            {clase.start_time ? ` · ${clase.start_time.slice(0, 5)}` : ''}
+          </p>
+        </div>
+
+        {(lugar.venue || lugar.address) && (
+          <p className="text-sm text-brand-taupe">
+            {lugar.venue}
+            {lugar.venue && lugar.address && ' · '}
+            {lugar.address && (
+              <a
+                href={linkMapa(lugar.address)} target="_blank" rel="noreferrer"
+                className="text-brand-sand underline"
+              >
+                ver en el mapa
+              </a>
+            )}
+          </p>
+        )}
+
+        {clase.recap && <p className="mt-1 text-sm text-brand-taupe">{clase.recap}</p>}
+      </div>
+
+      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!cancelada && (
+          <BotonSecundario type="button" onClick={alTomarAsistencia}>
+            Tomar asistencia
+          </BotonSecundario>
+        )}
+        <BotonSecundario type="button" onClick={() => setEditando(true)}>
+          Editar
+        </BotonSecundario>
+        <BotonSecundario type="button" onClick={cambiarEstado} disabled={trabajando}>
+          {cancelada ? 'Reactivar' : 'Cancelar clase'}
+        </BotonSecundario>
+      </div>
+    </Tarjeta>
+  );
+}
+
+function FormularioEditarClase({
+  clase,
+  alCerrar,
+  alGuardar,
+}: {
+  clase: Clase;
+  alCerrar: () => void;
+  alGuardar: () => void;
+}) {
+  const [dia, setDia] = useState(clase.date);
+  const [hora, setHora] = useState(clase.start_time?.slice(0, 5) ?? '');
+  const [duracion, setDuracion] = useState(clase.duration_min?.toString() ?? '');
+  const [titulo, setTitulo] = useState(clase.title ?? '');
+  const [estudio, setEstudio] = useState(clase.venue ?? '');
+  const [direccion, setDireccion] = useState(clase.address ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      await editarClase(clase.id, {
+        date: dia,
+        start_time: hora || null,
+        duration_min: duracion ? Number(duracion) : null,
+        title: titulo.trim() || null,
+        venue: estudio.trim() || null,
+        address: direccion.trim() || null,
+      });
+      alGuardar();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={guardar}
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+    >
+      <p className="text-brand-cream">Editar clase</p>
+
+      <Campo etiqueta="Día">
+        <Texto type="date" required value={dia} onChange={(e) => setDia(e.target.value)} />
+      </Campo>
+      <Campo etiqueta="Hora">
+        <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+      </Campo>
+      <Campo etiqueta="Duración en minutos">
+        <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
+      </Campo>
+      <Campo etiqueta="Título">
+        <Texto value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+      </Campo>
+      <Campo etiqueta="Otro lugar" ayuda="Vacío = donde siempre, el lugar del grupo.">
+        <Texto value={estudio} onChange={(e) => setEstudio(e.target.value)} />
+      </Campo>
+      <Campo etiqueta="Dirección de ese lugar">
+        <Texto value={direccion} onChange={(e) => setDireccion(e.target.value)} />
+      </Campo>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar'}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>

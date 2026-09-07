@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { traerGrupos, crearGrupo, nombreFormato, fecha } from '../datos';
+import { traerGrupos, crearGrupo, nombreFormato, fecha, linkMapa } from '../datos';
 import type { Espacio, Grupo, Formato } from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
@@ -82,6 +82,7 @@ export default function Grupos({
                 <p className="text-sm text-brand-taupe">
                   {[
                     g.level,
+                    g.venue,
                     g.capacity ? `cupo ${g.capacity}` : null,
                     g.start_date ? `desde ${fecha(g.start_date)}` : null,
                     g.end_date ? `hasta ${fecha(g.end_date)}` : null,
@@ -89,6 +90,15 @@ export default function Grupos({
                     .filter(Boolean)
                     .join(' · ') || 'sin datos adicionales'}
                 </p>
+                {g.address && (
+                  <a
+                    href={linkMapa(g.address)} target="_blank" rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm text-brand-sand underline"
+                  >
+                    {g.address} · ver en el mapa
+                  </a>
+                )}
               </Tarjeta>
             </li>
           ))}
@@ -121,6 +131,8 @@ function FormularioGrupo({
   const [cupo, setCupo] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const [estudio, setEstudio] = useState('');
+  const [direccion, setDireccion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -136,6 +148,8 @@ function FormularioGrupo({
         capacity: cupo ? Number(cupo) : null,
         start_date: desde || null,
         end_date: formato === 'cycle' && hasta ? hasta : null,
+        venue: estudio.trim() || null,
+        address: direccion.trim() || null,
       });
       alCrear();
     } catch (err) {
@@ -181,6 +195,17 @@ function FormularioGrupo({
 
       <Campo etiqueta="Nivel (opcional)">
         <Texto value={nivel} placeholder="Principiante" onChange={(e) => setNivel(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Estudio (opcional)" ayuda="Como le dicen al lugar: Vibras, Bunker.">
+        <Texto value={estudio} placeholder="Vibras" onChange={(e) => setEstudio(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Dirección (opcional)" ayuda="Con esto tus alumnos abren el mapa y llegan.">
+        <Texto
+          value={direccion} placeholder="Av. Corrientes 1234, CABA"
+          onChange={(e) => setDireccion(e.target.value)}
+        />
       </Campo>
 
       <Campo etiqueta="Cupo (opcional)">

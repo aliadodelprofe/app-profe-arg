@@ -56,6 +56,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0004_cargos_y_pagos.sql` | `charges`, `payments`, `payment_allocations`, vista `student_account` | Aplicada |
 | `0005_portal_del_alumno.sql` | Políticas del alumno: cuatro funciones `my_student_*`, nueve reglas de lectura y la de declarar un pago | Aplicada |
 | `0006_confirmar_pago.sql` | Función `confirmar_pago()`: marca el pago e imputa el monto a los cargos abiertos, del más viejo al más nuevo | Aplicada |
+| `0007_lugar_y_cancelar_clase.sql` | `location` en `groups` y `sessions`, y `sessions.status` para cancelar sin borrar | Aplicada |
+| `0008_estudio_y_direccion.sql` | `location` pasa a `address` y se agrega `venue` (nombre del estudio) en los dos niveles | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -196,21 +198,27 @@ La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo ter
 naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
 cuando se resuelva el saldo a favor.
 
-### 5. Clases en serie para grupos regulares — pedido, con dos piezas faltantes
+### 5. Clases en serie para grupos regulares — en construcción
 
 Idea de Tomás (5/9/2026): un grupo regular sucede siempre el mismo día, a la misma
 hora y en el mismo lugar. El profe debería cargar eso **una sola vez** y que las
 clases se creen solas, con la posibilidad de corregir alguna puntual.
 
-Es correcto y aplica justo a `regular`, que es el formato que sí es fijo. Antes hacen
-falta dos cosas que hoy no existen:
+Es correcto y aplica justo a `regular`, que es el formato que sí es fijo. Las dos
+piezas que faltaban ya están hechas (migraciones 0007 y 0008 más las pantallas):
+corregir o cancelar una clase puntual, y el lugar en sus dos niveles.
 
-- **Corregir o cancelar una clase puntual.** Hoy de una clase ya creada solo se puede
-  editar el recap: no la fecha, no la hora, y no hay forma de cancelarla por feriado
-  o por lluvia. Sin esto, generar en serie es generar problemas en serie.
-- **El lugar.** No existe en el modelo, ni en `groups` ni en `sessions`. Pide una
-  migración. Lo razonable: el lugar por defecto en el grupo, y que la clase pueda
-  pisarlo cuando ese día se dio en otro lado.
+**Decidido el 7/9/2026: un grupo se junta una sola vez por semana.** Se evaluó guardar
+un patrón de repetición con varios días —"Principiantes, martes y jueves"— y se
+descartó: si los del martes y los del jueves pueden ser gente distinta, entonces son
+dos grupos, porque un grupo es *quiénes cursan juntos*, no el contenido. No hace falta
+ninguna tabla de horarios; el generador pregunta día y hora cada vez.
+
+Consecuencia a vigilar: un alumno que va a los dos días queda inscripto en los dos
+grupos. Con cobro por clase da igual; con cobro por mes le entrarían **dos cuotas**.
+Si eso no es lo que el profesor espera, hay que volver sobre el modelo.
+
+Falta todavía: **el generador en sí.**
 
 Detalle de diseño, resuelto con Tomás: se generan **4 clases por defecto**, una por
 semana. Si en ese mes el día elegido cae 5 veces, la app **se da cuenta y le avisa al
