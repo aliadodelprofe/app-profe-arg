@@ -116,7 +116,7 @@ Las pantallas hechas, en `src/profe/`:
 | Ingreso | Email y contraseña contra Supabase Auth |
 | Espacios | Solo aparece con más de un espacio, o con ninguno (ahí ofrece crear el primero). Con uno solo la app entra derecho a los grupos |
 | Grupos | Los grupos del espacio, con su formato |
-| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su recap. Da de alta alumnos y clases |
+| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su lugar y su recap. Da de alta alumnos y clases, genera clases en serie, y permite editar o cancelar una clase puntual |
 | Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista**. Al pie, el recap de la clase |
 | Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
 | Pagos por confirmar | Las transferencias declaradas. Un toque llama a `confirmar_pago()` e informa cuánto se imputó y cuánto quedó a favor |
@@ -198,7 +198,7 @@ La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo ter
 naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
 cuando se resuelva el saldo a favor.
 
-### 5. Clases en serie para grupos regulares — en construcción
+### 5. Clases en serie para grupos regulares — HECHO (7/9/2026)
 
 Idea de Tomás (5/9/2026): un grupo regular sucede siempre el mismo día, a la misma
 hora y en el mismo lugar. El profe debería cargar eso **una sola vez** y que las
@@ -219,7 +219,20 @@ inscripto en los dos grupos y, con cobro mensual, **paga dos cuotas**. Está bie
 así. Lo que tiene que poder hacer es pagarlas de una sola vez, o por separado — ver
 "Cómo se paga cuando hay varias cuotas", abajo.
 
-Falta todavía: **el generador en sí.**
+El generador está hecho, en `DetalleGrupo`. Pide primera clase, hora, duración y
+cuántas (4 por defecto), y **muestra las fechas antes de crear nada**: una función que
+escribe cuatro filas sin que veas cuáles es una función en la que no se confía.
+
+Dos protecciones: si en alguna de esas fechas ya hay una clase cargada, se marca tachada
+y se saltea —generar dos veces el mismo mes es el error más fácil de cometer, y duplicar
+clases arrastraría asistencias y cargos duplicados—; y las cuentas de fechas se hacen en
+UTC, porque sumar días en hora local corre una fecha cuando cambia el horario de verano
+y aparece una clase el lunes que tenía que ser martes.
+
+El aviso de la quinta semana funciona así: si la quinta fecha todavía cae en el mes de la
+primera, ese día queda sin clase y se ofrece agregarlo. Arrancando el 1 de septiembre
+avisa (el 29 quedaría afuera); arrancando el 8, no molesta, porque las cuatro ya llegan
+hasta el 29. Verificado sobre seis meses distintos.
 
 Detalle de diseño, resuelto con Tomás: se generan **4 clases por defecto**, una por
 semana. Si en ese mes el día elegido cae 5 veces, la app **se da cuenta y le avisa al

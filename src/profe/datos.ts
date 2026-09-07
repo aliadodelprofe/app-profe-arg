@@ -527,3 +527,55 @@ export function lugarDe(clase: Clase, grupo: Grupo): { venue: string | null; add
     ? { venue: clase.venue, address: clase.address }
     : { venue: grupo.venue, address: grupo.address };
 }
+
+// ---------------------------------------------------------------------------
+// CLASES EN SERIE
+//
+// Cuentas de fechas hechas en UTC a propósito. Sumar días con la hora local
+// es una fuente clásica de errores de un día: el cambio de horario de verano
+// corre una fecha y aparece una clase el lunes que tenía que ser martes.
+// Como acá solo importa el día del calendario, se trabaja en UTC y listo.
+// ---------------------------------------------------------------------------
+const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+function aFecha(iso: string): Date {
+  const [a, m, d] = iso.split('-').map(Number);
+  return new Date(Date.UTC(a, m - 1, d));
+}
+
+export function sumarDias(iso: string, dias: number): string {
+  const f = aFecha(iso);
+  f.setUTCDate(f.getUTCDate() + dias);
+  return f.toISOString().slice(0, 10);
+}
+
+export function diaSemana(iso: string): string {
+  return DIAS[aFecha(iso).getUTCDay()];
+}
+
+export function mesDe(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+// Las fechas de una serie semanal a partir de un día.
+export function fechasSemanales(desde: string, cuantas: number): string[] {
+  return Array.from({ length: cuantas }, (_, i) => sumarDias(desde, i * 7));
+}
+
+export async function crearClases(
+  espacioId: string,
+  filas: {
+    group_id: string;
+    date: string;
+    start_time: string | null;
+    duration_min: number | null;
+    title: string | null;
+  }[],
+): Promise<number> {
+  if (filas.length === 0) return 0;
+  const { error } = await supabase
+    .from('sessions')
+    .insert(filas.map((f) => ({ tenant_id: espacioId, ...f })));
+  if (error) throw new Error(error.message);
+  return filas.length;
+}

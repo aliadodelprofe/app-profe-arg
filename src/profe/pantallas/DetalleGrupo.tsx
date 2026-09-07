@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
-  editarClase, cambiarEstadoClase, lugarDe, linkMapa,
+  editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
+  fechasSemanales, sumarDias, diaSemana, mesDe,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import type { Espacio, Grupo, Clase, Alumno, ModoCobro } from '../datos';
@@ -26,6 +27,7 @@ export default function DetalleGrupo({
   const clases = useCarga(() => traerClases(grupo.id), [grupo.id]);
   const [anotando, setAnotando] = useState(false);
   const [cargandoClase, setCargandoClase] = useState(false);
+  const [generando, setGenerando] = useState(false);
 
   return (
     <Marco>
@@ -97,15 +99,30 @@ export default function DetalleGrupo({
       </h2>
 
       <div className="mb-3">
-        {cargandoClase ? (
+        {cargandoClase && (
           <FormularioClase
             espacio={espacio}
             grupo={grupo}
             alCerrar={() => setCargandoClase(false)}
             alCrear={() => { setCargandoClase(false); clases.recargar(); }}
           />
-        ) : (
-          <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
+        )}
+
+        {generando && (
+          <FormularioSerie
+            espacio={espacio}
+            grupo={grupo}
+            yaCargadas={clases.datos?.map((c) => c.date) ?? []}
+            alCerrar={() => setGenerando(false)}
+            alCrear={() => { setGenerando(false); clases.recargar(); }}
+          />
+        )}
+
+        {!cargandoClase && !generando && (
+          <div className="flex flex-wrap gap-2">
+            <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
+            <BotonSecundario onClick={() => setGenerando(true)}>+ Generar varias</BotonSecundario>
+          </div>
         )}
       </div>
 
@@ -558,6 +575,154 @@ function FormularioEditarClase({
       <div className="flex gap-2">
         <Boton type="submit" disabled={guardando}>
           {guardando ? 'Guardando…' : 'Guardar'}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Generar varias clases de una
+//
+// Un grupo regular pasa siempre el mismo día a la misma hora. Cargarlas de a
+// una es trabajo repetido cuatro veces por mes.
+//
+// Dos cuidados que hacen la diferencia entre útil y peligroso:
+//
+//   - Se muestran las fechas ANTES de crear nada. Una función que escribe
+//     cuatro filas sin que veas cuáles es una función en la que no se confía.
+//   - Si en alguna de esas fechas ya hay una clase cargada, se marca y se
+//     saltea. Generar dos veces el mismo mes es el error más fácil de cometer,
+//     y duplicar clases arrastra asistencias y cargos duplicados.
+// ----------------------------------------------------------------------------
+function FormularioSerie({
+  espacio,
+  grupo,
+  yaCargadas,
+  alCerrar,
+  alCrear,
+}: {
+  espacio: Espacio;
+  grupo: Grupo;
+  yaCargadas: string[];
+  alCerrar: () => void;
+  alCrear: () => void;
+}) {
+  const hoy = new Date().toISOString().slice(0, 10);
+  const [desde, setDesde] = useState(hoy);
+  const [hora, setHora] = useState('');
+  const [duracion, setDuracion] = useState('');
+  const [cuantas, setCuantas] = useState(4);
+  const [prefijo, setPrefijo] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  const fechas = fechasSemanales(desde, cuantas);
+  const nuevas = fechas.filter((f) => !yaCargadas.includes(f));
+
+  // ¿Ese día cae una vez más en el mismo mes, después de las cuatro?
+  // Si la quinta fecha sigue cayendo en el mes de la primera, sobra un día
+  // que quedaría sin clase. Se avisa y se ofrece; no se agrega solo.
+  const quinta = sumarDias(desde, 4 * 7);
+  const hayQuinta = cuantas === 4 && mesDe(quinta) === mesDe(desde);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      await crearClases(
+        espacio.id,
+        nuevas.map((f, i) => ({
+          group_id: grupo.id,
+          date: f,
+          start_time: hora || null,
+          duration_min: duracion ? Number(duracion) : null,
+          title: prefijo.trim() ? `${prefijo.trim()} ${i + 1}` : null,
+        })),
+      );
+      alCrear();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={guardar}
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+    >
+      <p className="text-brand-cream">Generar varias clases de {grupo.name}</p>
+
+      <Campo etiqueta="Primera clase" ayuda={`Cae ${diaSemana(desde)}. Las demás van una por semana, el mismo día.`}>
+        <Texto type="date" required value={desde} onChange={(e) => setDesde(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Hora (opcional)">
+        <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Duración en minutos (opcional)">
+        <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Cuántas clases">
+        <Texto
+          type="number" min="1" max="20" required value={cuantas}
+          onChange={(e) => setCuantas(Math.max(1, Number(e.target.value) || 1))}
+        />
+      </Campo>
+
+      <Campo etiqueta="Numerarlas (opcional)" ayuda='Con "Clase" quedan Clase 1, Clase 2, y así.'>
+        <Texto value={prefijo} placeholder="Clase" onChange={(e) => setPrefijo(e.target.value)} />
+      </Campo>
+
+      {hayQuinta && (
+        <div className="rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm">
+          <p className="text-brand-sand">
+            Este mes el {diaSemana(desde)} cae una vez más, el {fecha(quinta)}.
+            Con cuatro clases ese día queda sin cargar.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCuantas(5)}
+            className="mt-1 text-brand-cream underline"
+          >
+            Agregar esa clase también
+          </button>
+        </div>
+      )}
+
+      {/* Las fechas a la vista antes de crear nada */}
+      <div className="rounded-lg border border-white/10 px-3 py-2">
+        <p className="mb-1 text-sm text-brand-taupe">
+          Se van a crear {nuevas.length} {nuevas.length === 1 ? 'clase' : 'clases'}
+          {hora && ` a las ${hora}`}:
+        </p>
+        <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
+          {fechas.map((f) => {
+            const repetida = yaCargadas.includes(f);
+            return (
+              <li key={f} className={repetida ? 'text-brand-taupe line-through' : 'text-brand-cream'}>
+                {fecha(f)}
+                {repetida && ' (ya está)'}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando || nuevas.length === 0}>
+          {guardando
+            ? 'Creando…'
+            : nuevas.length === 0
+              ? 'Ya están todas cargadas'
+              : `Crear ${nuevas.length} ${nuevas.length === 1 ? 'clase' : 'clases'}`}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>
