@@ -59,6 +59,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0007_lugar_y_cancelar_clase.sql` | `location` en `groups` y `sessions`, y `sessions.status` para cancelar sin borrar | Aplicada |
 | `0008_estudio_y_direccion.sql` | `location` pasa a `address` y se agrega `venue` (nombre del estudio) en los dos niveles | Aplicada |
 | `0009_horario_del_grupo.sql` | `weekday`, `default_start_time` y `default_duration_min` en `groups`: el horario fijo | Aplicada |
+| `0010_precios_del_grupo.sql` | Los tres precios en `groups`, uno por forma de pago. Corrige tener el precio en la inscripción | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -98,6 +99,11 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 
 ## Próximo paso exacto
 
+**El loop diario del profesor está completo, y desde el 8/9/2026 no necesita el SQL
+Editor para nada.** El profesor crea su espacio, sus grupos con horario fijo, anota
+alumnos, da de baja, carga o deja que se generen las clases, toma asistencia, escribe el
+recap, cobra cuotas y confirma transferencias, todo desde la app.
+
 **El loop diario del profesor está completo.** *Mis grupos → tomar asistencia →
 quién me debe → confirmar un pago* funciona de punta a punta contra Supabase.
 
@@ -123,6 +129,11 @@ Las pantallas hechas, en `src/profe/`:
 | Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista**. Al pie, el recap de la clase |
 | Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
 | Pagos por confirmar | Las transferencias declaradas. Un toque llama a `confirmar_pago()` e informa cuánto se imputó y cuánto quedó a favor |
+
+Alta de cargos, en el detalle del grupo: **individual** (con el concepto escrito según
+cómo paga ese alumno y el monto que le corresponde) y **la cuota del mes a todo el grupo
+de una** — solo a quienes pagan por mes, mostrando a quién y cuánto antes de crear nada,
+y sin cobrar dos veces el mismo mes. La cuota vence el **día 1** del mes que cubre.
 
 Decisión tomada el 4/9/2026: **no se migra `AuthContext.tsx`.** Sus 2.929 líneas
 manejan diez colecciones de Firestore (`users`, `merch_*`, `convocatorias`,
@@ -295,15 +306,29 @@ asistencia, y su historia y su deuda quedan enteras) y **quitar** (fue un error 
 se borra). La regla que las separa no es la intención sino el rastro: si de la inscripción
 cuelga aunque sea un cargo, no se borra.
 
-**Atadura pendiente:** esa protección mira `charges.enrollment_id`, y hoy los cargos se
-crean sin enlazar a la inscripción —los que existen vinieron de archivos SQL de prueba,
-con `tenant_id`, `student_id`, concepto y monto y nada más—. Mientras siga así, la
-protección es decorativa. **Cuando se haga el alta de cargos, tiene que guardar
-`enrollment_id`**, que además es lo que permite saber de qué grupo viene cada deuda.
+**Resuelto el 8/9/2026:** el alta de cargos guarda `enrollment_id`, así que la protección
+dejó de ser decorativa. Los cargos viejos, los que vinieron de archivos SQL de prueba, no
+lo tienen y por eso no la disparan.
 
 ---
 
 ## Errores encontrados y qué enseñaron
+
+### El precio estaba en la persona y era del grupo (8/9/2026)
+
+Se construyó el alta de cargos con `enrollments.agreed_price` como el precio de cada
+alumno, y se escribió "cada uno con su precio" como si fuera una virtud del modelo. Tomás
+lo corrigió antes de commitear: **el precio es del grupo**, y tiene dos valores —por
+clase y por mes con descuento—. Lo que cambia entre alumnos es cuál de los dos eligen,
+no cuánto se les cobra.
+
+Corregido con la migración 0010. `agreed_price` sobrevive como excepción documentada
+(vacío = precio del grupo), sin que la app la pida.
+
+La lección: el modelo tenía razón a medias. `CLAUDE.md` decía —y sigue diciendo— que la
+forma de pago es de la inscripción, y eso era cierto. De ahí se dedujo que el precio
+también, y eso no. Que una parte del diseño sea correcta no valida lo que se le cuelga al
+lado.
 
 ### La app del profesor le mostraba la interfaz de profesor a un alumno (5/9/2026)
 

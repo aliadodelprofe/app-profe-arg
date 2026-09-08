@@ -96,3 +96,27 @@ export function clasesFaltantes(
 
   return ocurrencias(grupo.weekday, desde, hasta).filter((f) => !yaCargadas.includes(f));
 }
+
+export const NOMBRE_MES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+// '2026-09' -> 'septiembre 2026'
+export function mesEnPalabras(period: string): string {
+  const [a, m] = period.split('-').map(Number);
+  return `${NOMBRE_MES[m - 1]} ${a}`;
+}
+
+// El último día de ese mes, que es el vencimiento natural de una cuota.
+export function finDelMes(period: string): string {
+  const [a, m] = period.split('-').map(Number);
+  return new Date(Date.UTC(a, m, 0)).toISOString().slice(0, 10);
+}
+
+// El primer día de ese mes. Es el vencimiento de una cuota mensual: se cobra
+// al empezar el mes, no al terminarlo. Si venciera al final, el alumno cursa
+// las cuatro clases y recién ahí se ve que no pagó — y para entonces ya cursó.
+export function inicioDelMes(period: string): string {
+  return `${period}-01`;
+}

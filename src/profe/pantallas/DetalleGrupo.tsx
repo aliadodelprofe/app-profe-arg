@@ -4,11 +4,14 @@ import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
   fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
-  darDeBaja, volverAAnotar, quitarInscripcion,
+  darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
+  mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
-import type { Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion } from '../datos';
+import type {
+  Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro,
+} from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
   Campo, Texto, Opciones, Boton, BotonSecundario,
@@ -34,6 +37,7 @@ export default function DetalleGrupo({
   const [cargandoClase, setCargandoClase] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [editandoGrupo, setEditandoGrupo] = useState(false);
+  const [cobrando, setCobrando] = useState(false);
 
   // ------------------------------------------------------------------------
   // El horario fijo, en acción.
@@ -133,10 +137,37 @@ export default function DetalleGrupo({
       <ul className="mb-3 flex flex-col gap-2">
         {inscripciones.datos?.map((i) => (
           <li key={i.id}>
-            <FilaAlumno inscripcion={i} alCambiar={inscripciones.recargar} />
+            <FilaAlumno
+              espacio={espacio}
+              grupo={grupo}
+              inscripcion={i}
+              alCambiar={inscripciones.recargar}
+            />
           </li>
         ))}
       </ul>
+
+      {/* Cobrar la cuota del mes a todo el grupo de una. Solo aparece si hay
+          alguien que paga por mes: al que paga por clase no hay cuota que
+          cobrarle. */}
+      {inscripciones.datos?.some(
+        (i) => i.status === 'active' && i.billing_mode === 'per_period',
+      ) && (
+        <div className="mb-3">
+          {cobrando ? (
+            <FormularioCuotaDelGrupo
+              espacio={espacio}
+              grupo={grupo}
+              inscripciones={inscripciones.datos ?? []}
+              alCerrar={() => setCobrando(false)}
+            />
+          ) : (
+            <BotonSecundario onClick={() => setCobrando(true)}>
+              Cobrar la cuota del mes
+            </BotonSecundario>
+          )}
+        </div>
+      )}
 
       <div className="mb-8">
         {anotando ? (
@@ -252,7 +283,6 @@ function FormularioAlumno({
   const [telefono, setTelefono] = useState('');
   const [elegido, setElegido] = useState('');
   const [cobro, setCobro] = useState<ModoCobro>('per_session');
-  const [precio, setPrecio] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -281,7 +311,9 @@ function FormularioAlumno({
         group_id: grupo.id,
         student_id: alumnoId,
         billing_mode: cobro,
-        agreed_price: precio ? Number(precio) : null,
+        // Vacío: paga el precio del grupo según la forma que eligió. Solo se
+        // completa para una excepción, y la app no la pide.
+        agreed_price: null,
       });
 
       alAnotar();
@@ -343,9 +375,19 @@ function FormularioAlumno({
         </Campo>
       )}
 
+      {/* El precio no se pide acá: es del grupo. Lo que se elige es cuál de
+          las formas de pago del grupo usa este alumno. */}
       <Campo
         etiqueta="Cómo paga"
-        ayuda="Es de esta inscripción, no del grupo: otro alumno del mismo grupo puede pagar distinto."
+        ayuda={(() => {
+          const p = precioDelGrupo(grupo, cobro);
+          if (p === null) {
+            return 'El grupo todavía no tiene precio para esta forma de pago. Cargalo en "Editar grupo".';
+          }
+          if (cobro === 'per_session') return `Paga ${plata(p)} cada clase.`;
+          if (cobro === 'per_period') return `Paga ${plata(p)} el mes, con el descuento ya aplicado.`;
+          return `Paga ${plata(p)} una sola vez.`;
+        })()}
       >
         <Opciones<ModoCobro>
           valor={cobro}
@@ -355,13 +397,6 @@ function FormularioAlumno({
             { valor: 'per_period', texto: 'Por mes' },
             { valor: 'one_time', texto: 'Pago único' },
           ]}
-        />
-      </Campo>
-
-      <Campo etiqueta="Precio acordado">
-        <Texto
-          type="number" min="0" step="100" value={precio}
-          onChange={(e) => setPrecio(e.target.value)}
         />
       </Campo>
 
@@ -818,15 +853,21 @@ function FormularioSerie({
 //                  colgando; de eso se encarga la propia función.
 // ----------------------------------------------------------------------------
 function FilaAlumno({
+  espacio,
+  grupo,
   inscripcion,
   alCambiar,
 }: {
+  espacio: Espacio;
+  grupo: Grupo;
   inscripcion: Inscripcion;
   alCambiar: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
+  const [cobrando, setCobrando] = useState(false);
+  const [cobrado, setCobrado] = useState<string | null>(null);
 
   const activa = inscripcion.status === 'active';
 
@@ -856,7 +897,7 @@ function FilaAlumno({
             )}
           </p>
           <p className="shrink-0 text-sm text-brand-sand">
-            {plata(inscripcion.agreed_price)}{' '}
+            {plata(precioDe(grupo, inscripcion))}{' '}
             <span className="text-brand-taupe">{nombreCobro[inscripcion.billing_mode]}</span>
           </p>
         </div>
@@ -866,6 +907,24 @@ function FilaAlumno({
       </div>
 
       {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+
+      {cobrado && (
+        <p className="mt-2 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+          {cobrado}
+        </p>
+      )}
+
+      {cobrando && (
+        <div className="mt-3">
+          <FormularioCargo
+            espacio={espacio}
+            grupo={grupo}
+            inscripcion={inscripcion}
+            alCerrar={() => setCobrando(false)}
+            alCobrar={(texto) => { setCobrando(false); setCobrado(texto); }}
+          />
+        </div>
+      )}
 
       {confirmando ? (
         <div className="mt-3">
@@ -887,6 +946,11 @@ function FilaAlumno({
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
+          {activa && !cobrando && (
+            <BotonSecundario type="button" onClick={() => setCobrando(true)}>
+              Cobrar
+            </BotonSecundario>
+          )}
           {activa ? (
             <BotonSecundario
               type="button" disabled={trabajando}
@@ -908,5 +972,241 @@ function FilaAlumno({
         </div>
       )}
     </Tarjeta>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Cobrarle a un alumno
+//
+// El concepto viene escrito según cómo paga: no es lo mismo "Cuota septiembre
+// 2026" que "Clase 08/09". El monto viene con el precio que se le acordó a esa
+// inscripción, que puede no ser el de su compañero.
+// ----------------------------------------------------------------------------
+function FormularioCargo({
+  espacio,
+  grupo,
+  inscripcion,
+  alCerrar,
+  alCobrar,
+}: {
+  espacio: Espacio;
+  grupo: Grupo;
+  inscripcion: Inscripcion;
+  alCerrar: () => void;
+  alCobrar: (texto: string) => void;
+}) {
+  const mesActual = hoyISO().slice(0, 7);
+  const esMensual = inscripcion.billing_mode === 'per_period';
+
+  const [periodo, setPeriodo] = useState(mesActual);
+  const [concepto, setConcepto] = useState(
+    esMensual
+      ? `Cuota ${mesEnPalabras(mesActual)}`
+      : inscripcion.billing_mode === 'one_time'
+        ? 'Inscripción'
+        : `Clase ${fecha(hoyISO())}`,
+  );
+  const [monto, setMonto] = useState(precioDe(grupo, inscripcion)?.toString() ?? '');
+  // La cuota vence al EMPEZAR el mes, no al terminarlo: si venciera al final,
+  // el alumno cursa las cuatro clases y recién ahí se ve que no pagó.
+  const [vence, setVence] = useState(esMensual ? inicioDelMes(mesActual) : hoyISO());
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      await crearCargo(espacio.id, {
+        enrollment_id: inscripcion.id,
+        student_id: inscripcion.alumno!.id,
+        concept: concepto.trim(),
+        amount: Number(monto),
+        period: esMensual ? periodo : null,
+        due_date: vence || null,
+      });
+      alCobrar(`Cargo de ${plata(Number(monto))} creado: ${concepto.trim()}.`);
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-white/10 p-3">
+      {esMensual && (
+        <Campo etiqueta="Mes">
+          <Texto
+            type="month" required value={periodo}
+            onChange={(e) => {
+              setPeriodo(e.target.value);
+              setConcepto(`Cuota ${mesEnPalabras(e.target.value)}`);
+              setVence(inicioDelMes(e.target.value));
+            }}
+          />
+        </Campo>
+      )}
+
+      <Campo etiqueta="Concepto">
+        <Texto required value={concepto} onChange={(e) => setConcepto(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Monto">
+        <Texto
+          type="number" min="0" step="100" required value={monto}
+          onChange={(e) => setMonto(e.target.value)}
+        />
+      </Campo>
+
+      <Campo etiqueta="Vence (opcional)">
+        <Texto type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+      </Campo>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando}>
+          {guardando ? 'Creando…' : 'Crear cargo'}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Cobrar la cuota del mes a todo el grupo
+//
+// Es la tarea que hoy se hace con una planilla y cuatro mensajes de WhatsApp.
+//
+// Igual que con las clases, se muestra a quién se le va a cobrar y cuánto
+// ANTES de crear nada, y no se cobra dos veces el mismo mes.
+// ----------------------------------------------------------------------------
+function FormularioCuotaDelGrupo({
+  espacio,
+  grupo,
+  inscripciones,
+  alCerrar,
+}: {
+  espacio: Espacio;
+  grupo: Grupo;
+  inscripciones: Inscripcion[];
+  alCerrar: () => void;
+}) {
+  const mesActual = hoyISO().slice(0, 7);
+  const [periodo, setPeriodo] = useState(mesActual);
+  const [concepto, setConcepto] = useState(`Cuota ${mesEnPalabras(mesActual)}`);
+  // Vence al empezar el mes, no al terminarlo.
+  const [vence, setVence] = useState(inicioDelMes(mesActual));
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const [resultado, setResultado] = useState<ResultadoCobro | null>(null);
+
+  const alcanzados = inscripciones.filter(
+    (i) => i.status === 'active' && i.billing_mode === 'per_period' && i.alumno,
+  );
+  const precioMensual = grupo.price_per_period;
+  const total = alcanzados.reduce((s, i) => s + (precioDe(grupo, i) ?? 0), 0);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    try {
+      setResultado(
+        await cobrarCuotaDelGrupo(
+          espacio.id, grupo, inscripciones, periodo, concepto.trim(), vence || null,
+        ),
+      );
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setGuardando(false);
+  }
+
+  if (resultado) {
+    return (
+      <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4">
+        <p className="text-brand-sand">
+          {resultado.cobrados.length === 0
+            ? 'No se creó ningún cargo.'
+            : `Se cobró a ${resultado.cobrados.length}: ${resultado.cobrados.join(', ')}.`}
+        </p>
+        {resultado.yaEstaban.length > 0 && (
+          <p className="text-sm text-brand-taupe">
+            Ya tenían cobrado {mesEnPalabras(periodo)}, no se duplicó:{' '}
+            {resultado.yaEstaban.join(', ')}.
+          </p>
+        )}
+        {resultado.sinPrecio.length > 0 && (
+          <p className="text-sm text-brand-taupe">
+            No se les pudo cobrar porque el grupo no tiene precio mensual:{' '}
+            {resultado.sinPrecio.join(', ')}. Cargalo en "Editar grupo".
+          </p>
+        )}
+        <div><BotonSecundario type="button" onClick={alCerrar}>Cerrar</BotonSecundario></div>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={guardar}
+      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+    >
+      <p className="text-brand-cream">Cobrar la cuota del mes</p>
+
+      <Campo etiqueta="Mes">
+        <Texto
+          type="month" required value={periodo}
+          onChange={(e) => {
+            setPeriodo(e.target.value);
+            setConcepto(`Cuota ${mesEnPalabras(e.target.value)}`);
+            setVence(inicioDelMes(e.target.value));
+          }}
+        />
+      </Campo>
+
+      <Campo etiqueta="Concepto">
+        <Texto required value={concepto} onChange={(e) => setConcepto(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Vence (opcional)">
+        <Texto type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
+      </Campo>
+
+      <div className="rounded-lg border border-white/10 px-3 py-2">
+        <p className="mb-1 text-sm text-brand-taupe">
+          Se le va a cobrar a {alcanzados.length}, {plata(precioMensual)} cada uno.
+          Total {plata(total)}:
+        </p>
+        <ul className="flex flex-col gap-0.5 text-sm">
+          {alcanzados.map((i) => {
+            const precio = precioDe(grupo, i);
+            return (
+              <li key={i.id} className="flex justify-between gap-3">
+                <span className="text-brand-cream">{i.alumno!.full_name}</span>
+                <span className={precio === null ? 'text-red-300' : 'text-brand-sand'}>
+                  {precio === null ? 'el grupo no tiene precio mensual' : plata(precio)}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+        <p className="mt-2 text-xs text-brand-taupe">
+          Los que pagan por clase no aparecen acá: no tienen cuota mensual.
+        </p>
+      </div>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando}>
+          {guardando ? 'Cobrando…' : `Cobrar a ${alcanzados.length}`}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
   );
 }

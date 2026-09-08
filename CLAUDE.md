@@ -57,6 +57,16 @@ Todo lo que hace un profesor entra en tres formatos. **Comparten alumno, asisten
 **La forma de pago NO es una propiedad del formato. Es de cada inscripción.** Dentro de un mismo grupo regular puede haber alumnos pagando por clase y otros pagando el mes con descuento.
 
 - **Regular:** por clase. Si paga el mes por adelantado, precio mensual con descuento.
+
+**Los precios son del GRUPO, no del alumno.** Cada grupo tiene su precio por clase y su
+precio mensual con el descuento ya aplicado. Lo que elige cada alumno al inscribirse es
+cuál de esos dos usa, y eso vive en `billing_mode` de su inscripción. Dos alumnos del
+mismo grupo pueden pagar montos distintos, pero porque eligieron distinto, no porque se
+les haya negociado distinto.
+
+**La cuota mensual vence al EMPEZAR el mes, no al terminarlo.** Si venciera al final, el
+alumno cursa las cuatro clases y recién ahí se ve que no pagó. Con vencimiento el día 1,
+el que no pagó aparece antes de la primera clase.
 - **Cycle (formación):** cuota mensual mientras dure.
 - **Cycle (workshop):** pago único por asistir.
 - **Private:** por clase, o descuento pagando 4 clases del mes por adelantado.
@@ -79,11 +89,14 @@ tenants            id, name, discipline, plan, created_at
 tenant_members     tenant_id, user_id, role (owner|teacher|assistant)
 students           id, tenant_id, full_name, contact, user_id (nullable), status
 groups             id, tenant_id, name, format (cycle|regular|private),
-                   level, capacity, start_date, end_date (null si regular)
+                   level, capacity, start_date, end_date (null si regular),
+                   venue, address, weekday, default_start_time,
+                   price_per_session, price_per_period, price_one_time
 sessions           id, tenant_id, group_id, date, start_time, duration_min, recap
 enrollments        id, tenant_id, group_id, student_id,
                    billing_mode (per_session|per_period|one_time),
-                   agreed_price, discount, start_date, end_date, status
+                   agreed_price (excepción: vacío = precio del grupo),
+                   discount, start_date, end_date, status
 attendance         id, tenant_id, session_id, student_id, status (present|absent|excused)
 charges            id, tenant_id, enrollment_id, amount, period (nullable),
                    session_id (nullable), due_date, status
@@ -99,7 +112,7 @@ benefits           id, tenant_id (nullable si es global), brand, description,
 **Notas:**
 - Un **pago puede cubrir varios cargos** — de ahí `payment_allocations`.
 - `tenant_members` permite que Tomás y su pareja compartan un tenant, y habilita el plan Multi sin rediseñar nada.
-- Los **cargos se generan** por asistencia (`per_session`), por período (`per_period`) o al inscribirse (`one_time`).
+- Los **cargos se generan** por asistencia (`per_session`), por período (`per_period`) o al inscribirse (`one_time`). Todo cargo va enlazado a su inscripción (`enrollment_id`): es lo que dice de qué grupo viene esa deuda.
 
 ---
 

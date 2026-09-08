@@ -31,6 +31,9 @@ export default function FormularioGrupo({
   const [cupo, setCupo] = useState(grupo?.capacity?.toString() ?? '');
   const [desde, setDesde] = useState(grupo?.start_date ?? '');
   const [hasta, setHasta] = useState(grupo?.end_date ?? '');
+  const [porClase, setPorClase] = useState(grupo?.price_per_session?.toString() ?? '');
+  const [porMes, setPorMes] = useState(grupo?.price_per_period?.toString() ?? '');
+  const [pagoUnico, setPagoUnico] = useState(grupo?.price_one_time?.toString() ?? '');
   const [dia, setDia] = useState<string>(grupo?.weekday?.toString() ?? '');
   const [hora, setHora] = useState(grupo?.default_start_time?.slice(0, 5) ?? '');
   const [duracion, setDuracion] = useState(grupo?.default_duration_min?.toString() ?? '');
@@ -54,6 +57,9 @@ export default function FormularioGrupo({
       weekday: dia === '' ? null : Number(dia),
       default_start_time: dia === '' ? null : hora || null,
       default_duration_min: dia === '' ? null : (duracion ? Number(duracion) : null),
+      price_per_session: porClase ? Number(porClase) : null,
+      price_per_period: porMes ? Number(porMes) : null,
+      price_one_time: formato === 'cycle' && pagoUnico ? Number(pagoUnico) : null,
     };
 
     try {
@@ -139,6 +145,36 @@ export default function FormularioGrupo({
             />
           </Campo>
         </>
+      )}
+
+      {/* ------------------------------------------------------------------
+          Los precios son del grupo, no de cada alumno. Lo que elige el alumno
+          al inscribirse es cuál de estas dos formas usa.
+         ------------------------------------------------------------------ */}
+      <Campo etiqueta="Precio por clase">
+        <Texto
+          type="number" min="0" step="100" value={porClase}
+          onChange={(e) => setPorClase(e.target.value)}
+        />
+      </Campo>
+
+      <Campo
+        etiqueta="Precio del mes"
+        ayuda="Con el descuento ya aplicado. Es el precio final, no un porcentaje."
+      >
+        <Texto
+          type="number" min="0" step="100" value={porMes}
+          onChange={(e) => setPorMes(e.target.value)}
+        />
+      </Campo>
+
+      {formato === 'cycle' && (
+        <Campo etiqueta="Pago único (workshop)" ayuda="Para un ciclo de una sola clase.">
+          <Texto
+            type="number" min="0" step="100" value={pagoUnico}
+            onChange={(e) => setPagoUnico(e.target.value)}
+          />
+        </Campo>
       )}
 
       <Campo etiqueta="Nivel (opcional)">

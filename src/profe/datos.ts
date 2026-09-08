@@ -41,6 +41,11 @@ export type Grupo = {
   weekday: number | null;
   default_start_time: string | null;
   default_duration_min: number | null;
+  // Los precios del grupo, uno por cada forma de pago. El descuento del mes
+  // ya viene aplicado en price_per_period: es un precio, no un cálculo.
+  price_per_session: number | null;
+  price_per_period: number | null;
+  price_one_time: number | null;
 };
 
 // Lo que cargan los formularios de alta y de edición de grupo.
@@ -56,6 +61,9 @@ export type DatosGrupo = {
   weekday: number | null;
   default_start_time: string | null;
   default_duration_min: number | null;
+  price_per_session: number | null;
+  price_per_period: number | null;
+  price_one_time: number | null;
 };
 
 export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
@@ -107,7 +115,8 @@ export async function traerEspacios(): Promise<Espacio[]> {
 
 const COLUMNAS_GRUPO =
   'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
-  'weekday, default_start_time, default_duration_min';
+  'weekday, default_start_time, default_duration_min, ' +
+  'price_per_session, price_per_period, price_one_time';
 
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase
@@ -661,4 +670,117 @@ export async function quitarInscripcion(inscripcionId: string): Promise<void> {
   }
   const { error } = await supabase.from('enrollments').delete().eq('id', inscripcionId);
   if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// CARGOS — lo que un alumno debe
+//
+// Todo cargo nace enlazado a una inscripción. No es un detalle: la inscripción
+// es lo que dice de qué grupo viene esa deuda y cómo paga ese alumno. Un cargo
+// suelto, sin inscripción, es una deuda sin explicación.
+// ---------------------------------------------------------------------------
+export type DatosCargo = {
+  enrollment_id: string;
+  student_id: string;
+  concept: string;
+  amount: number;
+  period: string | null;
+  due_date: string | null;
+};
+
+export async function crearCargo(espacioId: string, datos: DatosCargo): Promise<void> {
+  const { error } = await supabase
+    .from('charges')
+    .insert({ tenant_id: espacioId, ...datos });
+  if (error) throw new Error(error.message);
+}
+
+// Qué inscripciones ya tienen cobrado ese período.
+async function inscripcionesYaCobradas(
+  inscripcionIds: string[],
+  period: string,
+): Promise<string[]> {
+  if (inscripcionIds.length === 0) return [];
+  const { data, error } = await supabase
+    .from('charges')
+    .select('enrollment_id')
+    .in('enrollment_id', inscripcionIds)
+    .eq('period', period)
+    .eq('status', 'active');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((c) => String((c as Record<string, unknown>).enrollment_id));
+}
+
+export type ResultadoCobro = { cobrados: string[]; yaEstaban: string[]; sinPrecio: string[] };
+
+// Cobrar la cuota del mes a todo el grupo.
+//
+// Tres cuidados:
+//   - Solo a quienes pagan POR MES. El que paga por clase no tiene cuota, y
+//     cobrársela sería inventarle una deuda.
+//   - El monto sale del precio mensual DEL GRUPO. Es el mismo para todos los
+//     que eligieron pagar por mes; lo que cambia entre alumnos es la forma de
+//     pago, no el precio.
+//   - Nunca dos veces el mismo mes. Si ya se cobró, se saltea y se avisa.
+export async function cobrarCuotaDelGrupo(
+  espacioId: string,
+  grupo: Grupo,
+  inscripciones: Inscripcion[],
+  period: string,
+  concepto: string,
+  vencimiento: string | null,
+): Promise<ResultadoCobro> {
+  const mensuales = inscripciones.filter(
+    (i) => i.status === 'active' && i.billing_mode === 'per_period' && i.alumno,
+  );
+
+  const yaCobradas = await inscripcionesYaCobradas(mensuales.map((i) => i.id), period);
+
+  const cobrados: string[] = [];
+  const yaEstaban: string[] = [];
+  const sinPrecio: string[] = [];
+  const filas: (DatosCargo & { tenant_id: string })[] = [];
+
+  for (const i of mensuales) {
+    const nombre = i.alumno!.full_name;
+    const precio = precioDe(grupo, i);
+    if (yaCobradas.includes(i.id)) { yaEstaban.push(nombre); continue; }
+    if (precio === null) { sinPrecio.push(nombre); continue; }
+    cobrados.push(nombre);
+    filas.push({
+      tenant_id: espacioId,
+      enrollment_id: i.id,
+      student_id: i.alumno!.id,
+      concept: concepto,
+      amount: precio,
+      period,
+      due_date: vencimiento,
+    });
+  }
+
+  if (filas.length > 0) {
+    const { error } = await supabase.from('charges').insert(filas);
+    if (error) throw new Error(error.message);
+  }
+  return { cobrados, yaEstaban, sinPrecio };
+}
+
+// ---------------------------------------------------------------------------
+// CUÁNTO PAGA UN ALUMNO
+//
+// El precio es del GRUPO, no de la persona. Lo que elige cada alumno es cómo
+// paga —por clase, o el mes con descuento— y de ahí sale cuál de los precios
+// del grupo le corresponde.
+//
+// agreed_price en la inscripción es una excepción y casi siempre está vacío.
+// Cuando tiene algo, gana: es el caso de la beca o el canje.
+// ---------------------------------------------------------------------------
+export function precioDelGrupo(grupo: Grupo, modo: ModoCobro): number | null {
+  if (modo === 'per_session') return grupo.price_per_session;
+  if (modo === 'per_period') return grupo.price_per_period;
+  return grupo.price_one_time;
+}
+
+export function precioDe(grupo: Grupo, inscripcion: Inscripcion): number | null {
+  return inscripcion.agreed_price ?? precioDelGrupo(grupo, inscripcion.billing_mode);
 }
