@@ -58,6 +58,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0006_confirmar_pago.sql` | Función `confirmar_pago()`: marca el pago e imputa el monto a los cargos abiertos, del más viejo al más nuevo | Aplicada |
 | `0007_lugar_y_cancelar_clase.sql` | `location` en `groups` y `sessions`, y `sessions.status` para cancelar sin borrar | Aplicada |
 | `0008_estudio_y_direccion.sql` | `location` pasa a `address` y se agrega `venue` (nombre del estudio) en los dos niveles | Aplicada |
+| `0009_horario_del_grupo.sql` | `weekday`, `default_start_time` y `default_duration_min` en `groups`: el horario fijo | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -83,12 +84,14 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
 | `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
+| `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
 Últimos resultados (4 de septiembre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
 - `aislamiento_alumno.sql` → **16 de 16 PASA**
 - `confirmar_pago.sql` → **6 de 6 PASA**
+- `npm run prueba:fechas` → **18 de 18 PASA**
 - `control_general.sql` → **10 tablas en `ok`**
 
 ---
@@ -198,7 +201,7 @@ La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo ter
 naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
 cuando se resuelva el saldo a favor.
 
-### 5. Clases en serie para grupos regulares — HECHO (7/9/2026)
+### 5. Clases en serie para grupos regulares — HECHO (8/9/2026)
 
 Idea de Tomás (5/9/2026): un grupo regular sucede siempre el mismo día, a la misma
 hora y en el mismo lugar. El profe debería cargar eso **una sola vez** y que las
@@ -219,9 +222,15 @@ inscripto en los dos grupos y, con cobro mensual, **paga dos cuotas**. Está bie
 así. Lo que tiene que poder hacer es pagarlas de una sola vez, o por separado — ver
 "Cómo se paga cuando hay varias cuotas", abajo.
 
-El generador está hecho, en `DetalleGrupo`. Pide primera clase, hora, duración y
-cuántas (4 por defecto), y **muestra las fechas antes de crear nada**: una función que
-escribe cuatro filas sin que veas cuáles es una función en la que no se confía.
+**El grupo tiene horario fijo y las clases se mantienen solas.** El profesor carga una
+vez día, hora y duración en el grupo (migración 0009), y al abrir el grupo la app
+completa lo que falte hasta fin del mes que viene. No hay tarea mensual: cargar clases
+todos los meses seguía siendo una tarea mensual aunque fuera con un botón.
+
+Queda además el generador manual, en `DetalleGrupo`, para grupos sin día fijo o para
+agregar algo fuera del horario. Pide primera clase, hora, duración y cuántas, y
+**muestra las fechas antes de crear nada**: una función que escribe cuatro filas sin que
+veas cuáles es una función en la que no se confía.
 
 Dos protecciones: si en alguna de esas fechas ya hay una clase cargada, se marca tachada
 y se saltea —generar dos veces el mismo mes es el error más fácil de cometer, y duplicar
@@ -229,10 +238,11 @@ clases arrastraría asistencias y cargos duplicados—; y las cuentas de fechas 
 UTC, porque sumar días en hora local corre una fecha cuando cambia el horario de verano
 y aparece una clase el lunes que tenía que ser martes.
 
-El aviso de la quinta semana funciona así: si la quinta fecha todavía cae en el mes de la
-primera, ese día queda sin clase y se ofrece agregarlo. Arrancando el 1 de septiembre
-avisa (el 29 quedaría afuera); arrancando el 8, no molesta, porque las cuatro ya llegan
-hasta el 29. Verificado sobre seis meses distintos.
+El aviso de la quinta semana cambió de propósito. Con las clases manteniéndose solas ya
+no hace falta para cargarlas; sirve para **el cobro**: un mes con 5 clases al mismo precio
+mensual no es lo mismo que uno con 4. El detalle del grupo avisa "este mes tenés 5
+clases" para que el profesor decida si las cobra o cancela una — el cobro no se ajusta
+solo. En el generador manual el aviso sigue ofreciendo agregar la quinta.
 
 Detalle de diseño, resuelto con Tomás: se generan **4 clases por defecto**, una por
 semana. Si en ese mes el día elegido cae 5 veces, la app **se da cuenta y le avisa al

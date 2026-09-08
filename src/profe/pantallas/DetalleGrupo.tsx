@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
-  fechasSemanales, sumarDias, diaSemana, mesDe,
+  fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
+import FormularioGrupo from './FormularioGrupo';
 import type { Espacio, Grupo, Clase, Alumno, ModoCobro } from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
@@ -14,7 +15,7 @@ import {
 
 export default function DetalleGrupo({
   espacio,
-  grupo,
+  grupo: grupoInicial,
   alVolver,
   alTomarAsistencia,
 }: {
@@ -23,19 +24,95 @@ export default function DetalleGrupo({
   alVolver: () => void;
   alTomarAsistencia: (clase: Clase) => void;
 }) {
+  // Copia local: si se edita el grupo acá adentro, la pantalla tiene que
+  // reflejarlo sin volver a la lista.
+  const [grupo, setGrupo] = useState(grupoInicial);
   const inscripciones = useCarga(() => traerInscripciones(grupo.id), [grupo.id]);
   const clases = useCarga(() => traerClases(grupo.id), [grupo.id]);
   const [anotando, setAnotando] = useState(false);
   const [cargandoClase, setCargandoClase] = useState(false);
   const [generando, setGenerando] = useState(false);
+  const [editandoGrupo, setEditandoGrupo] = useState(false);
+
+  // ------------------------------------------------------------------------
+  // El horario fijo, en acción.
+  //
+  // Al abrir el grupo se completa lo que falte hasta fin del mes que viene.
+  // Es lo que hace que un grupo regular no haya que cargarlo nunca más: se
+  // mantiene solo. Lo que se crea se avisa, no se hace a escondidas.
+  // ------------------------------------------------------------------------
+  const [creadas, setCreadas] = useState<string[]>([]);
+  const [revisado, setRevisado] = useState(false);
+  const [errorGen, setErrorGen] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!clases.datos || revisado) return;
+    setRevisado(true);
+    asegurarClases(espacio.id, grupo, clases.datos.map((c) => c.date), hoyISO())
+      .then((nuevas) => {
+        if (nuevas.length > 0) {
+          setCreadas(nuevas);
+          clases.recargar();
+        }
+      })
+      .catch((e: Error) => setErrorGen(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clases.datos, revisado]);
+
+  // Cuántas clases tiene este mes. Con cobro mensual, cinco no es lo mismo
+  // que cuatro, y conviene saberlo al principio del mes.
+  const mesActual = hoyISO().slice(0, 7);
+  const cuantasEsteMes =
+    clases.datos?.filter((c) => c.status === 'scheduled' && mesDe(c.date) === mesActual).length ?? 0;
 
   return (
     <Marco>
       <Encabezado
         titulo={grupo.name}
-        bajada={`${nombreFormato[grupo.format]}${grupo.level ? ' · ' + grupo.level : ''} · ${espacio.name}`}
+        bajada={[nombreFormato[grupo.format], horarioDe(grupo), grupo.level, grupo.venue]
+          .filter(Boolean)
+          .join(' · ')}
         volver={{ texto: 'Mis grupos', alTocar: alVolver }}
+        derecha={
+          !editandoGrupo && (
+            <BotonSecundario onClick={() => setEditandoGrupo(true)}>Editar grupo</BotonSecundario>
+          )
+        }
       />
+
+      {editandoGrupo && (
+        <div className="mb-6">
+          <FormularioGrupo
+            espacio={espacio}
+            grupo={grupo}
+            alCerrar={() => setEditandoGrupo(false)}
+            alGuardar={(g) => {
+              setEditandoGrupo(false);
+              setGrupo(g);
+              // El horario pudo cambiar: hay que volver a revisar qué falta.
+              setRevisado(false);
+              clases.recargar();
+            }}
+          />
+        </div>
+      )}
+
+      {errorGen && <div className="mb-4"><Aviso>{errorGen}</Aviso></div>}
+
+      {creadas.length > 0 && (
+        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+          Se agregaron {creadas.length} {creadas.length === 1 ? 'clase' : 'clases'} según el
+          horario del grupo{horarioDe(grupo) ? ` (${horarioDe(grupo)})` : ''}: {creadas.map((f) => fecha(f)).join(', ')}.
+        </p>
+      )}
+
+      {cuantasEsteMes >= 5 && (
+        <p className="mb-4 rounded-lg border border-white/15 px-3 py-2 text-sm text-brand-taupe">
+          Este mes tenés <span className="text-brand-cream">{cuantasEsteMes} clases</span>, no
+          cuatro. Si cobrás por mes, decidí si las cobrás todas o cancelás una — el cobro no se
+          ajusta solo.
+        </p>
+      )}
 
       {/* ---------------------------------------------------------------
           Alumnos. Cómo paga cada uno sale de la inscripción, no del grupo:
@@ -119,10 +196,17 @@ export default function DetalleGrupo({
         )}
 
         {!cargandoClase && !generando && (
-          <div className="flex flex-wrap gap-2">
-            <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
-            <BotonSecundario onClick={() => setGenerando(true)}>+ Generar varias</BotonSecundario>
-          </div>
+          <>
+            <div className="flex flex-wrap gap-2">
+              <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
+              <BotonSecundario onClick={() => setGenerando(true)}>+ Generar varias</BotonSecundario>
+            </div>
+            <p className="mt-2 text-sm text-brand-taupe">
+              {horarioDe(grupo)
+                ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Estos botones son para agregar algo fuera de ese horario.`
+                : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar grupo" y se crean solas.'}
+            </p>
+          </>
         )}
       </div>
 

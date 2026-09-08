@@ -11,6 +11,10 @@
 // ajenos, el problema está en una migración, no acá.
 // ============================================================================
 import { supabase } from '../lib/supabase';
+import { clasesFaltantes, NOMBRE_DIA } from './fechas';
+
+// Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
+export * from './fechas';
 
 export type Espacio = {
   id: string;
@@ -32,6 +36,26 @@ export type Grupo = {
   status: string;
   venue: string | null;
   address: string | null;
+  // El horario fijo. weekday vacío = este grupo no tiene horario fijo y no se
+  // le genera nada solo.
+  weekday: number | null;
+  default_start_time: string | null;
+  default_duration_min: number | null;
+};
+
+// Lo que cargan los formularios de alta y de edición de grupo.
+export type DatosGrupo = {
+  name: string;
+  format: Formato;
+  level: string | null;
+  capacity: number | null;
+  start_date: string | null;
+  end_date: string | null;
+  venue: string | null;
+  address: string | null;
+  weekday: number | null;
+  default_start_time: string | null;
+  default_duration_min: number | null;
 };
 
 export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
@@ -80,14 +104,18 @@ export async function traerEspacios(): Promise<Espacio[]> {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const COLUMNAS_GRUPO =
+  'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
+  'weekday, default_start_time, default_duration_min';
+
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase
     .from('groups')
-    .select('id, name, format, level, capacity, start_date, end_date, status, venue, address')
+    .select(COLUMNAS_GRUPO)
     .eq('tenant_id', espacioId)
     .order('name');
   if (error) throw new Error(error.message);
-  return (data ?? []) as Grupo[];
+  return (data ?? []) as unknown as Grupo[];
 }
 
 // Trae las inscripciones del grupo y, de cada una, el nombre del alumno.
@@ -352,26 +380,25 @@ export async function rechazarPago(pagoId: string): Promise<void> {
 // exigen, y la regla de RLS lo compara contra tus espacios. Si mandaras el de
 // otro profesor, la base rechazaría la escritura.
 // ---------------------------------------------------------------------------
-export async function crearGrupo(
-  espacioId: string,
-  datos: {
-    name: string;
-    format: Formato;
-    level: string | null;
-    capacity: number | null;
-    start_date: string | null;
-    end_date: string | null;
-    venue: string | null;
-    address: string | null;
-  },
-): Promise<Grupo> {
+export async function crearGrupo(espacioId: string, datos: DatosGrupo): Promise<Grupo> {
   const { data, error } = await supabase
     .from('groups')
     .insert({ tenant_id: espacioId, ...datos })
-    .select('id, name, format, level, capacity, start_date, end_date, status, venue, address')
+    .select(COLUMNAS_GRUPO)
     .single();
   if (error) throw new Error(error.message);
-  return data as Grupo;
+  return data as unknown as Grupo;
+}
+
+export async function editarGrupo(grupoId: string, datos: DatosGrupo): Promise<Grupo> {
+  const { data, error } = await supabase
+    .from('groups')
+    .update(datos)
+    .eq('id', grupoId)
+    .select(COLUMNAS_GRUPO)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as unknown as Grupo;
 }
 
 export async function crearAlumno(
@@ -528,40 +555,6 @@ export function lugarDe(clase: Clase, grupo: Grupo): { venue: string | null; add
     : { venue: grupo.venue, address: grupo.address };
 }
 
-// ---------------------------------------------------------------------------
-// CLASES EN SERIE
-//
-// Cuentas de fechas hechas en UTC a propósito. Sumar días con la hora local
-// es una fuente clásica de errores de un día: el cambio de horario de verano
-// corre una fecha y aparece una clase el lunes que tenía que ser martes.
-// Como acá solo importa el día del calendario, se trabaja en UTC y listo.
-// ---------------------------------------------------------------------------
-const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
-
-function aFecha(iso: string): Date {
-  const [a, m, d] = iso.split('-').map(Number);
-  return new Date(Date.UTC(a, m - 1, d));
-}
-
-export function sumarDias(iso: string, dias: number): string {
-  const f = aFecha(iso);
-  f.setUTCDate(f.getUTCDate() + dias);
-  return f.toISOString().slice(0, 10);
-}
-
-export function diaSemana(iso: string): string {
-  return DIAS[aFecha(iso).getUTCDay()];
-}
-
-export function mesDe(iso: string): string {
-  return iso.slice(0, 7);
-}
-
-// Las fechas de una serie semanal a partir de un día.
-export function fechasSemanales(desde: string, cuantas: number): string[] {
-  return Array.from({ length: cuantas }, (_, i) => sumarDias(desde, i * 7));
-}
-
 export async function crearClases(
   espacioId: string,
   filas: {
@@ -578,4 +571,40 @@ export async function crearClases(
     .insert(filas.map((f) => ({ tenant_id: espacioId, ...f })));
   if (error) throw new Error(error.message);
   return filas.length;
+}
+
+// ---------------------------------------------------------------------------
+// EL HORARIO FIJO EN ACCIÓN
+//
+// Un grupo con horario fijo no necesita que nadie le cargue las clases todos
+// los meses: se mantienen creadas hasta fin del mes que viene. Al abrir el
+// grupo, la app completa lo que falte. Las cuentas viven en fechas.ts.
+// ---------------------------------------------------------------------------
+// Crea lo que falte y devuelve las fechas creadas.
+export async function asegurarClases(
+  espacioId: string,
+  grupo: Grupo,
+  yaCargadas: string[],
+  hoy: string,
+): Promise<string[]> {
+  const faltantes = clasesFaltantes(grupo, yaCargadas, hoy);
+  if (faltantes.length === 0) return [];
+  await crearClases(
+    espacioId,
+    faltantes.map((f) => ({
+      group_id: grupo.id,
+      date: f,
+      start_time: grupo.default_start_time,
+      duration_min: grupo.default_duration_min,
+      title: null,
+    })),
+  );
+  return faltantes;
+}
+
+// "martes 20:00" — el horario fijo del grupo, listo para mostrar.
+export function horarioDe(g: Grupo): string | null {
+  if (g.weekday === null) return null;
+  const hora = g.default_start_time?.slice(0, 5);
+  return NOMBRE_DIA[g.weekday] + (hora ? ` ${hora}` : '');
 }
