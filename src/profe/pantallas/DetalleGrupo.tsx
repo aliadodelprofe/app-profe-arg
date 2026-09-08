@@ -5,7 +5,7 @@ import {
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
   fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
-  mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo,
+  mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
@@ -47,18 +47,24 @@ export default function DetalleGrupo({
   // mantiene solo. Lo que se crea se avisa, no se hace a escondidas.
   // ------------------------------------------------------------------------
   const [creadas, setCreadas] = useState<string[]>([]);
+  const [cargosCreados, setCargosCreados] = useState(0);
   const [revisado, setRevisado] = useState(false);
   const [errorGen, setErrorGen] = useState<string | null>(null);
 
   useEffect(() => {
     if (!clases.datos || revisado) return;
     setRevisado(true);
+    // Primero las clases y después los cargos, en ese orden: el cargo del que
+    // paga por clase apunta a la próxima clase, así que la clase tiene que
+    // existir antes.
     asegurarClases(espacio.id, grupo, clases.datos.map((c) => c.date), hoyISO())
-      .then((nuevas) => {
+      .then(async (nuevas) => {
         if (nuevas.length > 0) {
           setCreadas(nuevas);
           clases.recargar();
         }
+        const cargos = await asegurarCargos(grupo.id);
+        if (cargos > 0) setCargosCreados(cargos);
       })
       .catch((e: Error) => setErrorGen(e.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,6 +114,14 @@ export default function DetalleGrupo({
         <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
           Se agregaron {creadas.length} {creadas.length === 1 ? 'clase' : 'clases'} según el
           horario del grupo{horarioDe(grupo) ? ` (${horarioDe(grupo)})` : ''}: {creadas.map((f) => fecha(f)).join(', ')}.
+        </p>
+      )}
+
+      {cargosCreados > 0 && (
+        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+          Se generaron {cargosCreados} {cargosCreados === 1 ? 'cargo' : 'cargos'} por lo que
+          viene: la próxima clase de los que pagan por clase, y la cuota del mes de los que
+          pagan por mes.
         </p>
       )}
 
@@ -183,7 +197,12 @@ export default function DetalleGrupo({
                 .filter(Boolean) as string[] ?? []
             }
             alCerrar={() => setAnotando(false)}
-            alAnotar={() => { setAnotando(false); inscripciones.recargar(); }}
+            alAnotar={() => {
+              setAnotando(false);
+              inscripciones.recargar();
+              // Recién anotado ya tiene que deber lo que viene.
+              setRevisado(false);
+            }}
           />
         ) : (
           <BotonSecundario onClick={() => setAnotando(true)}>+ Anotar alumno</BotonSecundario>
@@ -311,9 +330,6 @@ function FormularioAlumno({
         group_id: grupo.id,
         student_id: alumnoId,
         billing_mode: cobro,
-        // Vacío: paga el precio del grupo según la forma que eligió. Solo se
-        // completa para una excepción, y la app no la pide.
-        agreed_price: null,
       });
 
       alAnotar();

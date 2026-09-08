@@ -71,7 +71,6 @@ export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
 export type Inscripcion = {
   id: string;
   billing_mode: ModoCobro;
-  agreed_price: number | null;
   status: string;
   end_date: string | null;
   alumno: { id: string; full_name: string } | null;
@@ -134,7 +133,7 @@ export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
 export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]> {
   const { data, error } = await supabase
     .from('enrollments')
-    .select('id, billing_mode, agreed_price, status, end_date, alumno:students(id, full_name)')
+    .select('id, billing_mode, status, end_date, alumno:students(id, full_name)')
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as Inscripcion[];
@@ -433,7 +432,6 @@ export async function inscribir(
     group_id: string;
     student_id: string;
     billing_mode: ModoCobro;
-    agreed_price: number | null;
   },
 ): Promise<void> {
   const { error } = await supabase
@@ -772,8 +770,9 @@ export async function cobrarCuotaDelGrupo(
 // paga —por clase, o el mes con descuento— y de ahí sale cuál de los precios
 // del grupo le corresponde.
 //
-// agreed_price en la inscripción es una excepción y casi siempre está vacío.
-// Cuando tiene algo, gana: es el caso de la beca o el canje.
+// No hay precio por alumno: la columna que lo permitía se eliminó en la 0011.
+// Si algún día hace falta una beca o un canje, va a ser una decisión explícita
+// y no una columna suelta esperando que alguien la use mal.
 // ---------------------------------------------------------------------------
 export function precioDelGrupo(grupo: Grupo, modo: ModoCobro): number | null {
   if (modo === 'per_session') return grupo.price_per_session;
@@ -782,5 +781,21 @@ export function precioDelGrupo(grupo: Grupo, modo: ModoCobro): number | null {
 }
 
 export function precioDe(grupo: Grupo, inscripcion: Inscripcion): number | null {
-  return inscripcion.agreed_price ?? precioDelGrupo(grupo, inscripcion.billing_mode);
+  return precioDelGrupo(grupo, inscripcion.billing_mode);
+}
+
+// ---------------------------------------------------------------------------
+// LA REGLA: toda inscripción activa tiene un cargo pendiente por lo que viene.
+//
+// Llama a la función asegurar_cargos de la 0011. Se puede llamar mil veces
+// seguidas sin que pase nada: si el cargo ya está, no hace nada. Por eso la
+// app la llama al abrir el grupo y al anotar a alguien, sin miedo a duplicar.
+//
+// Devuelve cuántos cargos creó, para poder avisarlo en pantalla en vez de
+// generar deuda a escondidas.
+// ---------------------------------------------------------------------------
+export async function asegurarCargos(grupoId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('asegurar_cargos', { p_grupo_id: grupoId });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
 }
