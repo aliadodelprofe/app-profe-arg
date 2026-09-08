@@ -238,6 +238,19 @@ clases arrastraría asistencias y cargos duplicados—; y las cuentas de fechas 
 UTC, porque sumar días en hora local corre una fecha cuando cambia el horario de verano
 y aparece una clase el lunes que tenía que ser martes.
 
+**Límite conocido: lo que dispara la creación es abrir el grupo en la app**, no un reloj
+en un servidor. Hoy alcanza, porque el profesor abre el grupo igual para tomar asistencia
+y porque las clases se mantienen hasta fin del *mes que viene* — el 8 de septiembre ya
+están todas hasta el 31 de octubre.
+
+Se va a notar cuando exista el **portal del alumno**: si el profesor no abre la app en
+mucho tiempo, un alumno podría entrar y no ver sus próximas clases. El alumno no puede
+crearlas —no tiene permiso de escritura sobre `sessions`, y está bien que así sea—, así
+que ahí va a hacer falta una tarea programada en Postgres (`pg_cron`, que Supabase
+soporta) que complete una vez por mes todos los grupos con horario fijo. No se hace antes:
+es infraestructura que hay que monitorear, y hasta que no exista el portal del alumno
+nadie se choca con el problema.
+
 El aviso de la quinta semana cambió de propósito. Con las clases manteniéndose solas ya
 no hace falta para cargarlas; sirve para **el cobro**: un mes con 5 clases al mismo precio
 mensual no es lo mismo que uno con 4. El detalle del grupo avisa "este mes tenés 5
