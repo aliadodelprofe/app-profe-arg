@@ -65,6 +65,7 @@ export type Inscripcion = {
   billing_mode: ModoCobro;
   agreed_price: number | null;
   status: string;
+  end_date: string | null;
   alumno: { id: string; full_name: string } | null;
 };
 
@@ -124,7 +125,7 @@ export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
 export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]> {
   const { data, error } = await supabase
     .from('enrollments')
-    .select('id, billing_mode, agreed_price, status, alumno:students(id, full_name)')
+    .select('id, billing_mode, agreed_price, status, end_date, alumno:students(id, full_name)')
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as Inscripcion[];
@@ -607,4 +608,57 @@ export function horarioDe(g: Grupo): string | null {
   if (g.weekday === null) return null;
   const hora = g.default_start_time?.slice(0, 5);
   return NOMBRE_DIA[g.weekday] + (hora ? ` ${hora}` : '');
+}
+
+// ---------------------------------------------------------------------------
+// SACAR A UN ALUMNO DE UN GRUPO
+//
+// Son dos cosas distintas y conviene no confundirlas:
+//
+//   DAR DE BAJA — el alumno cursó y se fue. La inscripción existió: hubo
+//   clases, asistencias y seguramente cargos. Se marca terminada y se le pone
+//   fecha de salida. Deja de aparecer para tomar asistencia, pero su historia
+//   y lo que deba siguen enteros.
+//
+//   QUITAR — fue un error de carga, nunca pasó nada. Ahí sí se borra.
+//
+// La regla que separa una de otra no es la intención sino el rastro: si de esa
+// inscripción cuelga aunque sea un cargo, no se borra. Borrarla dejaría cargos
+// sin de dónde venir y el estado de cuenta sin explicación.
+// ---------------------------------------------------------------------------
+export async function darDeBaja(inscripcionId: string, hasta: string): Promise<void> {
+  const { error } = await supabase
+    .from('enrollments')
+    .update({ status: 'ended', end_date: hasta })
+    .eq('id', inscripcionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function volverAAnotar(inscripcionId: string): Promise<void> {
+  const { error } = await supabase
+    .from('enrollments')
+    .update({ status: 'active', end_date: null })
+    .eq('id', inscripcionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function cargosDeLaInscripcion(inscripcionId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('charges')
+    .select('id', { count: 'exact', head: true })
+    .eq('enrollment_id', inscripcionId);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+export async function quitarInscripcion(inscripcionId: string): Promise<void> {
+  const cargos = await cargosDeLaInscripcion(inscripcionId);
+  if (cargos > 0) {
+    throw new Error(
+      `Esta inscripción ya tiene ${cargos} ${cargos === 1 ? 'cargo' : 'cargos'}. ` +
+      'No se puede borrar sin dejar esos cargos sin explicación: dale de baja.',
+    );
+  }
+  const { error } = await supabase.from('enrollments').delete().eq('id', inscripcionId);
+  if (error) throw new Error(error.message);
 }

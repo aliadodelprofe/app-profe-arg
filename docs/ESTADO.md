@@ -287,6 +287,20 @@ siempre al cargo más viejo. El alumno no tiene forma de decir "estos $6.000 son
 de jueves". Se resuelve dándole a `confirmar_pago` un cargo objetivo opcional: si viene,
 se imputa primero ahí y el resto sigue el orden de siempre.
 
+### 7. Dar de baja a un alumno de un grupo — hecho, con una atadura pendiente
+
+Hecho el 8/9/2026. Son dos acciones distintas y no son intercambiables: **dar de baja**
+(cursó y se fue: la inscripción queda terminada con fecha, deja de aparecer para tomar
+asistencia, y su historia y su deuda quedan enteras) y **quitar** (fue un error de carga:
+se borra). La regla que las separa no es la intención sino el rastro: si de la inscripción
+cuelga aunque sea un cargo, no se borra.
+
+**Atadura pendiente:** esa protección mira `charges.enrollment_id`, y hoy los cargos se
+crean sin enlazar a la inscripción —los que existen vinieron de archivos SQL de prueba,
+con `tenant_id`, `student_id`, concepto y monto y nada más—. Mientras siga así, la
+protección es decorativa. **Cuando se haga el alta de cargos, tiene que guardar
+`enrollment_id`**, que además es lo que permite saber de qué grupo viene cada deuda.
+
 ---
 
 ## Errores encontrados y qué enseñaron

@@ -4,10 +4,11 @@ import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
   fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
+  darDeBaja, volverAAnotar, quitarInscripcion,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
-import type { Espacio, Grupo, Clase, Alumno, ModoCobro } from '../datos';
+import type { Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion } from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
   Campo, Texto, Opciones, Boton, BotonSecundario,
@@ -132,20 +133,7 @@ export default function DetalleGrupo({
       <ul className="mb-3 flex flex-col gap-2">
         {inscripciones.datos?.map((i) => (
           <li key={i.id}>
-            <Tarjeta>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-brand-cream">
-                  {i.alumno?.full_name ?? 'Alumno sin ficha'}
-                </p>
-                <p className="shrink-0 text-sm text-brand-sand">
-                  {plata(i.agreed_price)}{' '}
-                  <span className="text-brand-taupe">{nombreCobro[i.billing_mode]}</span>
-                </p>
-              </div>
-              {i.status !== 'active' && (
-                <p className="text-sm text-brand-taupe">inscripción {i.status}</p>
-              )}
-            </Tarjeta>
+            <FilaAlumno inscripcion={i} alCambiar={inscripciones.recargar} />
           </li>
         ))}
       </ul>
@@ -156,7 +144,12 @@ export default function DetalleGrupo({
             espacio={espacio}
             grupo={grupo}
             yaInscriptos={
-              inscripciones.datos?.map((i) => i.alumno?.id).filter(Boolean) as string[] ?? []
+              // Solo los que están cursando ahora. Alguien que se dio de baja
+              // tiene que poder volver a anotarse.
+              inscripciones.datos
+                ?.filter((i) => i.status === 'active')
+                .map((i) => i.alumno?.id)
+                .filter(Boolean) as string[] ?? []
             }
             alCerrar={() => setAnotando(false)}
             alAnotar={() => { setAnotando(false); inscripciones.recargar(); }}
@@ -811,5 +804,109 @@ function FormularioSerie({
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>
     </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Un alumno inscripto en el grupo
+//
+// Dos maneras de sacarlo, y no son intercambiables:
+//
+//   Dar de baja  — cursó y se fue. Deja de aparecer para tomar asistencia,
+//                  pero su historia y lo que deba quedan enteros.
+//   Quitar       — fue un error de carga. Solo si no tiene ningún cargo
+//                  colgando; de eso se encarga la propia función.
+// ----------------------------------------------------------------------------
+function FilaAlumno({
+  inscripcion,
+  alCambiar,
+}: {
+  inscripcion: Inscripcion;
+  alCambiar: () => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [trabajando, setTrabajando] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
+
+  const activa = inscripcion.status === 'active';
+
+  async function hacer(accion: () => Promise<void>) {
+    setTrabajando(true);
+    setError(null);
+    try {
+      await accion();
+      alCambiar();
+    } catch (e) {
+      setError((e as Error).message);
+      setTrabajando(false);
+      setConfirmando(false);
+    }
+  }
+
+  return (
+    <Tarjeta>
+      <div className={activa ? undefined : 'opacity-50'}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-brand-cream">
+            {inscripcion.alumno?.full_name ?? 'Alumno sin ficha'}
+            {!activa && (
+              <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-brand-taupe">
+                ya no cursa
+              </span>
+            )}
+          </p>
+          <p className="shrink-0 text-sm text-brand-sand">
+            {plata(inscripcion.agreed_price)}{' '}
+            <span className="text-brand-taupe">{nombreCobro[inscripcion.billing_mode]}</span>
+          </p>
+        </div>
+        {!activa && inscripcion.end_date && (
+          <p className="text-sm text-brand-taupe">hasta el {fecha(inscripcion.end_date)}</p>
+        )}
+      </div>
+
+      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+
+      {confirmando ? (
+        <div className="mt-3">
+          <p className="mb-2 text-sm text-brand-taupe">
+            Quitar borra la inscripción como si nunca hubiera existido. Si el alumno
+            cursó, lo que corresponde es darlo de baja.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <BotonSecundario
+              type="button" disabled={trabajando}
+              onClick={() => hacer(() => quitarInscripcion(inscripcion.id))}
+            >
+              Sí, quitar
+            </BotonSecundario>
+            <BotonSecundario type="button" onClick={() => setConfirmando(false)}>
+              No
+            </BotonSecundario>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {activa ? (
+            <BotonSecundario
+              type="button" disabled={trabajando}
+              onClick={() => hacer(() => darDeBaja(inscripcion.id, hoyISO()))}
+            >
+              Dar de baja
+            </BotonSecundario>
+          ) : (
+            <BotonSecundario
+              type="button" disabled={trabajando}
+              onClick={() => hacer(() => volverAAnotar(inscripcion.id))}
+            >
+              Volver a anotar
+            </BotonSecundario>
+          )}
+          <BotonSecundario type="button" onClick={() => setConfirmando(true)}>
+            Quitar
+          </BotonSecundario>
+        </div>
+      )}
+    </Tarjeta>
   );
 }
