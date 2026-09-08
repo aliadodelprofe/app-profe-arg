@@ -11,7 +11,9 @@
 // ajenos, el problema está en una migración, no acá.
 // ============================================================================
 import { supabase } from '../lib/supabase';
-import { clasesFaltantes, NOMBRE_DIA } from './fechas';
+import {
+  clasesFaltantes, NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente,
+} from './fechas';
 
 // Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
 export * from './fechas';
@@ -798,4 +800,40 @@ export async function asegurarCargos(grupoId: string): Promise<number> {
   const { data, error } = await supabase.rpc('asegurar_cargos', { p_grupo_id: grupoId });
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
+}
+
+// ---------------------------------------------------------------------------
+// ANOTARSE A MITAD DE MES QUERIENDO PAGAR POR MES
+//
+// Si el mes ya arrancó —ya hubo al menos una clase— cobrarle la cuota entera
+// es cobrarle clases que no va a recibir. Lo que corresponde: lo que queda de
+// este mes por clase, y la cuota desde el 1 del mes que viene.
+//
+// Son DOS inscripciones, y eso no es un rodeo: una inscripción ya tiene forma
+// de pago, fecha de inicio y fecha de fin, así que dos arreglos de cobro que
+// se suceden en el tiempo son exactamente dos inscripciones. La primera
+// termina el último día del mes; la segunda empieza el primero del siguiente.
+// ---------------------------------------------------------------------------
+export async function inscribirConArranqueDiferido(
+  espacioId: string,
+  datos: { group_id: string; student_id: string },
+): Promise<void> {
+  const mes = hoyISO().slice(0, 7);
+  const { error } = await supabase.from('enrollments').insert([
+    {
+      tenant_id: espacioId,
+      ...datos,
+      billing_mode: 'per_session',
+      start_date: hoyISO(),
+      end_date: finDelMes(mes),
+    },
+    {
+      tenant_id: espacioId,
+      ...datos,
+      billing_mode: 'per_period',
+      start_date: inicioDelMes(mesSiguiente(mes)),
+      end_date: null,
+    },
+  ]);
+  if (error) throw new Error(error.message);
 }

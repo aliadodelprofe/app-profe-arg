@@ -120,3 +120,9 @@ export function finDelMes(period: string): string {
 export function inicioDelMes(period: string): string {
   return `${period}-01`;
 }
+
+// '2026-09' -> '2026-10'
+export function mesSiguiente(period: string): string {
+  const [a, m] = period.split('-').map(Number);
+  return new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 7);
+}

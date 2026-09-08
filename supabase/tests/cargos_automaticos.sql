@@ -121,6 +121,29 @@ begin
   perform set_config('prueba.v5',
     case when v_baja = 0 then 'PASA'
          else 'FALLA - le genero ' || v_baja || ' cargo(s) a alguien dado de baja' end, false);
+
+  -- 7. Una inscripción que sigue ACTIVA pero cuya fecha de fin ya pasó
+  --    tampoco genera nada.
+  --
+  --    Es el caso de quien se suma a mitad de mes queriendo pagar por mes: su
+  --    tramo por clase termina el 30 y desde el 1 le corre la cuota. Si esta
+  --    fila fallara, en octubre pagaría las dos cosas a la vez. Es el bug que
+  --    la 0011 tenía y arregló la 0012.
+  update public.enrollments e
+     set status = 'active', end_date = current_date - 1, billing_mode = 'per_session'
+    from public.students s
+   where s.id = e.student_id and s.full_name = 'Alumna de Prueba 2';
+
+  delete from public.charges c
+   using public.enrollments e, public.students s
+   where c.enrollment_id = e.id and e.student_id = s.id
+     and s.full_name = 'Alumna de Prueba 2';
+
+  v_baja := public.asegurar_cargos(v_grupo);
+  perform set_config('prueba.v7',
+    case when v_baja = 0 then 'PASA'
+         else 'FALLA - genero ' || v_baja || ' cargo(s) para una inscripcion ya terminada' end,
+    false);
 end $$;
 
 -- ----------------------------------------------------------------------------
@@ -157,6 +180,9 @@ select 'El cargo por clase apunta a la proxima, no a una pasada',
 union all
 select 'A quien se dio de baja no se le cobra mas',
        coalesce(current_setting('prueba.v5', true), 'NO SE EJECUTO')
+union all
+select 'Una inscripcion con fecha de fin pasada no genera nada',
+       coalesce(current_setting('prueba.v7', true), 'NO SE EJECUTO')
 union all
 select 'Profe 1 no puede generar cargos en el grupo de Profe 2',
        coalesce(current_setting('prueba.v6', true), 'NO SE EJECUTO');

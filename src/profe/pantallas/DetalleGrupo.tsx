@@ -6,6 +6,7 @@ import {
   fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
+  inscribirConArranqueDiferido, mesSiguiente,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
@@ -188,6 +189,7 @@ export default function DetalleGrupo({
           <FormularioAlumno
             espacio={espacio}
             grupo={grupo}
+            clases={clases.datos ?? []}
             yaInscriptos={
               // Solo los que están cursando ahora. Alguien que se dio de baja
               // tiene que poder volver a anotarse.
@@ -284,12 +286,14 @@ export default function DetalleGrupo({
 function FormularioAlumno({
   espacio,
   grupo,
+  clases,
   yaInscriptos,
   alCerrar,
   alAnotar,
 }: {
   espacio: Espacio;
   grupo: Grupo;
+  clases: Clase[];
   yaInscriptos: string[];
   alCerrar: () => void;
   alAnotar: () => void;
@@ -302,11 +306,18 @@ function FormularioAlumno({
   const [telefono, setTelefono] = useState('');
   const [elegido, setElegido] = useState('');
   const [cobro, setCobro] = useState<ModoCobro>('per_session');
+  const [diferir, setDiferir] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
   const disponibles: Alumno[] =
     alumnos.datos?.filter((a) => !yaInscriptos.includes(a.id)) ?? [];
+
+  // ¿Este mes ya arrancó? Arrancó si ya hubo al menos una clase.
+  const mes = hoyISO().slice(0, 7);
+  const mesEmpezado = clases.some(
+    (c) => c.status === 'scheduled' && c.date.slice(0, 7) === mes && c.date < hoyISO(),
+  );
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
@@ -326,11 +337,18 @@ function FormularioAlumno({
 
       if (!alumnoId) throw new Error('Elegí un alumno');
 
-      await inscribir(espacio.id, {
-        group_id: grupo.id,
-        student_id: alumnoId,
-        billing_mode: cobro,
-      });
+      if (cobro === 'per_period' && mesEmpezado && diferir) {
+        await inscribirConArranqueDiferido(espacio.id, {
+          group_id: grupo.id,
+          student_id: alumnoId,
+        });
+      } else {
+        await inscribir(espacio.id, {
+          group_id: grupo.id,
+          student_id: alumnoId,
+          billing_mode: cobro,
+        });
+      }
 
       alAnotar();
     } catch (err) {
@@ -415,6 +433,29 @@ function FormularioAlumno({
           ]}
         />
       </Campo>
+
+      {/* Se suma con el mes ya empezado: cobrarle la cuota entera sería
+          cobrarle clases que no va a recibir. */}
+      {cobro === 'per_period' && mesEmpezado && (
+        <div className="rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2">
+          <p className="mb-2 text-sm text-brand-sand">
+            {mesEnPalabras(mes)} ya empezó: hubo al menos una clase.
+          </p>
+          <Opciones<'si' | 'no'>
+            valor={diferir ? 'si' : 'no'}
+            alElegir={(v) => setDiferir(v === 'si')}
+            opciones={[
+              { valor: 'si', texto: `Lo que queda por clase, cuota desde ${mesEnPalabras(mesSiguiente(mes))}` },
+              { valor: 'no', texto: `Cuota de ${mesEnPalabras(mes)} completa` },
+            ]}
+          />
+          <p className="mt-2 text-xs text-brand-taupe">
+            {diferir
+              ? `Se anota dos veces: por clase hasta fin de ${mesEnPalabras(mes)}, y por mes desde el 1 de ${mesEnPalabras(mesSiguiente(mes))}. Es lo que evita cobrarle clases que ya pasaron.`
+              : `Paga ${plata(precioDelGrupo(grupo, 'per_period'))} por ${mesEnPalabras(mes)} aunque ya hayan pasado clases.`}
+          </p>
+        </div>
+      )}
 
       {error && <Aviso>{error}</Aviso>}
 
