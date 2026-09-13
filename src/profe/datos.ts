@@ -337,7 +337,7 @@ export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
 // ---------------------------------------------------------------------------
 // CONFIRMAR UN PAGO — el corazón de la conciliación
 // ---------------------------------------------------------------------------
-export type PagoPorConfirmar = PagoPendiente & { alumno: string };
+export type PagoPorConfirmar = PagoPendiente & { alumno: string; enlace: string | null };
 
 export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPorConfirmar[]> {
   const [pagos, alumnos] = await Promise.all([
@@ -345,7 +345,17 @@ export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPor
     traerAlumnos(espacioId),
   ]);
   const nombre = new Map(alumnos.map((a) => [a.id, a.full_name]));
-  return pagos.map((p) => ({ ...p, alumno: nombre.get(p.student_id) ?? 'Alumno' }));
+
+  // Los enlaces a los comprobantes se resuelven acá, al traer la lista, y no
+  // al tocar "ver": si se pidieran al hacer clic, el navegador bloquearía la
+  // ventana por abrirse después de una espera. Son pocos pagos por confirmar.
+  return Promise.all(
+    pagos.map(async (p) => ({
+      ...p,
+      alumno: nombre.get(p.student_id) ?? 'Alumno',
+      enlace: p.receipt_url ? await enlaceComprobante(p.receipt_url).catch(() => null) : null,
+    })),
+  );
 }
 
 export type ResultadoConfirmacion = { imputado: number; sinImputar: number };
@@ -830,4 +840,20 @@ export async function inscribirConArranqueDiferido(
     },
   ]);
   if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// Abrir el comprobante que mandó un alumno.
+//
+// El depósito es privado, así que la ruta guardada no se puede poner en un
+// enlace: hay que pedirle a Supabase una dirección temporal. Dura diez
+// minutos, que alcanza para mirarla y no para que quede dando vueltas en el
+// historial del navegador para siempre.
+// ---------------------------------------------------------------------------
+export async function enlaceComprobante(ruta: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from('comprobantes')
+    .createSignedUrl(ruta, 60 * 10);
+  if (error) throw new Error(error.message);
+  return data.signedUrl;
 }

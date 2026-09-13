@@ -8,7 +8,10 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { misClases, misCargos, miSaldo, misPagos, declararPago } from '../datos';
+import {
+  misClases, misCargos, miSaldo, misPagos, declararPago,
+  subirComprobante, COMPROBANTE_MAX_MB,
+} from '../datos';
 import type { MiFicha } from '../datos';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
@@ -194,20 +197,30 @@ function FormularioAviso({
   const [monto, setMonto] = useState(sugerido > 0 ? String(sugerido) : '');
   const [cuando, setCuando] = useState(hoyISO());
   const [nota, setNota] = useState('');
+  const [archivo, setArchivo] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+
+  const falta = sugerido > 0 && Number(monto) > 0 && Number(monto) < sugerido;
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
     setEnviando(true);
     setError(null);
     try {
+      // Primero el archivo y después el aviso: si el archivo falla, no queda
+      // un aviso diciendo que hay comprobante cuando no lo hay.
+      let comprobante: string | null = null;
+      if (archivo) {
+        comprobante = await subirComprobante(archivo, ficha.tenant_id, ficha.id);
+      }
       await declararPago({
         tenant_id: ficha.tenant_id,
         student_id: ficha.id,
         amount: Number(monto),
         paid_on: cuando || null,
         note: nota.trim() || null,
+        receipt_url: comprobante,
       });
       alAvisar();
     } catch (err) {
@@ -225,13 +238,42 @@ function FormularioAviso({
 
       <Campo etiqueta="Cuánto">
         <Texto
-          type="number" min="1" step="100" required value={monto}
+          type="number" min="1" step="any" required value={monto}
           onChange={(e) => setMonto(e.target.value)}
         />
       </Campo>
 
       <Campo etiqueta="Cuándo">
         <Texto type="date" value={cuando} onChange={(e) => setCuando(e.target.value)} />
+      </Campo>
+
+      {falta && (
+        <p className="rounded-lg border border-white/15 px-3 py-2 text-xs text-brand-taupe">
+          Estás avisando menos de lo que debés. Está bien si es una seña o un pago
+          parcial — se va a descontar de lo que debés y el resto queda pendiente.
+        </p>
+      )}
+
+      <Campo
+        etiqueta="Comprobante (opcional)"
+        ayuda={`Una foto o el PDF del banco. Hasta ${COMPROBANTE_MAX_MB} MB.`}
+      >
+        <input
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={(e) => {
+            const f = e.target.files?.[0] ?? null;
+            if (f && f.size > COMPROBANTE_MAX_MB * 1024 * 1024) {
+              setError(`El archivo pesa más de ${COMPROBANTE_MAX_MB} MB. Probá con una foto más chica.`);
+              setArchivo(null);
+              e.target.value = '';
+              return;
+            }
+            setError(null);
+            setArchivo(f);
+          }}
+          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-brand-cream file:mr-3 file:rounded file:border-0 file:bg-brand-sand file:px-3 file:py-1 file:text-brand-dark"
+        />
       </Campo>
 
       <Campo etiqueta="Algo que quieras aclarar (opcional)">
@@ -249,7 +291,7 @@ function FormularioAviso({
 
       <div className="flex gap-2">
         <Boton type="submit" disabled={enviando}>
-          {enviando ? 'Avisando…' : 'Avisar'}
+          {enviando ? (archivo ? 'Subiendo…' : 'Avisando…') : 'Avisar'}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>

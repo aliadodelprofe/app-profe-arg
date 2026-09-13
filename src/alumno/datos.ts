@@ -134,9 +134,39 @@ export async function declararPago(datos: {
   amount: number;
   paid_on: string | null;
   note: string | null;
+  receipt_url: string | null;
 }): Promise<void> {
   const { error } = await supabase
     .from('payments')
     .insert({ ...datos, status: 'declared', method: 'transfer' });
   if (error) throw new Error(error.message);
+}
+
+// ---------------------------------------------------------------------------
+// COMPROBANTES
+//
+// El archivo va a un depósito privado, ordenado como
+// comprobantes/<tenant_id>/<student_id>/<archivo>. Esa forma es la que hacen
+// cumplir las reglas de la 0014: la primera carpeta habilita al profesor, la
+// segunda al alumno.
+//
+// En payments.receipt_url se guarda la RUTA, no una dirección web. Una
+// dirección de un depósito privado no sirve pegada en ningún lado: para abrir
+// el archivo hay que pedir un enlace temporal, y para eso hay que tener
+// permiso. La ruta es lo único que tiene sentido guardar.
+// ---------------------------------------------------------------------------
+export const COMPROBANTE_MAX_MB = 10;
+
+export async function subirComprobante(
+  archivo: File,
+  tenantId: string,
+  studentId: string,
+): Promise<string> {
+  const extension = (archivo.name.split('.').pop() ?? 'jpg').toLowerCase().slice(0, 5);
+  const ruta = `${tenantId}/${studentId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from('comprobantes')
+    .upload(ruta, archivo, { contentType: archivo.type || undefined });
+  if (error) throw new Error(error.message);
+  return ruta;
 }

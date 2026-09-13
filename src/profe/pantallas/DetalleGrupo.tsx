@@ -1125,7 +1125,7 @@ function FormularioCargo({
 
       <Campo etiqueta="Monto">
         <Texto
-          type="number" min="0" step="100" required value={monto}
+          type="number" min="0" step="any" required value={monto}
           onChange={(e) => setMonto(e.target.value)}
         />
       </Campo>

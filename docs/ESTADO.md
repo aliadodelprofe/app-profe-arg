@@ -64,6 +64,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0011_cargos_automaticos.sql` | Elimina `enrollments.agreed_price` y agrega `asegurar_cargos()`: toda inscripción activa tiene un cargo por lo que viene | Aplicada |
 | `0012_cargos_respetan_el_fin.sql` | `asegurar_cargos()` deja de generar después de la fecha de fin de la inscripción | Aplicada |
 | `0013_enlazar_alumno_con_usuario.sql` | `reclamar_ficha()`: enlaza al alumno registrado con las fichas que tengan su correo **confirmado** | Aplicada |
+| `0014_comprobantes.sql` | Depósito privado `comprobantes` y sus reglas: el alumno sube y ve los suyos, el profesor ve los de sus espacios, nadie borra | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -345,6 +346,19 @@ cuelga aunque sea un cargo, no se borra.
 **Resuelto el 8/9/2026:** el alta de cargos guarda `enrollment_id`, así que la protección
 dejó de ser decorativa. Los cargos viejos, los que vinieron de archivos SQL de prueba, no
 lo tienen y por eso no la disparan.
+
+### 8. Pagos parciales: se permiten, no se bloquean (13/9/2026)
+
+Tomás planteó que en regulares y particulares el alumno debería pagar la cuota completa
+de una, pero que en Formación tiene sentido señar el cupo con el 50%.
+
+Esa segunda mitad decide la primera: si la seña es válida, los pagos parciales existen y
+el sistema tiene que manejarlos — y ya los maneja, porque `confirmar_pago` reparte lo que
+venga entre los cargos abiertos. Bloquear montos parciales dejaría afuera la seña y
+también al alumno que paga la mitad porque es lo que tiene.
+
+Lo que hace la app en cambio: el total viene puesto por defecto, y si el alumno avisa
+menos de lo que debe, se lo dice antes de enviar. Guía, no bloquea.
 
 ---
 

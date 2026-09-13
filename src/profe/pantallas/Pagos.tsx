@@ -89,13 +89,19 @@ export default function Pagos({
                     {p.paid_on && ` · transferido ${fecha(p.paid_on)}`}
                   </p>
                   {p.note && <p className="text-sm text-brand-taupe">{p.note}</p>}
-                  {p.receipt_url && (
+                  {p.enlace ? (
                     <a
-                      href={p.receipt_url} target="_blank" rel="noreferrer"
+                      href={p.enlace} target="_blank" rel="noreferrer"
                       className="text-sm text-brand-sand underline"
                     >
                       ver comprobante
                     </a>
+                  ) : p.receipt_url ? (
+                    <p className="text-sm text-brand-taupe">
+                      Mandó comprobante, pero no se pudo abrir. Recargá la página.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-brand-taupe">Sin comprobante.</p>
                   )}
                 </div>
                 <p className="shrink-0 text-lg text-brand-cream">{plata(p.amount)}</p>

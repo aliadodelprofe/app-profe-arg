@@ -153,7 +153,7 @@ export default function FormularioGrupo({
          ------------------------------------------------------------------ */}
       <Campo etiqueta="Precio por clase">
         <Texto
-          type="number" min="0" step="100" value={porClase}
+          type="number" min="0" step="any" value={porClase}
           onChange={(e) => setPorClase(e.target.value)}
         />
       </Campo>
@@ -163,7 +163,7 @@ export default function FormularioGrupo({
         ayuda="Con el descuento ya aplicado. Es el precio final, no un porcentaje."
       >
         <Texto
-          type="number" min="0" step="100" value={porMes}
+          type="number" min="0" step="any" value={porMes}
           onChange={(e) => setPorMes(e.target.value)}
         />
       </Campo>
@@ -171,7 +171,7 @@ export default function FormularioGrupo({
       {formato === 'cycle' && (
         <Campo etiqueta="Pago único (workshop)" ayuda="Para un ciclo de una sola clase.">
           <Texto
-            type="number" min="0" step="100" value={pagoUnico}
+            type="number" min="0" step="any" value={pagoUnico}
             onChange={(e) => setPagoUnico(e.target.value)}
           />
         </Campo>
