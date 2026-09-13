@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { traerPagosPorConfirmar, confirmarPago, rechazarPago, fecha, plata } from '../datos';
 import type { Espacio, PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../../comun/ui';
 
 export default function Pagos({
   espacio,

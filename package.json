@@ -10,7 +10,7 @@
     "preview": "vite preview --port=3000 --host=0.0.0.0",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "prueba:fechas": "tsx src/profe/fechas.prueba.ts"
+    "prueba:fechas": "tsx src/comun/fechas.prueba.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

@@ -10,7 +10,7 @@
 // ============================================================================
 import { traerDeudas, plata } from '../datos';
 import type { Espacio } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../../comun/ui';
 
 export default function Deudas({
   espacio,

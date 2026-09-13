@@ -9,7 +9,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { crearGrupo, editarGrupo, NOMBRE_DIA } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo } from '../datos';
-import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../ui';
+import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../../comun/ui';
 
 export default function FormularioGrupo({
   espacio,

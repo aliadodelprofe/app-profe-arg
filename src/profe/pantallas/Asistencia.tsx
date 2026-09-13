@@ -21,7 +21,7 @@ import type {
 } from '../datos';
 
 type Cuenta = { saldo: number; pendiente: number };
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton } from '../ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton } from '../../comun/ui';
 
 const ESTADOS: EstadoAsistencia[] = ['present', 'absent', 'excused'];
 

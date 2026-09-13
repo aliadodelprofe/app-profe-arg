@@ -126,3 +126,17 @@ export function mesSiguiente(period: string): string {
   const [a, m] = period.split('-').map(Number);
   return new Date(Date.UTC(a, m, 1)).toISOString().slice(0, 7);
 }
+
+// ---------------------------------------------------------------------------
+// Formato para mostrar. Viven acá porque las usan las dos apps, la del
+// profesor y la del alumno.
+// ---------------------------------------------------------------------------
+export function fecha(iso: string): string {
+  const [a, m, d] = iso.split('-');
+  return `${d}/${m}/${a}`;
+}
+
+export function plata(n: number | null): string {
+  if (n === null) return '—';
+  return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+}

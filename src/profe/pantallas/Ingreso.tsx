@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Marco, Aviso } from '../ui';
+import { Marco, Aviso } from '../../comun/ui';
 
 export default function Ingreso() {
   const [email, setEmail] = useState('');

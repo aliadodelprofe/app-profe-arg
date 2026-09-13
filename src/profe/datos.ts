@@ -13,10 +13,10 @@
 import { supabase } from '../lib/supabase';
 import {
   clasesFaltantes, NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente,
-} from './fechas';
+} from '../comun/fechas';
 
 // Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
-export * from './fechas';
+export * from '../comun/fechas';
 
 export type Espacio = {
   id: string;
@@ -75,7 +75,10 @@ export type Inscripcion = {
   billing_mode: ModoCobro;
   status: string;
   end_date: string | null;
-  alumno: { id: string; full_name: string } | null;
+  // email y user_id vienen para poder decirle al profe, en la misma fila, si
+  // ese alumno puede entrar al portal: sin correo no hay forma de enlazarlo,
+  // y con user_id vacío todavía no entró nunca.
+  alumno: { id: string; full_name: string; email: string | null; user_id: string | null } | null;
 };
 
 export type Clase = {
@@ -135,7 +138,7 @@ export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
 export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]> {
   const { data, error } = await supabase
     .from('enrollments')
-    .select('id, billing_mode, status, end_date, alumno:students(id, full_name)')
+    .select('id, billing_mode, status, end_date, alumno:students(id, full_name, email, user_id)')
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as Inscripcion[];
@@ -166,15 +169,6 @@ export const nombreCobro: Record<ModoCobro, string> = {
   one_time: 'pago único',
 };
 
-export function fecha(iso: string): string {
-  const [a, m, d] = iso.split('-');
-  return `${d}/${m}/${a}`;
-}
-
-export function plata(n: number | null): string {
-  if (n === null) return '—';
-  return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-}
 
 // ---------------------------------------------------------------------------
 // ASISTENCIA

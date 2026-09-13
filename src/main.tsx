@@ -16,14 +16,19 @@ function montar(Componente: ComponentType) {
   );
 }
 
-// Dos apps conviviendo en el mismo proyecto:
-//   /profe...  → la app nueva, contra Supabase
+// Tres apps conviviendo en el mismo proyecto:
+//   /profe...   → la app del profesor, contra Supabase
+//   /alumno...  → el portal del alumno, contra Supabase
 //   cualquier otra dirección → la app de la comunidad, contra Firebase
 //
-// La carga es dinámica a propósito: entrando por /profe, el código de
+// La carga es dinámica a propósito: entrando por /profe o /alumno el código de
 // Firebase no se descarga y no hay manera de tocar la base de producción.
-if (window.location.pathname.startsWith('/profe')) {
+const ruta = window.location.pathname;
+
+if (ruta.startsWith('/profe')) {
   import('./profe/AppProfe').then((m) => montar(m.default));
+} else if (ruta.startsWith('/alumno')) {
+  import('./alumno/AppAlumno').then((m) => montar(m.default));
 } else {
   import('./App').then((m) => montar(m.default));
 }

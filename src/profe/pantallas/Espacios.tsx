@@ -15,7 +15,7 @@ import type { Espacio } from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
   Campo, Texto, Boton, BotonSecundario,
-} from '../ui';
+} from '../../comun/ui';
 import Salir from './Salir';
 
 export default function Espacios({

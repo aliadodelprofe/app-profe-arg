@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { traerGrupos, nombreFormato, fecha, linkMapa, horarioDe } from '../datos';
 import type { Espacio, Grupo } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga, BotonSecundario } from '../ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga, BotonSecundario } from '../../comun/ui';
 import FormularioGrupo from './FormularioGrupo';
 import Salir from './Salir';
 

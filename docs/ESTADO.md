@@ -31,7 +31,8 @@ npm run dev
 
 | Dirección | Qué carga |
 |---|---|
-| `localhost:3000/profe` | La app nueva, contra Supabase |
+| `localhost:3000/profe` | La app del profesor, contra Supabase |
+| `localhost:3000/alumno` | El portal del alumno, contra Supabase |
 | cualquier otra | La app de la comunidad, contra Firebase (producción) |
 
 `src/main.tsx` decide cuál montar según la dirección, con import dinámico: entrando
@@ -62,6 +63,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0010_precios_del_grupo.sql` | Los tres precios en `groups`, uno por forma de pago. Corrige tener el precio en la inscripción | Aplicada |
 | `0011_cargos_automaticos.sql` | Elimina `enrollments.agreed_price` y agrega `asegurar_cargos()`: toda inscripción activa tiene un cargo por lo que viene | Aplicada |
 | `0012_cargos_respetan_el_fin.sql` | `asegurar_cargos()` deja de generar después de la fecha de fin de la inscripción | Aplicada |
+| `0013_enlazar_alumno_con_usuario.sql` | `reclamar_ficha()`: enlaza al alumno registrado con las fichas que tengan su correo **confirmado** | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -145,10 +147,21 @@ manejan diez colecciones de Firestore (`users`, `merch_*`, `convocatorias`,
 a los tres profesores pagando. La app de la comunidad sigue viva en Firebase mientras
 tanto, y por eso `announcements` y `benefits` tampoco se migran todavía.
 
-Pendiente de diseño, para cuando toque el portal del alumno: el enlace alumno ↔
-usuario. `students.user_id` está vacío en todas las fichas, y hasta que no se cargue,
-las reglas de la 0005 no le abren la puerta a ningún alumno. Ese flujo (el profe
-invita, el alumno se registra) es trabajo de la app.
+**El portal del alumno existe, en `/alumno`** (13/9/2026). El alumno se registra con su
+correo, confirma el mail, y `reclamar_ficha()` lo enlaza con las fichas que sus profesores
+cargaron con ese mismo correo. Ve sus próximas clases con el lugar y el mapa, los recaps
+de lo que vio, lo que debe, y puede avisar que transfirió.
+
+La confirmación del correo (`Confirm email` en Supabase Auth) **está encendida y no es
+opcional**: es el único candado que impide que alguien se registre con el correo de otro
+alumno y se quede con su historial. Tiene que estar encendida también en `aliado-prod`.
+
+Falta de los dos caminos de registro que planteó Tomás: el **ingreso con Google** (es
+configuración en Google Cloud más un botón; además Google ya verifica el correo, así que
+entra derecho) y la **invitación por correo** desde la app del profesor. Esta última
+necesita la `service_role`, que no puede estar en el navegador, así que pide un servidor
+con su propia protección: es trabajo aparte. Mientras tanto el profesor le dice al alumno
+"entrá y registrate con tu mail", que es lo mismo que haría el correo automático.
 
 Nota: `control_general.sql` lista 10 tablas. La vista `student_account` no aparece
 ahí y está bien: no es una tabla.

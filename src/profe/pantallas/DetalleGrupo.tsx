@@ -16,7 +16,7 @@ import type {
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
   Campo, Texto, Opciones, Boton, BotonSecundario,
-} from '../ui';
+} from '../../comun/ui';
 
 export default function DetalleGrupo({
   espacio,
@@ -960,6 +960,20 @@ function FilaAlumno({
         </div>
         {!activa && inscripcion.end_date && (
           <p className="text-sm text-brand-taupe">hasta el {fecha(inscripcion.end_date)}</p>
+        )}
+
+        {/* Si puede entrar al portal o no. La consecuencia de no cargarle el
+            correo se ve acá, en el momento, y no tres semanas después cuando
+            el alumno pregunta por qué no puede entrar. */}
+        {activa && inscripcion.alumno && !inscripcion.alumno.email && (
+          <p className="text-sm text-brand-taupe">
+            Sin correo: no va a poder entrar a la app.
+          </p>
+        )}
+        {activa && inscripcion.alumno?.email && !inscripcion.alumno.user_id && (
+          <p className="text-sm text-brand-taupe">
+            Todavía no entró a la app. Decile que entre con {inscripcion.alumno.email}.
+          </p>
         )}
       </div>
 

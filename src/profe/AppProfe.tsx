@@ -17,7 +17,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { traerEspacios } from './datos';
 import type { Espacio, Grupo, Clase } from './datos';
-import { Marco, Vacio, Aviso, useCarga } from './ui';
+import { Marco, Vacio, Aviso, useCarga } from '../comun/ui';
 import Ingreso from './pantallas/Ingreso';
 import Espacios from './pantallas/Espacios';
 import Grupos from './pantallas/Grupos';
