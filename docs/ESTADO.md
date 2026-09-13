@@ -60,6 +60,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0008_estudio_y_direccion.sql` | `location` pasa a `address` y se agrega `venue` (nombre del estudio) en los dos niveles | Aplicada |
 | `0009_horario_del_grupo.sql` | `weekday`, `default_start_time` y `default_duration_min` en `groups`: el horario fijo | Aplicada |
 | `0010_precios_del_grupo.sql` | Los tres precios en `groups`, uno por forma de pago. Corrige tener el precio en la inscripción | Aplicada |
+| `0011_cargos_automaticos.sql` | Elimina `enrollments.agreed_price` y agrega `asegurar_cargos()`: toda inscripción activa tiene un cargo por lo que viene | Aplicada |
+| `0012_cargos_respetan_el_fin.sql` | `asegurar_cargos()` deja de generar después de la fecha de fin de la inscripción | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -85,6 +87,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
 | `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
+| `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
 Últimos resultados (4 de septiembre de 2026):
@@ -92,6 +95,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
 - `aislamiento_alumno.sql` → **16 de 16 PASA**
 - `confirmar_pago.sql` → **6 de 6 PASA**
+- `cargos_automaticos.sql` → **7 de 7 PASA**
 - `npm run prueba:fechas` → **18 de 18 PASA**
 - `control_general.sql` → **10 tablas en `ok`**
 
@@ -205,12 +209,31 @@ anticipadamente cuánta gente viene. Se descartó para esta etapa por tres motiv
 - `CLAUDE.md` posiciona el producto como software de formaciones y grupos, **no de
   reservas**, y la regla 4 dice "nada más hasta tener tres profesores pagando".
 
-### 4. Generación automática de cargos por asistencia — en pausa
+### 4. Generación automática de cargos — RESUELTO (8/9/2026), y no por asistencia
 
-`CLAUDE.md` dice que los cargos se generan por asistencia para quien paga por clase.
-La pantalla de asistencia todavía **no lo hace**, a propósito: si el cargo termina
-naciendo al anotarse (punto 1), generarlo también al asistir duplicaría. Se decide
-cuando se resuelva el saldo a favor.
+Quedó en pausa esperando definir si el cargo nacía al anotarse o al asistir. La respuesta
+terminó siendo ninguna de las dos, y es mejor: **no nace de un evento, se verifica como
+una regla.**
+
+> Toda inscripción activa tiene un cargo pendiente por lo que viene.
+
+Por clase, el de la próxima clase programada; por mes, el del mes en curso, venciendo el
+día 1. La función `asegurar_cargos()` la hace cumplir, y se puede llamar mil veces
+seguidas sin duplicar nada.
+
+Por qué así y no por eventos: un evento perdido —se cortó la conexión, el profe no abrió
+la app ese día— deja un cargo que no existe y nadie se entera nunca. Verificando, cada vez
+que alguien mira se completa lo que falte, y un día sin abrir la app no rompe nada.
+
+**Regla para quien se suma a mitad de mes** (Tomás, 8/9/2026): si el mes ya arrancó, al
+que quiere pagar por mes no se le cobra la cuota entera por clases que ya pasaron. Se le
+arma lo que queda del mes por clase, y la cuota le empieza el 1 del siguiente. Son dos
+inscripciones —una por clase que termina el 30, otra por mes que empieza el 1— y el
+modelo ya lo soportaba: una inscripción tiene forma de pago, inicio y fin. El alta de
+alumno ofrece las dos opciones y explica qué implica cada una.
+
+Los botones de cobro manual quedan para la excepción: cobrar un mes por adelantado, o un
+cargo suelto que no sale de la regla (un workshop, una clase de recuperación).
 
 ### 5. Clases en serie para grupos regulares — HECHO (8/9/2026)
 
