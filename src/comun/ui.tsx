@@ -1,7 +1,7 @@
 // ============================================================================
 // Piezas visuales compartidas por las pantallas del profesor.
 // ============================================================================
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type React from 'react';
 
@@ -77,6 +77,11 @@ export function Tarjeta({
 // ---------------------------------------------------------------------------
 // Carga de datos: pide, y devuelve una de tres cosas — todavía nada, un error,
 // o los datos. Las pantallas se limitan a mostrar cuál de las tres es.
+//
+// Y vuelve a preguntar cuando la pestaña recupera el foco. Esto no es un lujo:
+// el alumno avisa que transfirió desde su celular, el profe confirma desde el
+// suyo, y si la pantalla del alumno no se entera queda mostrando una deuda que
+// ya no existe. Nadie recarga una app a mano para ver si cambió algo.
 // ---------------------------------------------------------------------------
 export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
   const [datos, setDatos] = useState<T | null>(null);
@@ -94,6 +99,26 @@ export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
     return () => { vivo = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [...claves, vuelta]);
+
+  // Al volver a la pestaña, preguntar de nuevo. Con un mínimo de tres segundos
+  // entre una y otra, para que alternar rápido entre ventanas no se convierta
+  // en una ráfaga de consultas.
+  const ultima = useRef(0);
+  useEffect(() => {
+    const alVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+      const ahora = Date.now();
+      if (ahora - ultima.current < 3000) return;
+      ultima.current = ahora;
+      setVuelta((v) => v + 1);
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
+  }, []);
 
   return { datos, error, recargar: () => setVuelta((v) => v + 1) };
 }

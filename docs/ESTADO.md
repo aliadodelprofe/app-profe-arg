@@ -360,6 +360,25 @@ también al alumno que paga la mitad porque es lo que tiene.
 Lo que hace la app en cambio: el total viene puesto por defecto, y si el alumno avisa
 menos de lo que debe, se lo dice antes de enviar. Guía, no bloquea.
 
+### 9. Los comprobantes se borran a los 6 meses de confirmado el pago
+
+Decidido por Tomás el 13/9/2026. Hoy el archivo queda en el depósito para siempre, salvo
+que alguien lo borre a mano desde el panel.
+
+Por qué conviene borrarlos: ocupan y cuestan —unos 180 MB por año por profesor con 50
+alumnos, acumulativos, contra 1 GB del plan gratuito— y son datos personales (nombre,
+banco, a veces CBU y CUIT) que dejan de hacer falta.
+
+Por qué se puede sin perder nada: **el registro contable no depende del archivo.** Cuánto
+pagó, cuándo, quién lo confirmó y contra qué cargos se imputó vive en las tablas para
+siempre. El comprobante sirve para discutir un pago puesto en duda, y esa discusión tiene
+fecha de vencimiento.
+
+Qué falta para hacerlo: una tarea programada que borre del depósito los comprobantes de
+pagos confirmados hace más de 6 meses y vacíe su `receipt_url`. Es la **misma
+infraestructura pendiente** que la generación mensual de clases (`pg_cron`), así que
+conviene resolver las dos de una vez.
+
 ---
 
 ## Errores encontrados y qué enseñaron
