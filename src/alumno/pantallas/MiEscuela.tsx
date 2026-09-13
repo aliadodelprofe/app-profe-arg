@@ -142,19 +142,35 @@ export default function MiEscuela({
 
       {cargos.datos && cargos.datos.length > 0 && (
         <ul className="mb-3 flex flex-col gap-2">
-          {cargos.datos.map((c) => (
-            <li key={c.id}>
-              <Tarjeta>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-brand-cream">{c.concept}</p>
-                  <p className="shrink-0 text-sm text-brand-sand">{plata(c.amount)}</p>
-                </div>
-                {c.due_date && (
-                  <p className="text-sm text-brand-taupe">vence el {fecha(c.due_date)}</p>
-                )}
-              </Tarjeta>
-            </li>
-          ))}
+          {cargos.datos.map((c) => {
+            const saldado = c.pagado >= c.amount;
+            const aMedias = c.pagado > 0 && !saldado;
+            return (
+              <li key={c.id}>
+                <Tarjeta>
+                  <div className={saldado ? 'opacity-60' : undefined}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-brand-cream">{c.concept}</p>
+                      <p className="shrink-0 text-sm text-brand-sand">{plata(c.amount)}</p>
+                    </div>
+
+                    {/* Lo primero que se dice de un cargo es si está saldado.
+                        El vencimiento solo importa mientras siga debiéndose. */}
+                    {saldado ? (
+                      <p className="text-sm text-brand-sand">Pagada</p>
+                    ) : aMedias ? (
+                      <p className="text-sm text-brand-taupe">
+                        Pagaste {plata(c.pagado)} · falta {plata(c.amount - c.pagado)}
+                        {c.due_date && ` · vence el ${fecha(c.due_date)}`}
+                      </p>
+                    ) : c.due_date ? (
+                      <p className="text-sm text-brand-taupe">vence el {fecha(c.due_date)}</p>
+                    ) : null}
+                  </div>
+                </Tarjeta>
+              </li>
+            );
+          })}
         </ul>
       )}
 

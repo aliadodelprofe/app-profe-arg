@@ -34,6 +34,10 @@ export type MiCargo = {
   amount: number;
   due_date: string | null;
   period: string | null;
+  // Cuánto de este cargo ya está cubierto por pagos confirmados. Sale de las
+  // imputaciones, que es lo mismo que mira el saldo: sin esto un cargo pagado
+  // y uno que vence mañana se ven idénticos.
+  pagado: number;
 };
 
 export type MiPago = {
@@ -76,19 +80,21 @@ export async function misClases(tenantId: string): Promise<MiClase[]> {
 export async function misCargos(tenantId: string): Promise<MiCargo[]> {
   const { data, error } = await supabase
     .from('charges')
-    .select('id, concept, amount, due_date, period')
+    .select('id, concept, amount, due_date, period, imputaciones:payment_allocations(amount)')
     .eq('tenant_id', tenantId)
     .eq('status', 'active')
     .order('due_date', { nullsFirst: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map((c) => {
     const r = c as Record<string, unknown>;
+    const imputaciones = (r.imputaciones ?? []) as { amount: unknown }[];
     return {
       id: String(r.id),
       concept: String(r.concept),
       amount: num(r.amount),
       due_date: (r.due_date as string) ?? null,
       period: (r.period as string) ?? null,
+      pagado: imputaciones.reduce((s, i) => s + num(i.amount), 0),
     };
   });
 }
