@@ -65,6 +65,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0012_cargos_respetan_el_fin.sql` | `asegurar_cargos()` deja de generar después de la fecha de fin de la inscripción | Aplicada |
 | `0013_enlazar_alumno_con_usuario.sql` | `reclamar_ficha()`: enlaza al alumno registrado con las fichas que tengan su correo **confirmado** | Aplicada |
 | `0014_comprobantes.sql` | Depósito privado `comprobantes` y sus reglas: el alumno sube y ve los suyos, el profesor ve los de sus espacios, nadie borra | Aplicada |
+| `0015_invitaciones.sql` | El alumno acepta antes de quedar anotado. Reemplaza `reclamar_ficha()` por invitaciones que se aceptan o se rechazan | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -90,6 +91,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
 | `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
+| `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
@@ -376,6 +378,36 @@ Qué falta para hacerlo: una tarea programada que borre del depósito los compro
 pagos confirmados hace más de 6 meses y vacíe su `receipt_url`. Es la **misma
 infraestructura pendiente** que la generación mensual de clases (`pg_cron`), así que
 conviene resolver las dos de una vez.
+
+### 10. Quién crea al alumno, y quién acepta (16/9/2026)
+
+Tomás planteó que el profesor no debería poder crear usuarios de alumno, que el alumno se
+registre primero y que el profesor lo busque en un directorio por @usuario, con aceptación
+del alumno.
+
+**Aclaración que resolvió la mitad:** el profesor nunca creó usuarios. Al "anotar un
+alumno" se crea un **renglón en su lista** —un nombre y, si lo tiene, un correo—, no una
+cuenta: no tiene contraseña y nadie puede entrar con eso. La cuenta la crea siempre la
+persona. La confusión venía del botón, que decía "alumno" y hacía pensar en una cuenta.
+
+**Lo que se adoptó: la aceptación.** Antes, quien se registraba con un correo que
+coincidía quedaba anotado en silencio, con cargos generándose a su nombre. Ahora la app le
+muestra quién lo anotó, con qué nombre y en qué grupos, y espera un sí. Migración 0015.
+
+**Lo que NO se adoptó, y por qué:**
+
+- *Que el alumno tenga que registrarse antes de que el profesor pueda anotarlo.* Dejaría al
+  profesor con la lista vacía la primera noche, sin poder tomar asistencia ni ver quién le
+  debe hasta que veinte personas se registren. Un profesor que no pudo usar la app la
+  primera noche difícilmente vuelva la segunda, y el objetivo son tres profesores pagando.
+- *El directorio de @usuarios.* Un buscador global de personas es una superficie que hoy no
+  existe, en una app que guarda historiales de pago: cualquiera registrado como profesor
+  podría recorrer la base de usuarios. Además suma un paso al registro. Si algún día la
+  fricción del correo se vuelve un problema medible, se revisa.
+
+En su lugar, para encontrar a alguien que ya existe alcanza con el **correo exacto**, que
+el profesor ya conoce porque es su alumno, y la app responde "existe" o "no existe" sin
+devolver nunca una lista de personas.
 
 ---
 

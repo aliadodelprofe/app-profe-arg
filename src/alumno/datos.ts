@@ -51,12 +51,35 @@ export type MiPago = {
 
 const num = (v: unknown): number => Number(v ?? 0);
 
-// Enlaza al usuario recién registrado con las fichas que tengan su correo.
-// Es la función de la migración 0013. Devuelve cuántas enlazó.
-export async function reclamarFicha(): Promise<number> {
-  const { data, error } = await supabase.rpc('reclamar_ficha');
+// ---------------------------------------------------------------------------
+// INVITACIONES
+//
+// Quedar anotado en el curso de alguien no es un trámite: es aceptar que esa
+// persona te cobre. Por eso no pasa solo. La app muestra quién te anotó, con
+// qué nombre y a qué grupo, y espera una respuesta.
+// ---------------------------------------------------------------------------
+export type Invitacion = {
+  student_id: string;
+  escuela: string;
+  disciplina: string | null;
+  anotado_como: string;
+  grupos: string;
+};
+
+export async function invitacionesPendientes(): Promise<Invitacion[]> {
+  const { data, error } = await supabase.rpc('invitaciones_pendientes');
   if (error) throw new Error(error.message);
-  return Number(data ?? 0);
+  return (data ?? []) as Invitacion[];
+}
+
+export async function aceptarInvitacion(studentId: string): Promise<void> {
+  const { error } = await supabase.rpc('aceptar_invitacion', { p_student_id: studentId });
+  if (error) throw new Error(error.message);
+}
+
+export async function rechazarInvitacion(studentId: string): Promise<void> {
+  const { error } = await supabase.rpc('rechazar_invitacion', { p_student_id: studentId });
+  if (error) throw new Error(error.message);
 }
 
 export async function misFichas(): Promise<MiFicha[]> {

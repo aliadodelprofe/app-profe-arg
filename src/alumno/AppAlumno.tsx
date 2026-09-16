@@ -4,18 +4,20 @@
 // Igual que la del profesor, arranca separada de la app vieja: entrando por
 // /alumno el código de Firebase ni se descarga.
 //
-// Lo primero que hace después de entrar es reclamar su ficha: buscar, entre
-// las fichas que los profesores cargaron, las que tienen su correo. Ese es el
-// puente entre "alguien anotó a Ana en su curso" y "Ana entra y ve sus clases".
+// Lo primero que hace después de entrar es mirar si alguien la anotó en un
+// curso. No la engancha sola: le pregunta. Quedar anotada es aceptar que esa
+// escuela le cobre, y eso no puede pasar en silencio porque coincidió un
+// correo.
 // ============================================================================
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { reclamarFicha, misFichas } from './datos';
-import type { MiFicha } from './datos';
+import { invitacionesPendientes, misFichas } from './datos';
+import type { MiFicha, Invitacion } from './datos';
 import { Marco, Encabezado, Vacio, Aviso, Tarjeta } from '../comun/ui';
 import Entrar from './pantallas/Entrar';
 import MiEscuela from './pantallas/MiEscuela';
+import Invitaciones from './pantallas/Invitaciones';
 import Salir from './pantallas/Salir';
 
 export default function AppAlumno() {
@@ -38,19 +40,24 @@ export default function AppAlumno() {
 
 function Adentro({ sesion }: { sesion: Session }) {
   const [fichas, setFichas] = useState<MiFicha[] | null>(null);
+  const [invitaciones, setInvitaciones] = useState<Invitacion[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [elegida, setElegida] = useState<string | null>(null);
+  const [vuelta, setVuelta] = useState(0);
 
   useEffect(() => {
     let vivo = true;
-    // Primero reclamar, después listar: si reclamar enlaza una ficha nueva,
-    // la lista ya la tiene que incluir.
-    reclamarFicha()
-      .then(() => misFichas())
-      .then((f) => { if (vivo) setFichas(f); })
+    Promise.all([invitacionesPendientes(), misFichas()])
+      .then(([inv, f]) => {
+        if (!vivo) return;
+        setInvitaciones(inv);
+        setFichas(f);
+      })
       .catch((e: Error) => { if (vivo) setError(e.message); });
     return () => { vivo = false; };
-  }, []);
+  }, [vuelta]);
+
+  const alResponder = () => setVuelta((v) => v + 1);
 
   const correo = sesion.user.email ?? '';
 
@@ -64,6 +71,20 @@ function Adentro({ sesion }: { sesion: Session }) {
   }
 
   if (!fichas) return <Marco><Vacio>Cargando…</Vacio></Marco>;
+
+  // Las invitaciones van primero: hasta contestarlas no hay mucho más que
+  // hacer, y son una decisión, no un aviso.
+  if (invitaciones.length > 0) {
+    return (
+      <Marco>
+        <Encabezado titulo="Mis clases" bajada={correo} derecha={<Salir />} />
+        <Invitaciones invitaciones={invitaciones} alResponder={alResponder} />
+        {fichas.length === 0 && (
+          <Vacio>Cuando aceptes, acá abajo vas a ver tus clases y tu cuenta.</Vacio>
+        )}
+      </Marco>
+    );
+  }
 
   // Nadie lo anotó todavía, o lo anotaron con otro correo. La diferencia entre
   // esas dos cosas es invisible desde acá, así que la pantalla dice las dos.

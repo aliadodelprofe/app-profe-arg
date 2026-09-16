@@ -304,7 +304,6 @@ function FormularioAlumno({
   const [quien, setQuien] = useState<'nuevo' | 'existente'>('nuevo');
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
-  const [telefono, setTelefono] = useState('');
   const [elegido, setElegido] = useState('');
   const [cobro, setCobro] = useState<ModoCobro>('per_session');
   const [diferir, setDiferir] = useState(true);
@@ -331,7 +330,6 @@ function FormularioAlumno({
         const creado = await crearAlumno(espacio.id, {
           full_name: nombre.trim(),
           email: email.trim() || null,
-          phone: telefono.trim() || null,
         });
         alumnoId = creado.id;
       }
@@ -376,14 +374,14 @@ function FormularioAlumno({
 
       {quien === 'nuevo' ? (
         <>
-          <Campo etiqueta="Nombre y apellido">
+          <Campo etiqueta="Cómo lo anotás" ayuda="El nombre con el que va a aparecer en tu lista.">
             <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </Campo>
-          <Campo etiqueta="Email (opcional)" ayuda="Va a servir para que después entre a ver sus clases.">
+          <Campo
+            etiqueta="Correo (opcional)"
+            ayuda="Con esto entra al portal a ver sus clases y su cuenta. Sin correo no puede entrar."
+          >
             <Texto type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </Campo>
-          <Campo etiqueta="Teléfono (opcional)">
-            <Texto value={telefono} onChange={(e) => setTelefono(e.target.value)} />
           </Campo>
         </>
       ) : (
@@ -972,9 +970,16 @@ function FilaAlumno({
             Sin correo: no va a poder entrar a la app.
           </p>
         )}
-        {activa && inscripcion.alumno?.email && !inscripcion.alumno.user_id && (
+        {activa && inscripcion.alumno?.email && !inscripcion.alumno.user_id
+          && !inscripcion.alumno.invite_rejected_at && (
           <p className="text-sm text-brand-taupe">
-            Todavía no entró a la app. Decile que entre con {inscripcion.alumno.email}.
+            Invitado a {inscripcion.alumno.email}. Todavía no aceptó.
+          </p>
+        )}
+        {activa && inscripcion.alumno?.invite_rejected_at && !inscripcion.alumno.user_id && (
+          <p className="text-sm text-red-300">
+            Alguien entró con {inscripcion.alumno.email} y dijo que no es esta persona.
+            Revisá el correo en "Editar ficha".
           </p>
         )}
       </div>
@@ -1324,8 +1329,6 @@ function FormularioFicha({
 
   const [nombre, setNombre] = useState<string | null>(null);
   const [email, setEmail] = useState('');
-  const [telefono, setTelefono] = useState('');
-  const [documento, setDocumento] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -1335,19 +1338,20 @@ function FormularioFicha({
     if (!ficha.datos || nombre !== null) return;
     setNombre(ficha.datos.full_name);
     setEmail(ficha.datos.email ?? '');
-    setTelefono(ficha.datos.phone ?? '');
-    setDocumento(ficha.datos.doc_id ?? '');
   }, [ficha.datos, nombre]);
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
     setGuardando(true);
     setError(null);
+    const correoNuevo = email.trim() || null;
+    const cambioElCorreo = correoNuevo !== (ficha.datos?.email ?? null);
+
     const datos: DatosFicha = {
       full_name: (nombre ?? '').trim(),
-      email: email.trim() || null,
-      phone: telefono.trim() || null,
-      doc_id: documento.trim() || null,
+      email: correoNuevo,
+      // Corregir el correo reabre la invitación. Cambiar solo el nombre, no.
+      ...(cambioElCorreo ? { invite_rejected_at: null } : {}),
     };
     try {
       await editarFicha(alumnoId, datos);
@@ -1367,7 +1371,7 @@ function FormularioFicha({
     <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-white/10 p-3">
       <p className="text-brand-cream">Ficha de {ficha.datos?.full_name}</p>
 
-      <Campo etiqueta="Nombre y apellido">
+      <Campo etiqueta="Cómo lo anotás" ayuda="El nombre con el que aparece en tu lista.">
         <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
       </Campo>
 
@@ -1380,14 +1384,6 @@ function FormularioFicha({
         }
       >
         <Texto type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Teléfono">
-        <Texto value={telefono} onChange={(e) => setTelefono(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Documento">
-        <Texto value={documento} onChange={(e) => setDocumento(e.target.value)} />
       </Campo>
 
       {error && <Aviso>{error}</Aviso>}

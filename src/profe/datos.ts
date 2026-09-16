@@ -75,10 +75,18 @@ export type Inscripcion = {
   billing_mode: ModoCobro;
   status: string;
   end_date: string | null;
-  // email y user_id vienen para poder decirle al profe, en la misma fila, si
-  // ese alumno puede entrar al portal: sin correo no hay forma de enlazarlo,
-  // y con user_id vacío todavía no entró nunca.
-  alumno: { id: string; full_name: string; email: string | null; user_id: string | null } | null;
+  // email, user_id e invite_rejected_at vienen para poder decirle al profe, en
+  // la misma fila, en qué estado está ese alumno respecto del portal: sin
+  // correo no hay forma de invitarlo, con user_id vacío todavía no aceptó, y
+  // con invite_rejected_at dijo "no soy yo" — que casi siempre significa que
+  // el correo está mal.
+  alumno: {
+    id: string;
+    full_name: string;
+    email: string | null;
+    user_id: string | null;
+    invite_rejected_at: string | null;
+  } | null;
 };
 
 export type Clase = {
@@ -138,7 +146,10 @@ export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
 export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]> {
   const { data, error } = await supabase
     .from('enrollments')
-    .select('id, billing_mode, status, end_date, alumno:students(id, full_name, email, user_id)')
+    .select(
+      'id, billing_mode, status, end_date, ' +
+      'alumno:students(id, full_name, email, user_id, invite_rejected_at)',
+    )
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as Inscripcion[];
@@ -418,7 +429,7 @@ export async function editarGrupo(grupoId: string, datos: DatosGrupo): Promise<G
 
 export async function crearAlumno(
   espacioId: string,
-  datos: { full_name: string; email: string | null; phone: string | null },
+  datos: { full_name: string; email: string | null },
 ): Promise<Alumno> {
   const { data, error } = await supabase
     .from('students')
@@ -865,6 +876,11 @@ export async function enlaceComprobante(ruta: string): Promise<string> {
 // grupos y su ficha es una sola. Por eso se edita entera y desde cualquier
 // lado donde aparezca.
 //
+// El profesor edita SOLO lo que es suyo: con qué nombre lo anotó en su lista,
+// y a qué correo lo invita. El teléfono y el documento son datos de la persona
+// y los edita la persona — hoy no se piden en ningún lado, porque además no se
+// usaban para nada.
+//
 // NO se edita "notes", aunque la columna exista desde la 0003. La política de
 // la 0005 le deja al alumno leer su propia ficha, y RLS protege FILAS, no
 // columnas: todo lo que esté en esa fila el alumno lo puede leer con la
@@ -876,22 +892,23 @@ export type FichaAlumno = {
   id: string;
   full_name: string;
   email: string | null;
-  phone: string | null;
-  doc_id: string | null;
   user_id: string | null;
 };
 
 export type DatosFicha = {
   full_name: string;
   email: string | null;
-  phone: string | null;
-  doc_id: string | null;
+  // Se manda en null solo cuando el profesor CORRIGIÓ el correo: ahí la
+  // invitación vuelve a estar en juego. Si solo cambió el nombre, el "no soy
+  // yo" de la persona sigue valiendo — deshacerlo sería volver a preguntarle
+  // algo que ya contestó.
+  invite_rejected_at?: null;
 };
 
 export async function traerFicha(alumnoId: string): Promise<FichaAlumno> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, email, phone, doc_id, user_id')
+    .select('id, full_name, email, user_id')
     .eq('id', alumnoId)
     .single();
   if (error) throw new Error(error.message);
