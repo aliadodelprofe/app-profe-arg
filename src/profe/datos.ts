@@ -857,3 +857,48 @@ export async function enlaceComprobante(ruta: string): Promise<string> {
   if (error) throw new Error(error.message);
   return data.signedUrl;
 }
+
+// ---------------------------------------------------------------------------
+// LA FICHA DEL ALUMNO
+//
+// La ficha es de la escuela, no del grupo: el mismo alumno puede estar en dos
+// grupos y su ficha es una sola. Por eso se edita entera y desde cualquier
+// lado donde aparezca.
+//
+// NO se edita "notes", aunque la columna exista desde la 0003. La política de
+// la 0005 le deja al alumno leer su propia ficha, y RLS protege FILAS, no
+// columnas: todo lo que esté en esa fila el alumno lo puede leer con la
+// consola del navegador abierta. Una nota privada del profesor necesita su
+// propia tabla, con su propia regla. Mientras no exista esa tabla, no hay
+// notas: un campo que promete privacidad sin tenerla es peor que no tenerlo.
+// ---------------------------------------------------------------------------
+export type FichaAlumno = {
+  id: string;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  doc_id: string | null;
+  user_id: string | null;
+};
+
+export type DatosFicha = {
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  doc_id: string | null;
+};
+
+export async function traerFicha(alumnoId: string): Promise<FichaAlumno> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, full_name, email, phone, doc_id, user_id')
+    .eq('id', alumnoId)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as FichaAlumno;
+}
+
+export async function editarFicha(alumnoId: string, datos: DatosFicha): Promise<void> {
+  const { error } = await supabase.from('students').update(datos).eq('id', alumnoId);
+  if (error) throw new Error(error.message);
+}

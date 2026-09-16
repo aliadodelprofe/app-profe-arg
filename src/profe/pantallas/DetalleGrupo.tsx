@@ -5,13 +5,14 @@ import {
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
   fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
+  traerFicha, editarFicha,
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   inscribirConArranqueDiferido, mesSiguiente,
   nombreFormato, nombreCobro, fecha, plata,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
 import type {
-  Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro,
+  Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro, DatosFicha,
 } from '../datos';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
@@ -925,6 +926,7 @@ function FilaAlumno({
   const [confirmando, setConfirmando] = useState(false);
   const [cobrando, setCobrando] = useState(false);
   const [cobrado, setCobrado] = useState<string | null>(null);
+  const [editandoFicha, setEditandoFicha] = useState(false);
 
   const activa = inscripcion.status === 'active';
 
@@ -985,6 +987,16 @@ function FilaAlumno({
         </p>
       )}
 
+      {editandoFicha && inscripcion.alumno && (
+        <div className="mt-3">
+          <FormularioFicha
+            alumnoId={inscripcion.alumno.id}
+            alCerrar={() => setEditandoFicha(false)}
+            alGuardar={() => { setEditandoFicha(false); alCambiar(); }}
+          />
+        </div>
+      )}
+
       {cobrando && (
         <div className="mt-3">
           <FormularioCargo
@@ -1017,6 +1029,11 @@ function FilaAlumno({
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
+          {!editandoFicha && (
+            <BotonSecundario type="button" onClick={() => setEditandoFicha(true)}>
+              Editar ficha
+            </BotonSecundario>
+          )}
           {activa && !cobrando && (
             <BotonSecundario type="button" onClick={() => setCobrando(true)}>
               Cobrar
@@ -1275,6 +1292,109 @@ function FormularioCuotaDelGrupo({
       <div className="flex gap-2">
         <Boton type="submit" disabled={guardando}>
           {guardando ? 'Cobrando…' : `Cobrar a ${alcanzados.length}`}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Editar la ficha de un alumno
+//
+// El campo que importa es el correo: sin él, el alumno no puede entrar al
+// portal, y hasta hoy no había forma de agregárselo a una ficha ya creada. Un
+// profesor con veinte alumnos cargados no podía abrirles la app a ninguno sin
+// volver a crearlos.
+//
+// Se pide la ficha entera al abrir el formulario en vez de arrastrar todos los
+// campos en la lista de inscripciones: la lista se ve siempre, el formulario
+// casi nunca.
+// ----------------------------------------------------------------------------
+function FormularioFicha({
+  alumnoId,
+  alCerrar,
+  alGuardar,
+}: {
+  alumnoId: string;
+  alCerrar: () => void;
+  alGuardar: () => void;
+}) {
+  const ficha = useCarga(() => traerFicha(alumnoId), [alumnoId]);
+
+  const [nombre, setNombre] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [telefono, setTelefono] = useState('');
+  const [documento, setDocumento] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  // Los campos se llenan cuando llega la ficha. nombre en null significa
+  // "todavía no llegó": así no se pisa lo que el profe ya empezó a escribir.
+  useEffect(() => {
+    if (!ficha.datos || nombre !== null) return;
+    setNombre(ficha.datos.full_name);
+    setEmail(ficha.datos.email ?? '');
+    setTelefono(ficha.datos.phone ?? '');
+    setDocumento(ficha.datos.doc_id ?? '');
+  }, [ficha.datos, nombre]);
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    setGuardando(true);
+    setError(null);
+    const datos: DatosFicha = {
+      full_name: (nombre ?? '').trim(),
+      email: email.trim() || null,
+      phone: telefono.trim() || null,
+      doc_id: documento.trim() || null,
+    };
+    try {
+      await editarFicha(alumnoId, datos);
+      alGuardar();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  if (ficha.error) return <Aviso>{ficha.error}</Aviso>;
+  if (nombre === null) return <Vacio>Buscando…</Vacio>;
+
+  const yaEntro = ficha.datos?.user_id != null;
+
+  return (
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-white/10 p-3">
+      <p className="text-brand-cream">Ficha de {ficha.datos?.full_name}</p>
+
+      <Campo etiqueta="Nombre y apellido">
+        <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
+      </Campo>
+
+      <Campo
+        etiqueta="Correo"
+        ayuda={
+          yaEntro
+            ? 'Ya entró a la app. Cambiar el correo acá no le saca el acceso: su cuenta quedó enlazada a esta ficha.'
+            : 'Con esto entra al portal a ver sus clases y su cuenta. Sin correo no puede entrar.'
+        }
+      >
+        <Texto type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Teléfono">
+        <Texto value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+      </Campo>
+
+      <Campo etiqueta="Documento">
+        <Texto value={documento} onChange={(e) => setDocumento(e.target.value)} />
+      </Campo>
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando}>
+          {guardando ? 'Guardando…' : 'Guardar'}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>

@@ -117,7 +117,6 @@ esto necesita el SQL Editor.
 
 | Qué | Tamaño | Nota |
 |---|---|---|
-| Editar la ficha de un alumno | Chico | Hoy no hay forma de agregarle el correo a una ficha ya creada, y sin correo no entra al portal |
 | Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
 | Tarea programada (`pg_cron`) | Mediano | Resuelve dos de una: generar clases sin depender de que el profe abra la app, y borrar comprobantes a los 6 meses |
@@ -131,7 +130,7 @@ Las pantallas hechas, en `src/profe/`:
 | Ingreso | Email y contraseña contra Supabase Auth |
 | Espacios | Solo aparece con más de un espacio, o con ninguno (ahí ofrece crear el primero). Con uno solo la app entra derecho a los grupos |
 | Grupos | Los grupos del espacio, con su formato |
-| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su lugar y su recap. Da de alta alumnos y clases, genera clases en serie, y permite editar o cancelar una clase puntual |
+| Detalle del grupo | Alumnos con su precio y forma de pago (que salen de la inscripción, no del grupo) y las clases con su lugar y su recap. Da de alta alumnos y clases, edita la ficha de un alumno, genera clases en serie, y permite editar o cancelar una clase puntual |
 | Asistencia | Presente / ausente / justificado, guardando en cada toque, **con la deuda de cada alumno a la vista**. Al pie, el recap de la clase |
 | Quién me debe | Estado de cuenta del espacio sobre la vista `student_account`, separando lo que hay declarado y sin confirmar |
 | Pagos por confirmar | Las transferencias declaradas. Un toque llama a `confirmar_pago()` e informa cuánto se imputó y cuánto quedó a favor |
@@ -381,6 +380,27 @@ conviene resolver las dos de una vez.
 ---
 
 ## Errores encontrados y qué enseñaron
+
+### RLS protege filas, no columnas (16/9/2026)
+
+Al armar la edición de la ficha se agregó un campo de **notas** con la leyenda "Para vos.
+El alumno no las ve". Era falso. La política `un alumno ve su propia ficha` (migración
+0005) le permite leer **toda la fila** de `students`: Postgres decide por fila, no por
+columna. Que la app del alumno pida solo nombre y escuela es cortesía del código, no
+protección de la base — con la consola del navegador abierta se leen todas las columnas.
+
+El campo se sacó antes de usarlo. Un campo que promete privacidad sin tenerla es peor que
+no tenerlo: invita a escribir ahí justo lo que no hay que escribir.
+
+**Si algún día hacen falta notas privadas del profesor**, van en su propia tabla
+(`student_notes` o similar) con una política que solo mire `my_tenant_ids()` y sin ninguna
+política para el alumno. No alcanza con quitar permisos sobre la columna: profesor y
+alumno son el mismo rol de Postgres (`authenticated`), y lo que se le quita a uno se le
+quita al otro. La separación tiene que ser por fila, porque es lo único que RLS sabe hacer.
+
+**La lección general:** cada vez que una pantalla promete "esto no lo ve el otro", hay que
+poder señalar la regla que lo garantiza. Si la garantía es que la consulta no pide ese
+campo, no hay garantía.
 
 ### El precio estaba en la persona y era del grupo (8/9/2026)
 
