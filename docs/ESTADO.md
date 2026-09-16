@@ -413,6 +413,22 @@ devolver nunca una lista de personas.
 
 ## Errores encontrados y qué enseñaron
 
+### Una prueba que leía a través del candado que estaba probando (16/9/2026)
+
+`invitaciones.sql` verificaba que rechazar una invitación dejara la marca
+`invite_rejected_at`, leyéndola **desde la sesión del alumno**. Dio FALLA. La función
+estaba bien: una ficha rechazada tiene `user_id` vacío, así que ya no es del alumno y la
+política de la 0005 no lo deja leerla. La consulta no devolvió filas, la variable quedó en
+nulo, y la prueba lo interpretó como que la marca no se había guardado.
+
+Se notaba en la propia línea de error: decía "marca vacía" y a la vez "quedan 0
+invitaciones" — si el rechazo no hubiera funcionado, esa invitación seguiría en la lista.
+
+**La lección:** una prueba que verifica un dato mirándolo a través del mismo candado que
+está probando se miente a sí misma, y en la dirección más peligrosa — también podría dar
+PASA por no ver nada. Lo que se comprueba desde la sesión de alguien es lo que esa persona
+**puede** o **no puede** hacer; el estado que quedó en la base se mira sin candado.
+
 ### RLS protege filas, no columnas (16/9/2026)
 
 Al armar la edición de la ficha se agregó un campo de **notas** con la leyenda "Para vos.

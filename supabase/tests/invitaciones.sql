@@ -54,7 +54,6 @@ declare
   v_aceptar uuid;
   v_rechazar uuid;
   v_dueno   uuid;
-  v_marca   timestamptz;
 begin
   -- 1. Ve las dos que son para su correo.
   select count(*) into v_total from public.invitaciones_pendientes();
@@ -90,14 +89,21 @@ begin
     perform set_config('prueba.v4', 'PASA', false);
   end;
 
-  -- 5. Rechazar deja la marca y la saca de la lista.
+  -- 5. Rechazar la saca de la lista.
+  --
+  --    La MARCA en sí no se verifica acá, y no es un descuido: desde la sesión
+  --    del alumno esa ficha ya no se puede leer —tiene user_id vacío, así que
+  --    no es suya— y la consulta devolvería nulo aunque la marca esté puesta.
+  --    Una prueba que verifica un dato a través del mismo candado que está
+  --    probando se miente a sí misma. La marca se mira más abajo, sin candado.
   perform public.rechazar_invitacion(v_rechazar);
-  select invite_rejected_at into v_marca from public.students where id = v_rechazar;
+  perform set_config('prueba.ficha_rechazada', v_rechazar::text, false);
+
   select count(*) into v_total from public.invitaciones_pendientes();
   perform set_config('prueba.v5',
-    case when v_marca is not null and v_total = 0 then 'PASA'
-         else 'FALLA - marca ' || coalesce(v_marca::text,'vacia')
-              || ', quedan ' || v_total || ' invitaciones' end, false);
+    case when v_total = 0 then 'PASA'
+         else 'FALLA - quedan ' || v_total || ' invitaciones despues de rechazar' end,
+    false);
 
   -- 6. Y una vez rechazada, ya no se puede aceptar.
   begin
@@ -107,6 +113,20 @@ begin
     perform set_config('prueba.v6', 'PASA', false);
   end;
 end $$;
+
+-- ----------------------------------------------------------------------------
+-- La marca del rechazo, mirada desde afuera del candado.
+-- ----------------------------------------------------------------------------
+reset role;
+
+select set_config('prueba.v5b',
+  case when (select invite_rejected_at
+               from public.students
+              where id = nullif(current_setting('prueba.ficha_rechazada', true), '')::uuid
+            ) is not null
+       then 'PASA' else 'FALLA - no quedo la marca del rechazo' end,
+  false);
+
 
 -- ----------------------------------------------------------------------------
 -- 7. Y el control de siempre: Profe 1 no puede aceptar nada de Profe 2.
@@ -140,8 +160,11 @@ union all
 select 'No se puede aceptar dos veces la misma',
        coalesce(current_setting('prueba.v4', true), 'NO SE EJECUTO')
 union all
-select 'Rechazar deja marca y la saca de la lista',
+select 'Rechazar la saca de la lista',
        coalesce(current_setting('prueba.v5', true), 'NO SE EJECUTO')
+union all
+select 'Y deja la marca guardada',
+       coalesce(current_setting('prueba.v5b', true), 'NO SE EJECUTO')
 union all
 select 'Una invitacion rechazada ya no se puede aceptar',
        coalesce(current_setting('prueba.v6', true), 'NO SE EJECUTO')
