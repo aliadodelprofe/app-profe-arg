@@ -270,10 +270,13 @@ function FormularioAviso({
         </p>
       )}
 
-      <Campo
-        etiqueta="Comprobante (opcional)"
-        ayuda={`Una foto o el PDF del banco. Hasta ${COMPROBANTE_MAX_MB} MB.`}
-      >
+      {/* Este campo NO va dentro de <Campo>, a diferencia de todos los demás.
+          Campo envuelve a sus hijos en un <label>, y un campo de archivo
+          adentro de su propio label se rompe: el clic abre el selector y el
+          label le reenvía un segundo clic al mismo input, que lo cierra en el
+          acto. Parece que el botón no hace nada. */}
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-brand-taupe">Comprobante (opcional)</span>
         <input
           type="file"
           accept="image/*,application/pdf"
@@ -290,7 +293,13 @@ function FormularioAviso({
           }}
           className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-brand-cream file:mr-3 file:rounded file:border-0 file:bg-brand-sand file:px-3 file:py-1 file:text-brand-dark"
         />
-      </Campo>
+        <span className="text-xs text-brand-taupe/70">
+          Una foto o el PDF del banco. Hasta {COMPROBANTE_MAX_MB} MB.
+        </span>
+        {archivo && (
+          <span className="text-xs text-brand-sand">{archivo.name}</span>
+        )}
+      </div>
 
       <Campo etiqueta="Algo que quieras aclarar (opcional)">
         <Texto

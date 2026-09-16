@@ -66,6 +66,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0013_enlazar_alumno_con_usuario.sql` | `reclamar_ficha()`: enlaza al alumno registrado con las fichas que tengan su correo **confirmado** | Aplicada |
 | `0014_comprobantes.sql` | Depósito privado `comprobantes` y sus reglas: el alumno sube y ve los suyos, el profesor ve los de sus espacios, nadie borra | Aplicada |
 | `0015_invitaciones.sql` | El alumno acepta antes de quedar anotado. Reemplaza `reclamar_ficha()` por invitaciones que se aceptan o se rechazan | Aplicada |
+| `0016_cuota_del_mes_en_curso.sql` | La cuota es del mes en curso, no del que viene. Y la invitación dice cómo le van a cobrar | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -409,9 +410,41 @@ En su lugar, para encontrar a alguien que ya existe alcanza con el **correo exac
 el profesor ya conoce porque es su alumno, y la app responde "existe" o "no existe" sin
 devolver nunca una lista de personas.
 
+### 11. Cómo se cambia la forma de pago — PENDIENTE DE DEFINIR
+
+Planteado por Tomás el 16/9/2026: un alumno anotado para pagar por clase tendría que poder
+pasarse a cuota mensual, o al revés.
+
+Hay que definir tres cosas antes de construirlo:
+
+1. **Desde cuándo vale el cambio.** Lo coherente con lo que ya existe es **desde el 1 del
+   mes siguiente**, igual que quien se suma a mitad de mes: el mes en curso ya está
+   cobrado o ya se cursó. Mecánicamente es lo mismo que ya se hace — se termina la
+   inscripción actual a fin de mes y empieza otra con la forma nueva.
+2. **Quién decide.** ¿El alumno solo, o el profesor tiene que aceptar? El precio mensual
+   lleva descuento, así que pasarse a mensual es pedir un descuento. Puede que algunos
+   profesores quieran aprobarlo.
+3. **Qué pasa con lo ya cobrado.** Si pagó la cuota de septiembre y se pasa a por clase,
+   septiembre no se toca. La regla "desde el 1 del mes siguiente" lo resuelve solo.
+
+Mientras tanto la invitación le dice al alumno: "después podés pedirle a tu profe que te
+cambie la forma de pago".
+
 ---
 
 ## Errores encontrados y qué enseñaron
+
+### Un campo de archivo adentro de su propio `<label>` no abre (16/9/2026)
+
+El botón de adjuntar comprobante no hacía nada. El campo estaba dentro del componente
+`Campo`, que envuelve a sus hijos en un `<label>` — como todos los demás campos de la app.
+Con un campo de archivo eso lo rompe: el clic abre el selector y el `label` le reenvía un
+segundo clic al mismo input, que lo cierra en el acto. No hay error en la consola: parece
+que el botón está muerto.
+
+Se sacó de `Campo` y se armó la etiqueta a mano, con un comentario al lado explicando por
+qué ese campo es la excepción — si no, el próximo que ordene el código lo va a "arreglar"
+metiéndolo de nuevo adentro.
 
 ### Una prueba que leía a través del candado que estaba probando (16/9/2026)
 

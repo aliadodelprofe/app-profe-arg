@@ -58,12 +58,23 @@ const num = (v: unknown): number => Number(v ?? 0);
 // persona te cobre. Por eso no pasa solo. La app muestra quién te anotó, con
 // qué nombre y a qué grupo, y espera una respuesta.
 // ---------------------------------------------------------------------------
+// Cómo le van a cobrar. Pueden ser varias: quien se suma a mitad de mes tiene
+// el resto del mes por clase y la cuota desde el 1 del siguiente.
+export type FormaDePago = {
+  grupo: string | null;
+  modo: 'per_session' | 'per_period' | 'one_time';
+  precio: number | null;
+  desde: string | null;
+  hasta: string | null;
+};
+
 export type Invitacion = {
   student_id: string;
   escuela: string;
   disciplina: string | null;
   anotado_como: string;
   grupos: string;
+  formas_de_pago: FormaDePago[];
 };
 
 export async function invitacionesPendientes(): Promise<Invitacion[]> {

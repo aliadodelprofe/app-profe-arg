@@ -11,8 +11,27 @@
 // ============================================================================
 import { useState } from 'react';
 import { aceptarInvitacion, rechazarInvitacion } from '../datos';
-import type { Invitacion } from '../datos';
+import type { Invitacion, FormaDePago } from '../datos';
+import { fecha, plata } from '../formato';
 import { Aviso, Tarjeta, Boton, BotonSecundario } from '../../comun/ui';
+
+// Una forma de pago, dicha en castellano.
+//
+// La frase se arma acá y no en la base a propósito: componer castellano en SQL
+// termina siendo imposible de corregir sin una migración.
+function comoTeCobran(f: FormaDePago): string {
+  const precio = f.precio === null ? 'a precio sin definir' : plata(f.precio);
+
+  if (f.modo === 'one_time') return `Un pago único de ${precio}`;
+
+  if (f.modo === 'per_session') {
+    const base = `${precio} por clase`;
+    return f.hasta ? `${base}, hasta el ${fecha(f.hasta)}` : base;
+  }
+
+  const base = `Cuota mensual de ${precio}`;
+  return f.desde ? `${base}, desde el ${fecha(f.desde)}` : base;
+}
 
 export default function Invitaciones({
   invitaciones,
@@ -66,9 +85,27 @@ function Fila({
         Te anotaron como <span className="text-brand-cream">{invitacion.anotado_como}</span> en{' '}
         {invitacion.grupos}.
       </p>
-      <p className="mt-1 text-xs text-brand-taupe">
+
+      {/* Cómo le van a cobrar, antes de aceptar. Aceptar es aceptar que te
+          cobren: que no diga cuánto ni cómo es pedirle a alguien que firme
+          sin leer. */}
+      {invitacion.formas_de_pago.length > 0 && (
+        <ul className="mt-2 flex flex-col gap-0.5">
+          {invitacion.formas_de_pago.map((f, i) => (
+            <li key={i} className="text-sm text-brand-sand">
+              {comoTeCobran(f)}
+              {f.grupo && invitacion.formas_de_pago.length > 1 && (
+                <span className="text-brand-taupe"> · {f.grupo}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="mt-2 text-xs text-brand-taupe">
         Si aceptás vas a ver tus clases y tu estado de cuenta, y esta escuela va a poder
-        cobrarte por las clases que tomes.
+        cobrarte por las clases que tomes. Después podés pedirle a tu profe que te cambie
+        la forma de pago.
       </p>
 
       {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
