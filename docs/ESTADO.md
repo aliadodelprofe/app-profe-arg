@@ -106,24 +106,23 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 
 ## Próximo paso exacto
 
-**El loop diario del profesor está completo, y desde el 8/9/2026 no necesita el SQL
-Editor para nada.** El profesor crea su espacio, sus grupos con horario fijo, anota
-alumnos, da de baja, carga o deja que se generen las clases, toma asistencia, escribe el
-recap, cobra cuotas y confirma transferencias, todo desde la app.
+**El circuito está cerrado de punta a punta, con las dos personas.** El profesor crea su
+espacio, sus grupos con horario fijo, anota alumnos y les da de baja, deja que las clases
+se generen solas, toma asistencia, escribe el recap y confirma transferencias. El alumno
+se registra con su correo, ve sus clases con el lugar y el mapa, lee los recaps, ve lo que
+debe, avisa que transfirió y adjunta el comprobante. Los cargos se generan solos. Nada de
+esto necesita el SQL Editor.
 
-**El loop diario del profesor está completo.** *Mis grupos → tomar asistencia →
-quién me debe → confirmar un pago* funciona de punta a punta contra Supabase.
+**Lo que queda, en orden de tamaño:**
 
-Lo que sigue es la decisión de producto, no más pantallas: hoy los cargos y los pagos
-declarados se siembran a mano (`supabase/seeds/pago_declarado.sql`). Para que el loop
-se alimente solo hacen falta dos cosas, en este orden:
-
-1. **Resolver el saldo a favor** (ver Decisiones de producto pendientes). Destraba el
-   pago anticipado, el pack de 4 clases y el sobrante que hoy la app informa pero no
-   sabe dónde guardar.
-2. **Enlazar alumnos con usuarios** (`students.user_id`), que es lo que le da entrada
-   al portal del alumno y hace que las transferencias las declare el alumno en vez de
-   sembrarlas nosotros.
+| Qué | Tamaño | Nota |
+|---|---|---|
+| Editar la ficha de un alumno | Chico | Hoy no hay forma de agregarle el correo a una ficha ya creada, y sin correo no entra al portal |
+| Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
+| Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
+| Tarea programada (`pg_cron`) | Mediano | Resuelve dos de una: generar clases sin depender de que el profe abra la app, y borrar comprobantes a los 6 meses |
+| Saldo a favor | Mediano | Toca el modelo. Destraba el pago adelantado, el pack de 4 clases y el sobrante que hoy se informa pero no se guarda |
+| Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
 Las pantallas hechas, en `src/profe/`:
 
