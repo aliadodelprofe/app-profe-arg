@@ -202,7 +202,7 @@ export function Boton({
 export function BotonSecundario({
   children,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: React.ComponentPropsWithRef<'button'>) {
   return (
     <button
       {...props}
@@ -210,5 +210,75 @@ export function BotonSecundario({
     >
       {children}
     </button>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// Confirmación antes de una acción que el alumno no puede deshacer solo.
+//
+// No es un "¿estás seguro?" decorativo: el texto tiene que decir exactamente
+// qué va a pasar y desde cuándo. Un cartel que no informa nada solo entrena a
+// la gente a apretar "Sí" sin leer.
+//
+// El foco arranca en Cancelar a propósito. Si alguien abrió esto sin querer,
+// la tecla Enter tiene que sacarlo, no confirmarle el cambio.
+// ----------------------------------------------------------------------------
+export function Confirmacion({
+  titulo,
+  children,
+  confirmar,
+  trabajando = false,
+  alConfirmar,
+  alCancelar,
+}: {
+  titulo: string;
+  children: ReactNode;
+  confirmar: string;
+  trabajando?: boolean;
+  alConfirmar: () => void;
+  alCancelar: () => void;
+}) {
+  const cancelarRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    cancelarRef.current?.focus();
+    function tecla(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !trabajando) alCancelar();
+    }
+    document.addEventListener('keydown', tecla);
+    // Mientras el cartel está abierto, la página de atrás no se mueve.
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', tecla);
+      document.body.style.overflow = antes;
+    };
+  }, [alCancelar, trabajando]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"
+      onClick={() => { if (!trabajando) alCancelar(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        // Sin esto, un clic adentro del cartel llega al fondo y lo cierra.
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl border border-white/10 bg-brand-dark p-5 shadow-xl"
+      >
+        <p className="mb-2 text-lg text-brand-cream">{titulo}</p>
+        <div className="mb-4 text-sm text-brand-taupe">{children}</div>
+        <div className="flex gap-2">
+          <Boton type="button" onClick={alConfirmar} disabled={trabajando}>
+            {trabajando ? 'Cambiando…' : confirmar}
+          </Boton>
+          <BotonSecundario ref={cancelarRef} type="button" onClick={alCancelar} disabled={trabajando}>
+            Cancelar
+          </BotonSecundario>
+        </div>
+      </div>
+    </div>
   );
 }

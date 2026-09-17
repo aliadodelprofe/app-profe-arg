@@ -67,7 +67,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0014_comprobantes.sql` | Depósito privado `comprobantes` y sus reglas: el alumno sube y ve los suyos, el profesor ve los de sus espacios, nadie borra | Aplicada |
 | `0015_invitaciones.sql` | El alumno acepta antes de quedar anotado. Reemplaza `reclamar_ficha()` por invitaciones que se aceptan o se rechazan | Aplicada |
 | `0016_cuota_del_mes_en_curso.sql` | La cuota es del mes en curso, no del que viene. Y la invitación dice cómo le van a cobrar | Aplicada |
-| `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | **Sin aplicar** |
+| `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -98,12 +98,13 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
-Últimos resultados (4 de septiembre de 2026):
+Últimos resultados (17 de septiembre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
 - `aislamiento_alumno.sql` → **16 de 16 PASA**
 - `confirmar_pago.sql` → **6 de 6 PASA**
 - `cargos_automaticos.sql` → **7 de 7 PASA**
+- `forma_de_pago.sql` → **6 de 6 PASA**
 - `npm run prueba:fechas` → **18 de 18 PASA**
 - `control_general.sql` → **10 tablas en `ok`**
 
@@ -440,6 +441,12 @@ Dos detalles del diseño de la función, porque no son obvios:
 - **Cambiar de opinión corrige, no apila.** Si el alumno elige mes y a los dos días vuelve
   a clase, no quedan dos inscripciones nuevas empezando el 1: se corrige la que ya estaba
   creada. Sin esto, dudar dos veces le genera cargos duplicados.
+
+**El cambio pide confirmación (17/9/2026).** Un toque en el celular no puede cambiarle a
+alguien cómo le cobran. El cartel no dice "¿estás seguro?" — dice el precio nuevo, desde
+qué fecha, y que lo que queda de este mes no cambia. Un cartel que no informa nada solo
+entrena a la gente a apretar "Sí" sin leer. El foco arranca en **Cancelar**: si alguien lo
+abrió sin querer, Enter y Escape lo sacan.
 
 ---
 

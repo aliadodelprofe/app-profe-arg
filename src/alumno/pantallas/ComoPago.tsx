@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { cambiarFormaDePago } from '../datos';
 import type { MiArreglo } from '../datos';
 import { fecha, plata, hoyISO } from '../formato';
-import { Aviso, Tarjeta, Boton } from '../../comun/ui';
+import { Aviso, Tarjeta, Boton, Confirmacion } from '../../comun/ui';
 
 const CLASES_POR_MES = 4;
 
@@ -55,6 +55,7 @@ function Grupo({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
+  const [preguntando, setPreguntando] = useState(false);
   const grupo = arreglos[0].grupo!;
   const hoy = hoyISO();
 
@@ -80,15 +81,26 @@ function Grupo({
   const sueltas = porClase !== null ? porClase * CLASES_POR_MES : null;
   const ahorro = sueltas !== null && porMes !== null ? sueltas - porMes : null;
 
+  // El día 1 del mes que viene, que es lo que el cartel le promete. La
+  // función en la base calcula el suyo por las suyas; si algún día dejan de
+  // coincidir, el que manda es el de la base.
+  const desde = new Date(Date.UTC(
+    Number(hoy.slice(0, 4)),
+    Number(hoy.slice(5, 7)), // mes 0-based + 1 = el que viene
+    1,
+  )).toISOString().slice(0, 10);
+
   async function cambiar() {
     setTrabajando(true);
     setError(null);
     try {
       await cambiarFormaDePago(grupo.id, otro as 'per_session' | 'per_period');
+      setPreguntando(false);
       alCambiar();
     } catch (e) {
       setError((e as Error).message);
       setTrabajando(false);
+      setPreguntando(false);
     }
   }
 
@@ -133,13 +145,35 @@ function Grupo({
 
       {precioOtro !== null && (
         <div className="mt-3">
-          <Boton type="button" onClick={cambiar} disabled={trabajando}>
+          <Boton type="button" onClick={() => setPreguntando(true)} disabled={trabajando}>
             {trabajando ? 'Cambiando…' : `Pasarme a pagar ${nombre(otro)}`}
           </Boton>
           <p className="mt-1 text-xs text-brand-taupe">
             Empieza a regir el 1 del mes que viene. Lo de este mes no cambia.
           </p>
         </div>
+      )}
+
+      {preguntando && (
+        <Confirmacion
+          titulo={`Pasar a pagar ${nombre(otro)}`}
+          confirmar={`Sí, pagar ${nombre(otro)}`}
+          trabajando={trabajando}
+          alConfirmar={cambiar}
+          alCancelar={() => setPreguntando(false)}
+        >
+          <p>
+            En <span className="text-brand-cream">{grupo.name}</span> vas a pasar a pagar{' '}
+            <span className="text-brand-sand">
+              {plata(precioOtro)} {nombre(otro)}
+            </span>{' '}
+            desde el {fecha(desde)}.
+          </p>
+          <p className="mt-2">
+            Lo que queda de este mes no cambia: seguís pagando{' '}
+            {plata(precioDe(modoQueViene))} {nombre(modoQueViene)}.
+          </p>
+        </Confirmacion>
       )}
     </Tarjeta>
   );
