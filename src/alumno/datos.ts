@@ -210,3 +210,53 @@ export async function subirComprobante(
   if (error) throw new Error(error.message);
   return ruta;
 }
+
+// ---------------------------------------------------------------------------
+// CÓMO PAGO
+//
+// El alumno elige entre las dos formas que el profesor puso precio: por clase
+// o por mes. La elección es suya y no necesita aprobación — el profesor ya
+// jugó su carta al fijar el descuento de la cuota.
+//
+// El cambio vale desde el 1 del mes siguiente. El mes en curso ya se cobró o
+// ya se cursó.
+// ---------------------------------------------------------------------------
+export type MiArreglo = {
+  id: string;
+  billing_mode: 'per_session' | 'per_period' | 'one_time';
+  start_date: string | null;
+  end_date: string | null;
+  grupo: {
+    id: string;
+    name: string;
+    price_per_session: number | null;
+    price_per_period: number | null;
+  } | null;
+};
+
+export async function misArreglos(tenantId: string): Promise<MiArreglo[]> {
+  const { data, error } = await supabase
+    .from('enrollments')
+    .select(
+      'id, billing_mode, start_date, end_date, ' +
+      'grupo:groups(id, name, price_per_session, price_per_period)',
+    )
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .order('start_date');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as MiArreglo[];
+}
+
+// Devuelve desde cuándo vale el cambio.
+export async function cambiarFormaDePago(
+  grupoId: string,
+  modo: 'per_session' | 'per_period',
+): Promise<string> {
+  const { data, error } = await supabase.rpc('cambiar_forma_de_pago', {
+    p_grupo_id: grupoId,
+    p_modo: modo,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}

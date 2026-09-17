@@ -10,13 +10,14 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
-  subirComprobante, COMPROBANTE_MAX_MB,
+  subirComprobante, COMPROBANTE_MAX_MB, misArreglos,
 } from '../datos';
 import type { MiFicha } from '../datos';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
   Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
 } from '../../comun/ui';
+import ComoPago from './ComoPago';
 import Salir from './Salir';
 
 export default function MiEscuela({
@@ -30,6 +31,7 @@ export default function MiEscuela({
   const cargos = useCarga(() => misCargos(ficha.tenant_id), [ficha.tenant_id]);
   const saldo = useCarga(() => miSaldo(ficha.tenant_id), [ficha.tenant_id]);
   const pagos = useCarga(() => misPagos(ficha.tenant_id), [ficha.tenant_id]);
+  const arreglos = useCarga(() => misArreglos(ficha.tenant_id), [ficha.tenant_id]);
   const [declarando, setDeclarando] = useState(false);
 
   const hoy = hoyISO();
@@ -117,6 +119,17 @@ export default function MiEscuela({
           </ul>
         </>
       )}
+
+      {/* --------------------------------------------------------- cómo pago */}
+      {arreglos.error && <Aviso>{arreglos.error}</Aviso>}
+      <ComoPago
+        arreglos={arreglos.datos ?? []}
+        alCambiar={() => {
+          arreglos.recargar();
+          cargos.recargar();
+          saldo.recargar();
+        }}
+      />
 
       {/* -------------------------------------------------------- mi cuenta */}
       <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">

@@ -67,6 +67,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0014_comprobantes.sql` | Depósito privado `comprobantes` y sus reglas: el alumno sube y ve los suyos, el profesor ve los de sus espacios, nadie borra | Aplicada |
 | `0015_invitaciones.sql` | El alumno acepta antes de quedar anotado. Reemplaza `reclamar_ficha()` por invitaciones que se aceptan o se rechazan | Aplicada |
 | `0016_cuota_del_mes_en_curso.sql` | La cuota es del mes en curso, no del que viene. Y la invitación dice cómo le van a cobrar | Aplicada |
+| `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -94,6 +95,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
 Últimos resultados (4 de septiembre de 2026):
@@ -425,8 +427,19 @@ conviene, se lo dice: *"pagar por mes no le conviene a nadie y nadie lo va a ele
 mecánicamente es lo mismo que ya se hace: se termina la inscripción actual a fin de mes y
 empieza otra con la forma nueva. Lo ya cobrado no se toca.
 
-**Falta construir:** el botón en la app del alumno, y mostrarle los dos precios para que
-vea la diferencia. Va en la 0017.
+**Construido en la 0017 (17/9/2026):** `cambiar_forma_de_pago(p_grupo_id, p_modo)`, y la
+sección **Cómo pago** en la pantalla del alumno, que muestra los dos precios siempre — no
+solo el que le toca — con la cuenta de cuatro clases sueltas contra la cuota.
+
+Dos detalles del diseño de la función, porque no son obvios:
+
+- **Recibe el grupo, no la inscripción.** El alumno piensa "en esta clase pago así", no
+  "en el arreglo 3f2a…". Si recibiera una inscripción habría que decidir qué pasa cuando
+  hay dos (la de este mes y la que ya empieza el 1), y la respuesta correcta es siempre la
+  misma: la del grupo.
+- **Cambiar de opinión corrige, no apila.** Si el alumno elige mes y a los dos días vuelve
+  a clase, no quedan dos inscripciones nuevas empezando el 1: se corrige la que ya estaba
+  creada. Sin esto, dudar dos veces le genera cargos duplicados.
 
 ---
 
