@@ -410,29 +410,42 @@ En su lugar, para encontrar a alguien que ya existe alcanza con el **correo exac
 el profesor ya conoce porque es su alumno, y la app responde "existe" o "no existe" sin
 devolver nunca una lista de personas.
 
-### 11. Cómo se cambia la forma de pago — PENDIENTE DE DEFINIR
+### 11. La forma de pago la elige el alumno (definido 16/9/2026)
 
-Planteado por Tomás el 16/9/2026: un alumno anotado para pagar por clase tendría que poder
-pasarse a cuota mensual, o al revés.
+**Quién decide: el alumno, solo.** No hace falta que el profesor apruebe nada. El profesor
+juega antes, cuando fija los dos precios: el descuento del mes es su herramienta para que
+al alumno le convenga comprometerse. Si la cuota no seduce, el alumno viene suelto, y eso
+es información para el profesor, no un problema del sistema.
 
-Hay que definir tres cosas antes de construirlo:
+Por eso el alta de grupo ahora le muestra la cuenta que no hace de cabeza: *"Cuatro clases
+sueltas le saldrían $20.000. Con tu cuota ahorra $2.000, un 10%."* Y si la cuota no
+conviene, se lo dice: *"pagar por mes no le conviene a nadie y nadie lo va a elegir."*
 
-1. **Desde cuándo vale el cambio.** Lo coherente con lo que ya existe es **desde el 1 del
-   mes siguiente**, igual que quien se suma a mitad de mes: el mes en curso ya está
-   cobrado o ya se cursó. Mecánicamente es lo mismo que ya se hace — se termina la
-   inscripción actual a fin de mes y empieza otra con la forma nueva.
-2. **Quién decide.** ¿El alumno solo, o el profesor tiene que aceptar? El precio mensual
-   lleva descuento, así que pasarse a mensual es pedir un descuento. Puede que algunos
-   profesores quieran aprobarlo.
-3. **Qué pasa con lo ya cobrado.** Si pagó la cuota de septiembre y se pasa a por clase,
-   septiembre no se toca. La regla "desde el 1 del mes siguiente" lo resuelve solo.
+**Desde cuándo vale: el 1 del mes siguiente.** Igual que quien se suma a mitad de mes, y
+mecánicamente es lo mismo que ya se hace: se termina la inscripción actual a fin de mes y
+empieza otra con la forma nueva. Lo ya cobrado no se toca.
 
-Mientras tanto la invitación le dice al alumno: "después podés pedirle a tu profe que te
-cambie la forma de pago".
+**Falta construir:** el botón en la app del alumno, y mostrarle los dos precios para que
+vea la diferencia. Va en la 0017.
 
 ---
 
 ## Errores encontrados y qué enseñaron
+
+### `create or replace` no puede cambiar lo que una función devuelve (16/9/2026)
+
+La 0016 le agregaba una columna a `invitaciones_pendientes` y falló con `42P13: cannot
+change return type of existing function`. Hay que borrar la función y crearla de nuevo.
+
+Dos cosas que quedaron claras:
+
+- **Una migración que falló no es una migración aplicada.** La regla "una migración
+  aplicada nunca se edita" protege lo que ya está en la base. La 0016 no llegó a entrar,
+  así que se corrigió en el mismo archivo en vez de agregar otra para tapar un error que
+  nunca existió.
+- **`drop function` se lleva puestos los permisos.** Sin volver a hacer el `grant execute
+  ... to authenticated`, la app del alumno habría recibido "permission denied" al pedir
+  sus invitaciones — y el error habría aparecido lejos del cambio que lo causó.
 
 ### Un campo de archivo adentro de su propio `<label>` no abre (16/9/2026)
 

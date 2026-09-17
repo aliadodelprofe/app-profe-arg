@@ -7,7 +7,7 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { crearGrupo, editarGrupo, NOMBRE_DIA } from '../datos';
+import { crearGrupo, editarGrupo, NOMBRE_DIA, plata } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../../comun/ui';
 
@@ -72,6 +72,27 @@ export default function FormularioGrupo({
       setGuardando(false);
     }
   }
+
+  // La comparación que el profesor no hace de cabeza: cuánto le sale al alumno
+  // venir suelto todo un mes contra la cuota. Es la decisión comercial que
+  // define si alguien se compromete por mes o viene cuando tiene ganas.
+  const unaClase = Number(porClase) || 0;
+  const unMes = Number(porMes) || 0;
+  const cuatroSueltas = unaClase * 4;
+  const ahorro = cuatroSueltas - unMes;
+  const porcentaje = cuatroSueltas > 0 ? Math.round((ahorro / cuatroSueltas) * 100) : 0;
+
+  const ayudaDelMes = (() => {
+    if (!unaClase || !unMes) {
+      return 'Con el descuento ya aplicado. Es el precio final, no un porcentaje.';
+    }
+    if (ahorro <= 0) {
+      return `Cuatro clases sueltas le saldrían ${plata(cuatroSueltas)}. Así, pagar por mes `
+        + 'no le conviene a nadie y nadie lo va a elegir.';
+    }
+    return `Cuatro clases sueltas le saldrían ${plata(cuatroSueltas)}. Con tu cuota ahorra `
+      + `${plata(ahorro)}, un ${porcentaje}%.`;
+  })();
 
   return (
     <form
@@ -151,6 +172,12 @@ export default function FormularioGrupo({
           Los precios son del grupo, no de cada alumno. Lo que elige el alumno
           al inscribirse es cuál de estas dos formas usa.
          ------------------------------------------------------------------ */}
+      <p className="rounded-lg border border-white/10 px-3 py-2 text-xs text-brand-taupe">
+        El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes
+        entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas.
+        El descuento del mes es tu herramienta para eso.
+      </p>
+
       <Campo etiqueta="Precio por clase">
         <Texto
           type="number" min="0" step="any" value={porClase}
@@ -158,10 +185,7 @@ export default function FormularioGrupo({
         />
       </Campo>
 
-      <Campo
-        etiqueta="Precio del mes"
-        ayuda="Con el descuento ya aplicado. Es el precio final, no un porcentaje."
-      >
+      <Campo etiqueta="Precio del mes" ayuda={ayudaDelMes}>
         <Texto
           type="number" min="0" step="any" value={porMes}
           onChange={(e) => setPorMes(e.target.value)}

@@ -120,7 +120,14 @@ $$;
 --
 -- Son varias porque pueden serlo: quien se suma a mitad de mes tiene el resto
 -- del mes por clase y la cuota desde el 1. El alumno tiene que ver las dos.
+--
+-- Va un "drop" antes del "create": "create or replace" NO puede cambiar lo que
+-- una función devuelve, y acá se le agrega una columna. Postgres lo rechaza con
+-- el error 42P13. Borrar y crear de nuevo es lo correcto: una función es
+-- código, no datos — no se pierde nada.
 -- ----------------------------------------------------------------------------
+drop function if exists public.invitaciones_pendientes();
+
 create or replace function public.invitaciones_pendientes()
 returns table (
   student_id      uuid,
@@ -180,3 +187,10 @@ begin
      group by s.id, t.name, t.discipline, s.full_name;
 end;
 $$;
+
+
+-- El "drop" de arriba se lleva puestos los permisos de la función, así que hay
+-- que volver a darlos. Sin esto, la app del alumno recibiría un "permission
+-- denied" al pedir sus invitaciones.
+revoke all on function public.invitaciones_pendientes() from public;
+grant execute on function public.invitaciones_pendientes() to authenticated;
