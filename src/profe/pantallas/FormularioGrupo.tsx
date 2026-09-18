@@ -10,7 +10,7 @@ import type { FormEvent } from 'react';
 import { crearGrupo, editarGrupo, NOMBRE_DIA, plata } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../../comun/ui';
-import { compararFormas, CLASES_POR_ANIO } from '../../comun/precios';
+import { compararFormas, MESES_POR_ANIO } from '../../comun/precios';
 
 export default function FormularioGrupo({
   espacio,
@@ -74,24 +74,30 @@ export default function FormularioGrupo({
     }
   }
 
-  // La comparación que el profesor no hace de cabeza: cuánto le sale al alumno
-  // venir suelto todo un mes contra la cuota. Es la decisión comercial que
-  // define si alguien se compromete por mes o viene cuando tiene ganas.
+  // La comparación que el profesor no hace de cabeza.
+  //
+  // SOBRE EL TONO: acá no se le muestra cuánto "deja de facturar" con el
+  // descuento. Es verdad y es inútil: lo único que logra es desalentarlo de
+  // usar la herramienta que hace que el alumno se comprometa. Lo que sí se le
+  // muestra es el precio por clase —que es lo que necesita para fijar el
+  // número— y lo que recibe a cambio: cobros en fecha, todo el año, de alguien
+  // que ya decidió quedarse.
   const comparacion = compararFormas(Number(porClase) || null, Number(porMes) || null);
 
   const ayudaDelMes = (() => {
     if (!comparacion) {
       return 'Con el descuento ya aplicado. Es el precio final, no un porcentaje.';
     }
+    // Cuando el precio no funciona, decirle cuál sí — no solo que está mal.
     if (!comparacion.conviene) {
-      return `Un año son ${CLASES_POR_ANIO} clases: sueltas le saldrían `
-        + `${plata(comparacion.anualSuelto)} y con tu cuota paga `
-        + `${plata(comparacion.anualConCuota)}. Así, pagar por mes no le conviene a nadie `
-        + 'y nadie lo va a elegir.';
+      return 'Con este precio la cuota le sale más que venir suelto, así que nadie la va '
+        + `a elegir. Para que tenga sentido tiene que quedar por debajo de `
+        + `${plata(comparacion.cuotaSinDescuento)}.`;
     }
     return `Con tu cuota cada clase le sale ${plata(comparacion.porClaseConCuota)} en vez de `
-      + `${plata(Number(porClase))}, un ${comparacion.porcentaje}% menos. En el año: cobrás `
-      + `${plata(comparacion.anualConCuota)} en vez de ${plata(comparacion.anualSuelto)}.`;
+      + `${plata(Number(porClase))}: un ${comparacion.porcentaje}% menos para él. A cambio te `
+      + `deja ${MESES_POR_ANIO} cobros al año en fecha fija, de alguien que decidió quedarse `
+      + 'una vez en vez de decidirlo cada semana.';
   })();
 
   return (

@@ -36,11 +36,12 @@ export function porClaseDentroDeLaCuota(precioPorMes: number): number {
 }
 
 export type Comparacion = {
-  anualSuelto: number;     // lo que paga en un año viniendo clase por clase
-  anualConCuota: number;   // lo que paga en un año con la cuota
-  ahorroAnual: number;     // positivo si la cuota conviene
-  porcentaje: number;      // el ahorro, en porcentaje del suelto
+  anualSuelto: number;      // lo que paga en un año viniendo clase por clase
+  anualConCuota: number;    // lo que paga en un año con la cuota
+  ahorroAnual: number;      // positivo si la cuota conviene
+  porcentaje: number;       // el ahorro, en porcentaje del suelto
   porClaseConCuota: number;
+  cuotaSinDescuento: number; // la cuota a la que el descuento es cero: el techo
   conviene: boolean;
 };
 
@@ -61,6 +62,10 @@ export function compararFormas(
     ahorroAnual,
     porcentaje: Math.round((ahorroAnual / anualSuelto) * 100),
     porClaseConCuota: porClaseDentroDeLaCuota(precioPorMes),
+    // El techo: por encima de esto la cuota sale más que venir suelto. Sirve
+    // para decirle al profesor qué número escribir, en vez de solo avisarle
+    // que el que puso está mal.
+    cuotaSinDescuento: (precioPorClase * CLASES_POR_ANIO) / MESES_POR_ANIO,
     conviene: ahorroAnual > 0,
   };
 }

@@ -509,6 +509,17 @@ ya está pago dentro del promedio. Se descartaron las otras dos salidas:
   no existe: qué pasa cuando se cancela una clase después de generado el cargo, sobre todo
   si el alumno ya pagó.
 
+**Sobre el tono de lo que ve el profesor (18/9/2026).** La primera versión le mostraba
+"cobrás $216.000 en vez de $260.000". Es cierto y es contraproducente: lo único que logra
+es desalentarlo de usar la única herramienta que tiene para que el alumno se comprometa.
+Se sacó la comparación de facturación anual y quedó lo que necesita para decidir —el
+precio por clase— más lo que recibe a cambio: cobros en fecha, todo el año, de alguien que
+decidió quedarse una vez en vez de decidirlo cada semana. Y cuando el precio no funciona,
+ahora dice cuál sí: el techo por encima del cual la cuota sale más que venir suelto.
+
+Al alumno se le sigue mostrando el ahorro completo, que es lo que lo empuja a comprometerse.
+Son dos textos distintos porque son dos decisiones distintas.
+
 Se agregó `src/comun/precios.ts` con la constante y las cuentas, y se corrigieron los tres
 lugares donde estaba el 4: la ayuda del precio mensual en el alta de grupo, la comparación
 que ve el alumno en "Cómo pago", y el aviso de los meses de cinco clases —que ahora dice

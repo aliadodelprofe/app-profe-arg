@@ -64,6 +64,8 @@ esperar('una cuota que no conviene se marca como tal',
   compararFormas(5000, 25000)?.conviene, false);
 esperar('sin uno de los dos precios no hay comparación',
   compararFormas(5000, null), null);
+esperar('el techo: la cuota a la que el descuento es cero',
+  Math.round(compararFormas(5000, 18000)!.cuotaSinDescuento), 21667);
 
 console.log(fallos === 0 ? '\nTodo bien.\n' : `\n${fallos} fallaron.\n`);
 process.exit(fallos === 0 ? 0 : 1);
