@@ -11,8 +11,7 @@ import { cambiarFormaDePago } from '../datos';
 import type { MiArreglo } from '../datos';
 import { fecha, plata, hoyISO } from '../formato';
 import { Aviso, Tarjeta, Boton, Confirmacion } from '../../comun/ui';
-
-const CLASES_POR_MES = 4;
+import { compararFormas } from '../../comun/precios';
 
 export default function ComoPago({
   arreglos,
@@ -77,9 +76,10 @@ function Grupo({
   const nombre = (m: string) => (m === 'per_session' ? 'por clase' : 'por mes');
   const precioDe = (m: string) => (m === 'per_session' ? porClase : porMes);
 
-  // La cuenta que decide: cuánto sale venir suelto todo un mes contra la cuota.
-  const sueltas = porClase !== null ? porClase * CLASES_POR_MES : null;
-  const ahorro = sueltas !== null && porMes !== null ? sueltas - porMes : null;
+  // La cuenta que decide. Se mide por año y no por mes a propósito: un mes no
+  // tiene cuatro clases, tiene 4,33, y comparar contra cuatro le miente al
+  // alumno un descuento más chico del que realmente le están dando.
+  const comparacion = compararFormas(porClase, porMes);
 
   // El día 1 del mes que viene, que es lo que el cartel le promete. La
   // función en la base calcula el suyo por las suyas; si algún día dejan de
@@ -127,17 +127,22 @@ function Grupo({
         </p>
       )}
 
-      {/* Los dos precios, siempre. Es la información que le permite elegir. */}
-      {ahorro !== null && ahorro > 0 && modoQueViene === 'per_session' && (
+      {/* Los dos precios, siempre. Es la información que le permite elegir.
+          Se muestra cuánto sale CADA CLASE con la cuota: es el único número que
+          se puede comparar con el precio por clase sin tener que pensar. */}
+      {comparacion?.conviene && modoQueViene === 'per_session' && (
         <p className="mt-2 text-sm text-brand-taupe">
-          Viniendo suelto, {CLASES_POR_MES} clases en el mes son {plata(sueltas)}. La cuota
-          mensual sale {plata(porMes)}: <span className="text-brand-sand">te ahorrás {plata(ahorro)}</span>.
+          Con la cuota cada clase te sale{' '}
+          <span className="text-brand-sand">{plata(comparacion.porClaseConCuota)}</span> en vez
+          de {plata(porClase)}. En el año son {plata(comparacion.anualConCuota)} en vez de{' '}
+          {plata(comparacion.anualSuelto)}:{' '}
+          <span className="text-brand-sand">te ahorrás {plata(comparacion.ahorroAnual)}</span>.
         </p>
       )}
-      {ahorro !== null && ahorro > 0 && modoQueViene === 'per_period' && (
+      {comparacion?.conviene && modoQueViene === 'per_period' && (
         <p className="mt-2 text-sm text-brand-taupe">
-          Pagando suelto serían {plata(porClase)} por clase, {plata(sueltas)} en un mes de{' '}
-          {CLASES_POR_MES} clases.
+          Cada clase te sale {plata(comparacion.porClaseConCuota)}. Viniendo suelto serían{' '}
+          {plata(porClase)}.
         </p>
       )}
 

@@ -12,6 +12,7 @@ import {
   sumarDias, diaSemana, mesDe, fechasSemanales,
   mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente,
 } from './fechas';
+import { compararFormas, porClaseDentroDeLaCuota } from './precios';
 
 let fallos = 0;
 
@@ -50,6 +51,19 @@ esperar('febrero de un año no bisiesto', finDelMes('2027-02'), '2027-02-28');
 esperar('febrero de un año bisiesto', finDelMes('2028-02'), '2028-02-29');
 esperar('el mes siguiente', mesSiguiente('2026-09'), '2026-10');
 esperar('el mes siguiente cruzando el año', mesSiguiente('2026-12'), '2027-01');
+
+console.log('\nLa cuenta de por clase contra por mes');
+// Los números de prueba: $5.000 la clase, $18.000 la cuota.
+esperar('cada clase dentro de la cuota, sobre 52 al año',
+  Math.round(porClaseDentroDeLaCuota(18000)), 4154);
+esperar('el ahorro anual real, no el de un mes de cuatro',
+  compararFormas(5000, 18000)?.ahorroAnual, 44000);
+esperar('y en porcentaje es 17, no 10',
+  compararFormas(5000, 18000)?.porcentaje, 17);
+esperar('una cuota que no conviene se marca como tal',
+  compararFormas(5000, 25000)?.conviene, false);
+esperar('sin uno de los dos precios no hay comparación',
+  compararFormas(5000, null), null);
 
 console.log(fallos === 0 ? '\nTodo bien.\n' : `\n${fallos} fallaron.\n`);
 process.exit(fallos === 0 ? 0 : 1);

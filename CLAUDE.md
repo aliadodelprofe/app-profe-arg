@@ -67,6 +67,11 @@ les haya negociado distinto.
 **La cuota mensual vence al EMPEZAR el mes, no al terminarlo.** Si venciera al final, el
 alumno cursa las cuatro clases y recién ahí se ve que no pagó. Con vencimiento el día 1,
 el que no pagó aparece antes de la primera clase.
+
+**Un mes semanal tiene 4,33 clases, no 4.** Son 52 clases al año repartidas en 12 meses.
+La cuota es **fija**: el profesor se come el mes de cinco y gana el de cuatro. Por eso no
+hay un segundo precio para los meses de cinco — el precio ya se piensa sobre el promedio.
+La constante y las cuentas viven en `src/comun/precios.ts`; nunca comparar contra 4.
 - **Cycle (formación):** cuota mensual mientras dure.
 - **Cycle (workshop):** pago único por asistir.
 - **Private:** por clase, o descuento pagando 4 clases del mes por adelantado.

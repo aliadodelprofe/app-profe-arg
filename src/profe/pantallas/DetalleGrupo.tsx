@@ -72,8 +72,9 @@ export default function DetalleGrupo({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clases.datos, revisado]);
 
-  // Cuántas clases tiene este mes. Con cobro mensual, cinco no es lo mismo
-  // que cuatro, y conviene saberlo al principio del mes.
+  // Cuántas clases tiene este mes. No cambia lo que se cobra —la cuota es fija
+  // y el precio se piensa sobre 4,33 clases por mes, ver comun/precios.ts—
+  // pero el profesor igual quiere saber al principio del mes si le tocan cinco.
   const mesActual = hoyISO().slice(0, 7);
   const cuantasEsteMes =
     clases.datos?.filter((c) => c.status === 'scheduled' && mesDe(c.date) === mesActual).length ?? 0;
@@ -130,8 +131,9 @@ export default function DetalleGrupo({
       {cuantasEsteMes >= 5 && (
         <p className="mb-4 rounded-lg border border-white/15 px-3 py-2 text-sm text-brand-taupe">
           Este mes tenés <span className="text-brand-cream">{cuantasEsteMes} clases</span>, no
-          cuatro. Si cobrás por mes, decidí si las cobrás todas o cancelás una — el cobro no se
-          ajusta solo.
+          cuatro. A los que pagan por mes no les cobrás de más: la cuota es fija y ya está
+          pensada sobre el promedio real del año, que es 4,33 clases por mes. A los que pagan
+          por clase sí les va a aparecer un cargo más.
         </p>
       )}
 

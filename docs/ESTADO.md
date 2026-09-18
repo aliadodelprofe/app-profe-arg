@@ -107,7 +107,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `confirmar_pago.sql` → **6 de 6 PASA**
 - `cargos_automaticos.sql` → **7 de 7 PASA**
 - `forma_de_pago.sql` → **6 de 6 PASA**
-- `npm run prueba:fechas` → **18 de 18 PASA** (antes de la 0018; ahora son menos, las de clases se mudaron a SQL)
+- `npm run prueba:fechas` → **15 de 15 PASA** (eran 18; las de clases se mudaron a `clases_automaticas.sql` en la 0018)
 - `control_general.sql` → **10 tablas en `ok`**
 
 ---
@@ -479,6 +479,40 @@ todos los profesores. Una misma función, dos alcances, según quién la llama.
 id del grupo. Sin eso, la tarea programada y el profesor abriendo la app en el
 mismo segundo consultarían los dos antes de que el otro inserte, y crearían la
 misma clase dos veces.
+
+### 13. Un mes no tiene cuatro clases (18/9/2026)
+
+Apareció preguntando qué hacer con los meses de cinco clases: si el alumno paga por mes y
+el mes trae cinco, ¿se le cobra un extra? ¿Hace falta un segundo precio mensual?
+
+**La respuesta fue que el problema no empezaba ahí.** Un grupo semanal da 52 clases al
+año, o sea 4,33 por mes. La app comparaba contra 4 clases sueltas, y esa comparación
+mentía para los dos lados. Con los precios de prueba —$5.000 la clase, $18.000 la cuota—:
+
+| | Lo que decía la app | La realidad |
+|---|---|---|
+| Referencia | 4 clases = $20.000 | 52 clases al año = $260.000 |
+| Con cuota | $18.000 | 12 cuotas = $216.000 |
+| Cada clase le sale | $4.500 | **$4.154** |
+| Descuento | 10% | **17%** |
+
+El profesor fijaba el precio creyendo que resignaba un 10% y resignaba 17%: en el año
+regalaba cuatro clases por alumno mensual sin haberlo decidido.
+
+**La decisión: la cuota se queda fija, y el precio se piensa sobre 4,33.** El mes de cinco
+ya está pago dentro del promedio. Se descartaron las otras dos salidas:
+
+- **Un segundo precio para meses de cinco** no cubre los meses de tres (feriado, grupo que
+  arranca el 10) y obliga a mantener dos números coherentes a mano.
+- **Una cuota que escala con las clases del mes** es más justa clase por clase, pero deja
+  de ser una cuota —el monto cambia todos los meses— y abre un problema que con cuota fija
+  no existe: qué pasa cuando se cancela una clase después de generado el cargo, sobre todo
+  si el alumno ya pagó.
+
+Se agregó `src/comun/precios.ts` con la constante y las cuentas, y se corrigieron los tres
+lugares donde estaba el 4: la ayuda del precio mensual en el alta de grupo, la comparación
+que ve el alumno en "Cómo pago", y el aviso de los meses de cinco clases —que ahora dice
+lo que corresponde: que a los mensuales no se les cobra de más.
 
 ---
 

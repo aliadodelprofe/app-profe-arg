@@ -10,6 +10,7 @@ import type { FormEvent } from 'react';
 import { crearGrupo, editarGrupo, NOMBRE_DIA, plata } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../../comun/ui';
+import { compararFormas, CLASES_POR_ANIO } from '../../comun/precios';
 
 export default function FormularioGrupo({
   espacio,
@@ -76,22 +77,21 @@ export default function FormularioGrupo({
   // La comparación que el profesor no hace de cabeza: cuánto le sale al alumno
   // venir suelto todo un mes contra la cuota. Es la decisión comercial que
   // define si alguien se compromete por mes o viene cuando tiene ganas.
-  const unaClase = Number(porClase) || 0;
-  const unMes = Number(porMes) || 0;
-  const cuatroSueltas = unaClase * 4;
-  const ahorro = cuatroSueltas - unMes;
-  const porcentaje = cuatroSueltas > 0 ? Math.round((ahorro / cuatroSueltas) * 100) : 0;
+  const comparacion = compararFormas(Number(porClase) || null, Number(porMes) || null);
 
   const ayudaDelMes = (() => {
-    if (!unaClase || !unMes) {
+    if (!comparacion) {
       return 'Con el descuento ya aplicado. Es el precio final, no un porcentaje.';
     }
-    if (ahorro <= 0) {
-      return `Cuatro clases sueltas le saldrían ${plata(cuatroSueltas)}. Así, pagar por mes `
-        + 'no le conviene a nadie y nadie lo va a elegir.';
+    if (!comparacion.conviene) {
+      return `Un año son ${CLASES_POR_ANIO} clases: sueltas le saldrían `
+        + `${plata(comparacion.anualSuelto)} y con tu cuota paga `
+        + `${plata(comparacion.anualConCuota)}. Así, pagar por mes no le conviene a nadie `
+        + 'y nadie lo va a elegir.';
     }
-    return `Cuatro clases sueltas le saldrían ${plata(cuatroSueltas)}. Con tu cuota ahorra `
-      + `${plata(ahorro)}, un ${porcentaje}%.`;
+    return `Con tu cuota cada clase le sale ${plata(comparacion.porClaseConCuota)} en vez de `
+      + `${plata(Number(porClase))}, un ${comparacion.porcentaje}% menos. En el año: cobrás `
+      + `${plata(comparacion.anualConCuota)} en vez de ${plata(comparacion.anualSuelto)}.`;
   })();
 
   return (
