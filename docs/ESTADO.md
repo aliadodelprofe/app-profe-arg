@@ -68,6 +68,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0015_invitaciones.sql` | El alumno acepta antes de quedar anotado. Reemplaza `reclamar_ficha()` por invitaciones que se aceptan o se rechazan | Aplicada |
 | `0016_cuota_del_mes_en_curso.sql` | La cuota es del mes en curso, no del que viene. Y la invitación dice cómo le van a cobrar | Aplicada |
 | `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | Aplicada |
+| `0018_las_clases_se_generan_en_la_base.sql` | `asegurar_clases()`: la regla de qué clases faltan se muda de TypeScript a la base, para que una tarea programada pueda correrla | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -95,6 +96,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/clases_automaticas.sql` | `asegurar_clases()`: que cree todos los días fijos hasta fin del mes que viene, que no duplique, que no vaya hacia atrás, que no resucite una clase cancelada, que respete el fin del grupo y que nadie genere clases en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
@@ -105,7 +107,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `confirmar_pago.sql` → **6 de 6 PASA**
 - `cargos_automaticos.sql` → **7 de 7 PASA**
 - `forma_de_pago.sql` → **6 de 6 PASA**
-- `npm run prueba:fechas` → **18 de 18 PASA**
+- `npm run prueba:fechas` → **18 de 18 PASA** (antes de la 0018; ahora son menos, las de clases se mudaron a SQL)
 - `control_general.sql` → **10 tablas en `ok`**
 
 ---
@@ -125,7 +127,7 @@ esto necesita el SQL Editor.
 |---|---|---|
 | Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
-| Tarea programada (`pg_cron`) | Mediano | Resuelve dos de una: generar clases sin depender de que el profe abra la app, y borrar comprobantes a los 6 meses |
+| Tarea programada (`pg_cron`) | Mediano | **En curso.** 0018 mudó la regla de las clases a la base. Falta la tarea en sí (0019) y el borrado de comprobantes (0020) |
 | Saldo a favor | Mediano | Toca el modelo. Destraba el pago adelantado, el pack de 4 clases y el sobrante que hoy se informa pero no se guarda |
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
@@ -447,6 +449,36 @@ alguien cómo le cobran. El cartel no dice "¿estás seguro?" — dice el precio
 qué fecha, y que lo que queda de este mes no cambia. Un cartel que no informa nada solo
 entrena a la gente a apretar "Sí" sin leer. El foco arranca en **Cancelar**: si alguien lo
 abrió sin querer, Enter y Escape lo sacan.
+
+### 12. Una regla que corre desde dos lados vive en un solo lado (18/9/2026)
+
+La regla de **qué clases faltan crear** vivía en `src/comun/fechas.ts` y la
+ejecutaba el navegador del profesor al abrir el grupo. Funcionaba, pero tenía un
+techo: si el profe no abre la app, las clases del mes que viene no existen, y el
+alumno abre su portal y no ve nada.
+
+Para que una tarea programada pueda generarlas sola, la regla tiene que poder
+correr sin navegador. Ahí aparecía la tentación de copiarla a SQL y dejar las
+dos. **Se descartó:** el día que cambiemos una y nos olvidemos de la otra, la app
+y la tarea van a crear clases distintas sin que nadie se entere. Un bug así no
+tira un error, solo produce datos raros meses después.
+
+Se mudó entera a la base (0018, `asegurar_clases()`) y la app pasó a llamarla.
+Salió de `fechas.ts`: `clasesFaltantes`, `ocurrencias`, `finDelMesSiguiente` y el
+tipo `GrupoConHorario`. Sus pruebas se fueron con ella, de
+`npm run prueba:fechas` a `supabase/tests/clases_automaticas.sql`.
+
+**Detalle de seguridad que vale la pena entender:** `asegurar_clases()` NO es
+`security definer`. Corre con los permisos de quien la llama. Cuando la llama el
+profesor, RLS se aplica y solo ve sus grupos — la función no verifica nada a
+mano, el candado ya estaba puesto. Cuando la llame la tarea programada, quien
+llama es el rol `postgres`, que no está sujeto a RLS y ve todos los grupos de
+todos los profesores. Una misma función, dos alcances, según quién la llama.
+
+**Detalle de concurrencia:** la función toma un `pg_advisory_xact_lock` sobre el
+id del grupo. Sin eso, la tarea programada y el profesor abriendo la app en el
+mismo segundo consultarían los dos antes de que el otro inserte, y crearían la
+misma clase dos veces.
 
 ---
 

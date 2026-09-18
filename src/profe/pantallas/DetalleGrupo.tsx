@@ -59,7 +59,7 @@ export default function DetalleGrupo({
     // Primero las clases y después los cargos, en ese orden: el cargo del que
     // paga por clase apunta a la próxima clase, así que la clase tiene que
     // existir antes.
-    asegurarClases(espacio.id, grupo, clases.datos.map((c) => c.date), hoyISO())
+    asegurarClases(grupo.id)
       .then(async (nuevas) => {
         if (nuevas.length > 0) {
           setCreadas(nuevas);

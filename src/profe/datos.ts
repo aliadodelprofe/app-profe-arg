@@ -12,7 +12,7 @@
 // ============================================================================
 import { supabase } from '../lib/supabase';
 import {
-  clasesFaltantes, NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente,
+  NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente,
 } from '../comun/fechas';
 
 // Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
@@ -602,29 +602,20 @@ export async function crearClases(
 // EL HORARIO FIJO EN ACCIÓN
 //
 // Un grupo con horario fijo no necesita que nadie le cargue las clases todos
-// los meses: se mantienen creadas hasta fin del mes que viene. Al abrir el
-// grupo, la app completa lo que falte. Las cuentas viven en fechas.ts.
+// los meses: se mantienen creadas hasta fin del mes que viene.
+//
+// La regla de qué falta crear NO está acá: vive en la base, en
+// asegurar_clases() (migración 0018). La app solo la pide. El motivo es que la
+// misma regla la corre una tarea programada todos los meses, sin navegador de
+// por medio, y una regla que se ejecuta desde dos lados tiene que estar escrita
+// en uno solo.
+//
+// Devuelve las fechas que creó, para poder decirle al profe qué apareció.
 // ---------------------------------------------------------------------------
-// Crea lo que falte y devuelve las fechas creadas.
-export async function asegurarClases(
-  espacioId: string,
-  grupo: Grupo,
-  yaCargadas: string[],
-  hoy: string,
-): Promise<string[]> {
-  const faltantes = clasesFaltantes(grupo, yaCargadas, hoy);
-  if (faltantes.length === 0) return [];
-  await crearClases(
-    espacioId,
-    faltantes.map((f) => ({
-      group_id: grupo.id,
-      date: f,
-      start_time: grupo.default_start_time,
-      duration_min: grupo.default_duration_min,
-      title: null,
-    })),
-  );
-  return faltantes;
+export async function asegurarClases(grupoId: string): Promise<string[]> {
+  const { data, error } = await supabase.rpc('asegurar_clases', { p_grupo_id: grupoId });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as string[];
 }
 
 // "martes 20:00" — el horario fijo del grupo, listo para mostrar.

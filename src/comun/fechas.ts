@@ -42,60 +42,22 @@ export function hoyISO(): string {
   return `${f.getFullYear()}-${mm}-${dd}`;
 }
 
-// El último día del mes que viene: hasta ahí se mantienen creadas las clases.
-export function finDelMesSiguiente(iso: string): string {
-  const [a, m] = iso.split('-').map(Number);
-  return new Date(Date.UTC(a, m + 1, 0)).toISOString().slice(0, 10);
-}
-
-// Todas las veces que cae ese día de la semana entre dos fechas, inclusive.
-export function ocurrencias(weekday: number, desde: string, hasta: string): string[] {
-  const salto = (weekday - aFecha(desde).getUTCDay() + 7) % 7;
-  const salida: string[] = [];
-  let f = sumarDias(desde, salto);
-  while (f <= hasta) {
-    salida.push(f);
-    f = sumarDias(f, 7);
-  }
-  return salida;
-}
-
 export function fechasSemanales(desde: string, cuantas: number): string[] {
   return Array.from({ length: cuantas }, (_, i) => sumarDias(desde, i * 7));
 }
 
 // ----------------------------------------------------------------------------
-// Qué clases faltan crear para un grupo con horario fijo.
+// Acá vivían finDelMesSiguiente, ocurrencias y clasesFaltantes: la regla de qué
+// clases faltan crear en un grupo con horario fijo.
 //
-//   - Nunca hacia atrás: solo de hoy en adelante.
-//   - Nunca una fecha que ya tiene clase, AUNQUE ESTÉ CANCELADA. Si el profe
-//     canceló el 25 por feriado, esa fila existe y se saltea. Sin esto,
-//     cancelar sería inútil: la clase volvería sola.
-//   - Nunca fuera de los límites del grupo, ni antes de su inicio ni después
-//     de su fin.
-//   - Nada si el grupo no tiene día fijo o no está activo.
+// Se mudaron a la base en la migración 0018, a la función asegurar_clases().
+// El motivo: esa regla ahora también la corre una tarea programada, sin
+// navegador, y una regla que se ejecuta desde dos lados tiene que vivir en un
+// solo lado. Si estuviera en los dos, el día que cambiemos una y nos olvidemos
+// de la otra, la app y la tarea van a crear clases distintas sin avisar.
+//
+// Se prueba en supabase/tests/clases_automaticas.sql.
 // ----------------------------------------------------------------------------
-export type GrupoConHorario = {
-  weekday: number | null;
-  status: string;
-  start_date: string | null;
-  end_date: string | null;
-};
-
-export function clasesFaltantes(
-  grupo: GrupoConHorario,
-  yaCargadas: string[],
-  hoy: string,
-): string[] {
-  if (grupo.weekday === null || grupo.status !== 'active') return [];
-
-  const desde = grupo.start_date && grupo.start_date > hoy ? grupo.start_date : hoy;
-  let hasta = finDelMesSiguiente(hoy);
-  if (grupo.end_date && grupo.end_date < hasta) hasta = grupo.end_date;
-  if (desde > hasta) return [];
-
-  return ocurrencias(grupo.weekday, desde, hasta).filter((f) => !yaCargadas.includes(f));
-}
 
 export const NOMBRE_MES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',

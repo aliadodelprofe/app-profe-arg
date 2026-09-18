@@ -1,12 +1,16 @@
 // ============================================================================
-// Prueba de las cuentas de fechas.
+// Prueba de las cuentas de fechas que quedaron en TypeScript.
 //
 // Correr con:  npm run prueba:fechas
 //
 // No necesita base de datos ni navegador: fechas.ts no depende de nada.
+//
+// Ojo: la regla de qué clases faltan crear ya NO se prueba acá. Se mudó a la
+// base en la migración 0018 y su prueba es supabase/tests/clases_automaticas.sql.
 // ============================================================================
 import {
-  sumarDias, diaSemana, finDelMesSiguiente, ocurrencias, clasesFaltantes,
+  sumarDias, diaSemana, mesDe, fechasSemanales,
+  mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente,
 } from './fechas';
 
 let fallos = 0;
@@ -22,70 +26,30 @@ function esperar(nombre: string, obtenido: unknown, esperado: unknown) {
   }
 }
 
-const MARTES = 2;
-const grupo = {
-  weekday: MARTES as number | null,
-  status: 'active',
-  start_date: null as string | null,
-  end_date: null as string | null,
-};
-
 console.log('\nCuentas básicas');
 esperar('1 de septiembre de 2026 es martes', diaSemana('2026-09-01'), 'martes');
 esperar('sumar días cruzando el fin de mes', sumarDias('2026-09-29', 7), '2026-10-06');
 esperar('sumar días cruzando el año', sumarDias('2026-12-29', 7), '2027-01-05');
 esperar('sumar días sobre un cambio de horario', sumarDias('2026-03-28', 7), '2026-04-04');
+esperar('el mes al que pertenece una fecha', mesDe('2026-09-30'), '2026-09');
 
-console.log('\nHasta cuándo se mantienen creadas las clases');
-esperar('desde septiembre, hasta fin de octubre', finDelMesSiguiente('2026-09-08'), '2026-10-31');
-esperar('desde diciembre, hasta fin de enero del año que viene', finDelMesSiguiente('2026-12-15'), '2027-01-31');
-esperar('febrero de un año no bisiesto', finDelMesSiguiente('2027-01-10'), '2027-02-28');
-
-console.log('\nTodos los martes entre dos fechas');
-esperar('septiembre 2026 tiene cinco martes',
-  ocurrencias(MARTES, '2026-09-01', '2026-09-30'),
-  ['2026-09-01', '2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29']);
-esperar('si la fecha de inicio ya es martes, cuenta',
-  ocurrencias(MARTES, '2026-09-08', '2026-09-15'),
-  ['2026-09-08', '2026-09-15']);
-
-console.log('\nQué clases faltan crear');
-esperar('un grupo nuevo, los martes, desde el 8 de septiembre',
-  clasesFaltantes(grupo, [], '2026-09-08'),
-  ['2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29',
-   '2026-10-06', '2026-10-13', '2026-10-20', '2026-10-27']);
-
-esperar('una clase CANCELADA no se vuelve a crear',
-  clasesFaltantes(grupo, ['2026-09-15'], '2026-09-08').includes('2026-09-15'),
-  false);
-
-esperar('las que ya existen no se duplican',
-  clasesFaltantes(grupo, ['2026-09-08', '2026-09-15', '2026-09-22'], '2026-09-08').length,
-  5);
-
-esperar('nunca hacia atrás',
-  clasesFaltantes(grupo, [], '2026-09-08').some((f) => f < '2026-09-08'),
-  false);
-
-esperar('respeta la fecha de fin del grupo',
-  clasesFaltantes({ ...grupo, end_date: '2026-09-30' }, [], '2026-09-08'),
+console.log('\nClases sueltas cargadas a mano, una por semana');
+esperar('cuatro martes seguidos',
+  fechasSemanales('2026-09-08', 4),
   ['2026-09-08', '2026-09-15', '2026-09-22', '2026-09-29']);
+esperar('cruzando el fin de mes',
+  fechasSemanales('2026-09-29', 2),
+  ['2026-09-29', '2026-10-06']);
 
-esperar('no empieza antes de que empiece el grupo',
-  clasesFaltantes({ ...grupo, start_date: '2026-10-01' }, [], '2026-09-08'),
-  ['2026-10-06', '2026-10-13', '2026-10-20', '2026-10-27']);
-
-esperar('un grupo que ya terminó no genera nada',
-  clasesFaltantes({ ...grupo, end_date: '2026-08-31' }, [], '2026-09-08'),
-  []);
-
-esperar('sin día fijo no se genera nada',
-  clasesFaltantes({ ...grupo, weekday: null }, [], '2026-09-08'),
-  []);
-
-esperar('un grupo que no está activo no genera nada',
-  clasesFaltantes({ ...grupo, status: 'archived' }, [], '2026-09-08'),
-  []);
+console.log('\nEl mes de una cuota');
+esperar('en palabras', mesEnPalabras('2026-09'), 'septiembre 2026');
+esperar('la cuota vence el 1, no al terminar el mes', inicioDelMes('2026-09'), '2026-09-01');
+esperar('último día de un mes de 30', finDelMes('2026-09'), '2026-09-30');
+esperar('último día de diciembre', finDelMes('2026-12'), '2026-12-31');
+esperar('febrero de un año no bisiesto', finDelMes('2027-02'), '2027-02-28');
+esperar('febrero de un año bisiesto', finDelMes('2028-02'), '2028-02-29');
+esperar('el mes siguiente', mesSiguiente('2026-09'), '2026-10');
+esperar('el mes siguiente cruzando el año', mesSiguiente('2026-12'), '2027-01');
 
 console.log(fallos === 0 ? '\nTodo bien.\n' : `\n${fallos} fallaron.\n`);
 process.exit(fallos === 0 ? 0 : 1);
