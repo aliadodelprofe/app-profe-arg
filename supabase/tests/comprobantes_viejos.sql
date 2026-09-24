@@ -45,15 +45,29 @@ declare
   v_nuevo    record;
 begin
   -- ---------------------------------------------------------------------- 1
-  -- Los dos secretos están cargados. Se verifica por NOMBRE: el valor no se
-  -- lee ni se muestra nunca en una prueba.
+  -- Los dos secretos están cargados Y TIENEN CARA DE SER REALES.
+  --
+  -- La primera versión de esta fila miraba solo los nombres, y pasaba en verde
+  -- con los textos de molde guardados adentro ('https://TU-PROYECTO...'). Una
+  -- prueba que confirma que una caja existe sin fijarse si tiene algo adentro
+  -- no prueba nada: el problema habría aparecido meses después, cuando un
+  -- borrado real fallara sin que nadie lo estuviera mirando.
+  --
+  -- Se verifica la FORMA, nunca el contenido: que la URL sea de un proyecto de
+  -- Supabase y que la clave tenga el largo de una credencial de verdad. Alcanza
+  -- para descartar un molde y no muestra nada que no deba verse.
   select count(*) into v_secretos
-    from vault.secrets
-   where name in ('proyecto_url', 'service_role_key');
+    from vault.decrypted_secrets
+   where (name = 'proyecto_url'
+          and decrypted_secret like 'https://%.supabase.co')
+      or (name = 'service_role_key'
+          and length(decrypted_secret) > 100);
 
   perform set_config('prueba.v1',
     case when v_secretos = 2 then 'PASA'
-         else 'FALLA - hay ' || v_secretos || ' de 2 secretos cargados en Vault' end, false);
+         else 'FALLA - ' || v_secretos || ' de 2 secretos cargados y con forma valida. '
+              || 'Revisar con: select name, length(decrypted_secret), '
+              || 'left(decrypted_secret, 6) from vault.decrypted_secrets;' end, false);
 
   -- ---------------------------------------------------------------------- 2
   select count(*) into v_tarea
@@ -131,7 +145,7 @@ end $$;
 reset role;
 
 select * from (values
-  ('Los dos secretos estan cargados en Vault',        current_setting('prueba.v1', true)),
+  ('Los secretos estan cargados y no son un molde',   current_setting('prueba.v1', true)),
   ('La tarea quedo programada',                       current_setting('prueba.v2', true)),
   ('Un comprobante de hace 7 meses se cierra',        current_setting('prueba.v3', true)),
   ('Uno de hace 2 meses NO se toca',                  current_setting('prueba.v4', true)),

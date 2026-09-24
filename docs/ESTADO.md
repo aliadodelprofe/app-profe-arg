@@ -70,7 +70,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | Aplicada |
 | `0018_las_clases_se_generan_en_la_base.sql` | `asegurar_clases()`: la regla de qué clases faltan se muda de TypeScript a la base, para que una tarea programada pueda correrla | Aplicada |
 | `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | Aplicada |
-| `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | **Sin aplicar** |
+| `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -113,6 +113,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `forma_de_pago.sql` → **6 de 6 PASA**
 - `npm run prueba:fechas` → **15 de 15 PASA** (eran 18; las de clases se mudaron a `clases_automaticas.sql` en la 0018)
 - `mantenimiento.sql` → **6 de 6 PASA**
+- `comprobantes_viejos.sql` → **6 de 6 PASA**
 - `control_general.sql` → **11 tablas en `ok`** (`mantenimiento_log` con 0 reglas es correcto: cero políticas es "nadie")
 
 ---
@@ -691,6 +692,28 @@ Lo que se hizo: sin espacios, la app se fija si la persona es alumno de alguien
 del alumno está en construcción, con un enlace discreto por si además da clases. Si no
 es nada, es un profesor nuevo registrándose y se le ofrece crear su espacio de una.
 **Decide qué se ofrece, no qué se permite.**
+
+### Una prueba que confirmaba que la caja existe, sin mirar adentro (24/9/2026)
+
+Al cargar los secretos de Vault para la 0020 quedó guardado el texto de molde
+—`https://TU-PROYECTO.supabase.co`— en vez del valor real. Los dos secretos, porque se
+crearon juntos.
+
+Lo grave no fue el error de carga, que se arregla con dos `update_secret`. Lo grave es que
+**la prueba pasaba en verde igual**: la fila decía "los dos secretos están cargados" y solo
+miraba `vault.secrets.name`. Confirmaba que la caja existía sin fijarse si tenía algo
+adentro.
+
+Si no se hubiera visto de casualidad, el síntoma habría aparecido meses más tarde: el
+borrado nocturno fallando en silencio, sin nadie mirando, y los comprobantes acumulándose
+igual que antes.
+
+La fila ahora verifica la **forma** de cada secreto —que la URL sea de un proyecto de
+Supabase, que la clave tenga más de 100 caracteres— sin mostrar el contenido. Alcanza para
+descartar un molde.
+
+Es pariente del error de las invitaciones: **una prueba que no puede fallar por el motivo
+que dice estar probando es peor que no tener prueba**, porque da tranquilidad falsa.
 
 ---
 
