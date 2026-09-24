@@ -133,7 +133,6 @@ esto necesita el SQL Editor.
 |---|---|---|
 | Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
-| Verificar a mano el borrado real de un comprobante | Chico | La prueba no puede: pg_net no manda los pedidos hasta que la transacción se confirma. Instrucciones al pie de `comprobantes_viejos.sql` |
 | Saldo a favor | Mediano | Toca el modelo. Destraba el pago adelantado, el pack de 4 clases y el sobrante que hoy se informa pero no se guarda |
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
@@ -569,10 +568,12 @@ Si el pedido falló, el archivo sigue ahí y mañana se vuelve a pedir. Si funci
 el paso 1 lo da por cerrado. La confirmación sale del estado de la base, no de leer una
 respuesta HTTP. Es el mismo patrón declarativo de `asegurar_cargos()`.
 
-**Queda una verificación a mano pendiente:** la prueba automática no puede comprobar el
-borrado real, porque pg_net no manda los pedidos hasta que la transacción se confirma y la
-prueba termina en `rollback`. Las instrucciones para hacerlo una vez están al pie de
-`supabase/tests/comprobantes_viejos.sql`.
+**Verificado de punta a punta el 24/9/2026.** La prueba automática no puede comprobar el
+borrado real —pg_net no manda los pedidos hasta que la transacción se confirma, y la prueba
+termina en `rollback`—, así que se hizo a mano: comprobante subido y confirmado, envejecido
+a `now() - 7 months`, primera corrida `cerrados 0 / pedidos 1`, respuesta HTTP 200, segunda
+corrida `cerrados 1 / pedidos 0`, y el archivo efectivamente desaparecido del depósito. Las
+instrucciones para repetirlo están al pie de `supabase/tests/comprobantes_viejos.sql`.
 
 ---
 
