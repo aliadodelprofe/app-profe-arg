@@ -1,17 +1,21 @@
 // ============================================================================
-// Pagos por confirmar
+// Pagos — lo que falta confirmar y lo que ya entró
 //
 // Reemplaza al WhatsApp con la captura de pantalla. El alumno declaró una
 // transferencia; acá la das por buena con un toque y el estado de cuenta se
 // acomoda solo.
 //
+// Y abajo queda lo cobrado, que antes se perdía: un pago confirmado salía de
+// esta lista y no volvía a aparecer en ningún lado.
+//
 // El monto va escrito en el botón. Es plata: que diga "Confirmar $8.000" y no
 // solo "Confirmar" es lo que evita el toque distraído.
 // ============================================================================
 import { useState } from 'react';
-import { traerPagosPorConfirmar, confirmarPago, rechazarPago, fecha, plata } from '../datos';
+import { traerPagosPorConfirmar, traerCobros, confirmarPago, rechazarPago, fecha, plata } from '../datos';
 import type { Espacio, PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
 import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../../comun/ui';
+import Cobrado from './Cobrado';
 
 export default function Pagos({
   espacio,
@@ -21,6 +25,7 @@ export default function Pagos({
   alVolver: () => void;
 }) {
   const { datos, error } = useCarga(() => traerPagosPorConfirmar(espacio.id), [espacio.id]);
+  const cobros = useCarga(() => traerCobros(espacio.id), [espacio.id]);
 
   // Lo que ya se resolvió en esta pantalla, para sacarlo de la lista sin
   // tener que volver a preguntarle a la base.
@@ -34,6 +39,7 @@ export default function Pagos({
     try {
       const r: ResultadoConfirmacion = await confirmarPago(p.id);
       setResueltos((m) => ({ ...m, [p.id]: mensaje(r) }));
+      cobros.recargar();   // la plata que acaba de entrar tiene que aparecer abajo
     } catch (e) {
       setErrorAccion((e as Error).message);
     }
@@ -57,7 +63,7 @@ export default function Pagos({
   return (
     <Marco>
       <Encabezado
-        titulo="Pagos por confirmar"
+        titulo="Pagos"
         bajada={espacio.name}
         volver={{ texto: 'Mis grupos', alTocar: alVolver }}
       />
@@ -72,6 +78,10 @@ export default function Pagos({
           {texto}
         </p>
       ))}
+
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+        Para confirmar
+      </h2>
 
       {datos && pendientes.length === 0 && (
         <Vacio>No hay pagos esperando. Todo al día.</Vacio>
@@ -127,6 +137,12 @@ export default function Pagos({
           </li>
         ))}
       </ul>
+
+      {/* ------------------------------------------------------- lo cobrado */}
+      <div className="mt-8">
+        {cobros.error && <Aviso>{cobros.error}</Aviso>}
+        {cobros.datos && <Cobrado cobros={cobros.datos} />}
+      </div>
     </Marco>
   );
 }

@@ -46,6 +46,7 @@ export type MiPago = {
   status: 'declared' | 'confirmed' | 'rejected';
   declared_at: string;
   paid_on: string | null;
+  confirmed_at: string | null;
   note: string | null;
 };
 
@@ -145,7 +146,7 @@ export async function miSaldo(tenantId: string): Promise<number> {
 export async function misPagos(tenantId: string): Promise<MiPago[]> {
   const { data, error } = await supabase
     .from('payments')
-    .select('id, amount, status, declared_at, paid_on, note')
+    .select('id, amount, status, declared_at, paid_on, confirmed_at, note')
     .eq('tenant_id', tenantId)
     .order('declared_at', { ascending: false });
   if (error) throw new Error(error.message);
@@ -157,6 +158,7 @@ export async function misPagos(tenantId: string): Promise<MiPago[]> {
       status: r.status as MiPago['status'],
       declared_at: String(r.declared_at),
       paid_on: (r.paid_on as string) ?? null,
+      confirmed_at: (r.confirmed_at as string) ?? null,
       note: (r.note as string) ?? null,
     };
   });

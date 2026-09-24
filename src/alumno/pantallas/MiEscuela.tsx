@@ -38,6 +38,11 @@ export default function MiEscuela({
   const proximas = clases.datos?.filter((c) => c.date >= hoy).reverse() ?? [];
   const pasadas = clases.datos?.filter((c) => c.date < hoy).slice(0, 8) ?? [];
   const declarados = pagos.datos?.filter((p) => p.status === 'declared') ?? [];
+  // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
+  // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
+  const confirmados = (pagos.datos?.filter((p) => p.status === 'confirmed') ?? [])
+    .map((p) => ({ ...p, cuando: p.paid_on ?? p.confirmed_at?.slice(0, 10) ?? p.declared_at.slice(0, 10) }))
+    .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
   return (
     <Marco>
@@ -200,6 +205,34 @@ export default function MiEscuela({
         />
       ) : (
         <BotonSecundario onClick={() => setDeclarando(true)}>Ya transferí</BotonSecundario>
+      )}
+
+      {/* ------------------------------------------------------- lo que pagué
+          Va al final y no arriba: el alumno abre la app para ver sus clases
+          y sus recaps. Lo que ya pagó es una consulta puntual, no algo con
+          lo que quiera que lo reciban. */}
+      {confirmados.length > 0 && (
+        <div className="mb-8 mt-6">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+            Lo que pagué
+          </h2>
+          <ul className="flex flex-col gap-2">
+            {confirmados.map((p) => (
+              <li key={p.id}>
+                <Tarjeta>
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-brand-cream">{plata(p.amount)}</p>
+                      <p className="text-sm text-brand-taupe">{fecha(p.cuando)}</p>
+                      {p.note && <p className="text-sm text-brand-taupe">{p.note}</p>}
+                    </div>
+                    <p className="shrink-0 text-sm text-brand-sand">confirmado</p>
+                  </div>
+                </Tarjeta>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </Marco>
   );

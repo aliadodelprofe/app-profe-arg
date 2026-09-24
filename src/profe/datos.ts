@@ -910,3 +910,65 @@ export async function editarFicha(alumnoId: string, datos: DatosFicha): Promise<
   const { error } = await supabase.from('students').update(datos).eq('id', alumnoId);
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// LO COBRADO
+//
+// Hasta acá, un pago confirmado desaparecía de la app: la pantalla de pagos
+// solo muestra los que falta confirmar. O sea que el sistema sabía perfectamente
+// cuánto entró y no había forma de preguntárselo. "¿Cuánto cobré en septiembre?"
+// y "¿este me pagó?" son las dos preguntas que la app existe para responder.
+//
+// LA FECHA QUE VALE es cuándo entró la plata (`paid_on`), no cuándo el profesor
+// dio el pago por bueno (`confirmed_at`). Si un alumno transfiere el 30 y el
+// profe lo confirma el 2, esa plata es del mes que se fue. Cuando no hay
+// `paid_on` —el alumno no lo completó— se usa la confirmación, que es lo más
+// cercano que tenemos.
+//
+// El filtro contra la base va igual por `confirmed_at`, que es el campo que
+// siempre existe: se traen los últimos meses y el mes efectivo se calcula acá.
+// ---------------------------------------------------------------------------
+export type Cobro = {
+  id: string;
+  student_id: string;
+  alumno: string;
+  amount: number;
+  fecha: string;                  // cuándo entró la plata, YYYY-MM-DD
+  note: string | null;
+  comprobante_borrado: boolean;   // se borró por antigüedad, no es que no lo mandó
+};
+
+// Trece meses: el año para mirar hacia atrás, más el mes en curso para comparar.
+const MESES_DE_HISTORIA = 13;
+
+export async function traerCobros(espacioId: string): Promise<Cobro[]> {
+  const desde = new Date();
+  desde.setUTCMonth(desde.getUTCMonth() - MESES_DE_HISTORIA);
+
+  const [respuesta, alumnos] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('id, student_id, amount, paid_on, confirmed_at, note, receipt_deleted_at')
+      .eq('tenant_id', espacioId)
+      .eq('status', 'confirmed')
+      .gte('confirmed_at', desde.toISOString())
+      .order('confirmed_at', { ascending: false }),
+    traerAlumnos(espacioId),
+  ]);
+  if (respuesta.error) throw new Error(respuesta.error.message);
+
+  const nombre = new Map(alumnos.map((a) => [a.id, a.full_name]));
+
+  return (respuesta.data ?? []).map((p) => {
+    const r = p as Record<string, unknown>;
+    return {
+      id: String(r.id),
+      student_id: String(r.student_id),
+      alumno: nombre.get(String(r.student_id)) ?? 'Alumno',
+      amount: num(r.amount),
+      fecha: (r.paid_on as string) ?? String(r.confirmed_at).slice(0, 10),
+      note: (r.note as string) ?? null,
+      comprobante_borrado: r.receipt_deleted_at != null,
+    };
+  });
+}

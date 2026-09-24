@@ -575,6 +575,33 @@ a `now() - 7 months`, primera corrida `cerrados 0 / pedidos 1`, respuesta HTTP 2
 corrida `cerrados 1 / pedidos 0`, y el archivo efectivamente desaparecido del depósito. Las
 instrucciones para repetirlo están al pie de `supabase/tests/comprobantes_viejos.sql`.
 
+### 15. Lo cobrado entraba al sistema y no volvía a salir (24/9/2026)
+
+Hasta la fecha, un pago confirmado **desaparecía de la app**. La pantalla de Pagos lista
+solo los que falta confirmar, y el portal del alumno ni siquiera pedía el dato. La base
+sabía perfectamente cuánto había entrado y no había forma de preguntárselo.
+
+Las dos preguntas que quedaban sin respuesta son justo las que la app existe para
+contestar: *"¿cuánto cobré este mes?"* del lado del profesor, y *"¿yo no había pagado
+marzo?"* del lado del alumno — que es, de lejos, la que más veces le van a hacer.
+
+Se resolvió sin migración: los permisos de lectura ya estaban puestos desde la 0005 y la
+0004. Era todo pantalla.
+
+**La fecha que vale es cuándo entró la plata (`paid_on`), no cuándo el profesor la dio por
+buena (`confirmed_at`).** Si un alumno transfiere el 30 y el profe confirma el 2, esa plata
+es del mes que se fue. Cuando `paid_on` está vacío —el alumno no lo completó— se usa la
+confirmación, que es lo más cercano que hay. El filtro contra la base va igual por
+`confirmed_at`, que es el campo que siempre existe; el mes efectivo se calcula en la app.
+
+El total del mes va primero y grande, y el detalle abajo: la pregunta que trae al profesor
+a esa pantalla es "¿cómo vengo?", y esa se responde con un número. La comparación con el
+mes anterior se muestra sin adjetivos — un mes flojo no necesita que la app se lo subraye.
+
+Y acá aparece por fin el uso de `receipt_deleted_at`, que la 0020 había dejado en la base
+sin nada que la mirara: en un cobro viejo, "el comprobante se borró por antigüedad" no es
+lo mismo que "no mandó comprobante".
+
 ---
 
 ## Errores encontrados y qué enseñaron
