@@ -69,7 +69,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0016_cuota_del_mes_en_curso.sql` | La cuota es del mes en curso, no del que viene. Y la invitación dice cómo le van a cobrar | Aplicada |
 | `0017_el_alumno_elige_como_paga.sql` | `cambiar_forma_de_pago()`: el alumno pasa de por clase a por mes (o al revés) desde el 1 del mes que viene | Aplicada |
 | `0018_las_clases_se_generan_en_la_base.sql` | `asegurar_clases()`: la regla de qué clases faltan se muda de TypeScript a la base, para que una tarea programada pueda correrla | Aplicada |
-| `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | **Sin aplicar** |
+| `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | Aplicada |
+| `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -97,6 +98,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/comprobantes_viejos.sql` | A quién toca y a quién no el borrado de comprobantes: que cierre el de 7 meses, que no toque el de 2, que no toque uno sin confirmar, que los secretos estén, y que ningún profesor pueda ejecutarlo. Correr como `postgres`. **No prueba el borrado real** — eso se verifica a mano, ver el pie del archivo. Repetible |
 | `supabase/tests/mantenimiento.sql` | La tarea programada: que esté agendada, que corra sin errores, que recorra los grupos de **todos** los profesores, que correrla de nuevo no genere nada, y que ningún profesor pueda ejecutarla ni leer su registro. Correr como `postgres`. Repetible |
 | `supabase/tests/clases_automaticas.sql` | `asegurar_clases()`: que cree todos los días fijos hasta fin del mes que viene, que no duplique, que no vaya hacia atrás, que no resucite una clase cancelada, que respete el fin del grupo y que nadie genere clases en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
@@ -110,7 +112,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `cargos_automaticos.sql` → **7 de 7 PASA**
 - `forma_de_pago.sql` → **6 de 6 PASA**
 - `npm run prueba:fechas` → **15 de 15 PASA** (eran 18; las de clases se mudaron a `clases_automaticas.sql` en la 0018)
-- `control_general.sql` → **10 tablas en `ok`**
+- `mantenimiento.sql` → **6 de 6 PASA**
+- `control_general.sql` → **11 tablas en `ok`** (`mantenimiento_log` con 0 reglas es correcto: cero políticas es "nadie")
 
 ---
 
@@ -129,7 +132,7 @@ esto necesita el SQL Editor.
 |---|---|---|
 | Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
-| Tarea programada (`pg_cron`) | Mediano | **En curso.** 0018 mudó la regla de las clases a la base. Falta la tarea en sí (0019) y el borrado de comprobantes (0020) |
+| Verificar a mano el borrado real de un comprobante | Chico | La prueba no puede: pg_net no manda los pedidos hasta que la transacción se confirma. Instrucciones al pie de `comprobantes_viejos.sql` |
 | Saldo a favor | Mediano | Toca el modelo. Destraba el pago adelantado, el pack de 4 clases y el sobrante que hoy se informa pero no se guarda |
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
@@ -526,6 +529,49 @@ Se agregó `src/comun/precios.ts` con la constante y las cuentas, y se corrigier
 lugares donde estaba el 4: la ayuda del precio mensual en el alta de grupo, la comparación
 que ve el alumno en "Cómo pago", y el aviso de los meses de cinco clases —que ahora dice
 lo que corresponde: que a los mensuales no se les cobra de más.
+
+### 14. La llave maestra vive en Vault, nunca en un archivo (24/9/2026)
+
+Borrar un comprobante del depósito **no se puede hacer con SQL**: en Supabase, borrar la
+fila de `storage.objects` deja el archivo huérfano en el bucket. El único borrado de
+verdad es el de la API de Storage, que es HTTP y pide autenticarse con la `service_role`.
+
+O sea que para cumplir la promesa de borrar a los 6 meses hubo que meter la llave maestra
+del proyecto dentro de la base. Se evaluó la alternativa —borrar desde la app cuando el
+profe entra a pagos, sin service_role ni pg_net— y se eligió la tarea programada igual,
+para que no dependa de que alguien abra nada.
+
+**Las reglas que hacen que eso sea aceptable:**
+
+- **Los secretos no están en ningún archivo del repositorio.** Se cargan a mano con
+  `vault.create_secret()`, una vez por proyecto, desde el SQL Editor. Si estuvieran en la
+  migración quedarían en GitHub para siempre, y borrar la línea después no limpia el
+  historial de Git.
+- **Son dos secretos, no uno:** `proyecto_url` además de `service_role_key`. La URL cambia
+  entre `aliado-dev` y `aliado-prod`; leyéndola de Vault, la misma migración sirve para
+  los dos proyectos sin editar una letra.
+- **La función no tiene `grant` para nadie.** Solo la ejecuta el programador de tareas.
+- **Lo que Vault NO resuelve, dicho para que no haya sorpresas:** cualquiera que pueda
+  abrir el SQL Editor del proyecto puede leer la llave. Eso ya era cierto —está a la vista
+  en la configuración del panel—. Lo que Vault agrega es que la llave no viaja en un
+  archivo ni queda en el historial.
+
+**El patrón de dos pasos, que es lo más útil de esta migración.** pg_net es asincrónico:
+la respuesta HTTP llega después y en otra tabla. En vez de guardar el número de pedido y
+después interpretarlo, la función verifica una regla en cada corrida —"ningún comprobante
+confirmado hace más de 6 meses sigue existiendo"— y arregla lo que falte:
+
+1. Los vencidos que **ya no están** en el depósito: se les suelta la referencia.
+2. Los vencidos que **todavía están**: se pide el borrado.
+
+Si el pedido falló, el archivo sigue ahí y mañana se vuelve a pedir. Si funcionó, mañana
+el paso 1 lo da por cerrado. La confirmación sale del estado de la base, no de leer una
+respuesta HTTP. Es el mismo patrón declarativo de `asegurar_cargos()`.
+
+**Queda una verificación a mano pendiente:** la prueba automática no puede comprobar el
+borrado real, porque pg_net no manda los pedidos hasta que la transacción se confirma y la
+prueba termina en `rollback`. Las instrucciones para hacerlo una vez están al pie de
+`supabase/tests/comprobantes_viejos.sql`.
 
 ---
 
