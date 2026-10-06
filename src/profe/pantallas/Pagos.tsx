@@ -147,11 +147,12 @@ export default function Pagos({
   );
 }
 
-// El sobrante no se esconde: es plata del alumno que quedó sin cargo al que
-// imputarse, y el profe tiene que saberlo.
+// El sobrante no se esconde: es plata del alumno que todavía no tiene un cargo
+// al que imputarse. Desde la 0021 ya no se pierde de vista — queda como saldo a
+// favor y la imputación automática la aplica a lo que vaya venciendo.
 function mensaje(r: ResultadoConfirmacion): string {
   if (r.sinImputar > 0) {
-    return `Confirmado. Imputé ${plata(r.imputado)} y quedaron ${plata(r.sinImputar)} a favor del alumno, sin cargo al que aplicarse.`;
+    return `Confirmado. Imputé ${plata(r.imputado)} y quedaron ${plata(r.sinImputar)} a favor del alumno. Se van a descontar solos de lo que le vaya venciendo.`;
   }
   return `Confirmado. Imputé ${plata(r.imputado)}.`;
 }

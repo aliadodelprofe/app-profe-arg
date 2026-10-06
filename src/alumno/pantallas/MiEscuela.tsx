@@ -143,12 +143,26 @@ export default function MiEscuela({
 
       {saldo.error && <Aviso>{saldo.error}</Aviso>}
 
+      {/* Tres estados, no dos. "Al día" y "debés $X" dejaban afuera al que pagó
+          por adelantado, que es el que más merece que la app lo reconozca. */}
       <div className="mb-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
         <p className="text-2xl font-semibold text-brand-cream">
-          {saldo.datos === null ? '…' : saldo.datos > 0 ? plata(saldo.datos) : 'Al día'}
+          {saldo.datos === null
+            ? '…'
+            : saldo.datos.debe > 0
+              ? plata(saldo.datos.debe)
+              : saldo.datos.aFavor > 0
+                ? plata(saldo.datos.aFavor)
+                : 'Al día'}
         </p>
         <p className="text-sm text-brand-taupe">
-          {saldo.datos !== null && saldo.datos > 0 ? 'es lo que debés' : 'no debés nada'}
+          {saldo.datos === null
+            ? ''
+            : saldo.datos.debe > 0
+              ? 'es lo que debés'
+              : saldo.datos.aFavor > 0
+                ? 'tenés a favor: se va a descontar de lo que venga'
+                : 'no debés nada'}
         </p>
         {declarados.length > 0 && (
           <p className="mt-1 text-sm text-brand-sand">
@@ -195,7 +209,7 @@ export default function MiEscuela({
       {declarando ? (
         <FormularioAviso
           ficha={ficha}
-          sugerido={saldo.datos ?? 0}
+          sugerido={saldo.datos?.debe ?? 0}
           alCerrar={() => setDeclarando(false)}
           alAvisar={() => {
             setDeclarando(false);

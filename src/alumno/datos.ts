@@ -134,13 +134,25 @@ export async function misCargos(tenantId: string): Promise<MiCargo[]> {
   });
 }
 
-export async function miSaldo(tenantId: string): Promise<number> {
+// Dos números, no uno: lo que debe y lo que tiene a favor. Nunca los dos a la
+// vez —la imputación automática de la 0021 aplica el crédito a lo que se deba—
+// pero decirle "al día" a alguien que pagó dos meses por adelantado es perder
+// la mitad de la información que le importa.
+export type MiSaldo = { debe: number; aFavor: number };
+
+export async function miSaldo(tenantId: string): Promise<MiSaldo> {
   const { data, error } = await supabase
     .from('student_account')
-    .select('saldo')
+    .select('saldo, a_favor')
     .eq('tenant_id', tenantId);
   if (error) throw new Error(error.message);
-  return (data ?? []).reduce((s, f) => s + num((f as Record<string, unknown>).saldo), 0);
+  return (data ?? []).reduce(
+    (acc, f) => {
+      const r = f as Record<string, unknown>;
+      return { debe: acc.debe + num(r.saldo), aFavor: acc.aFavor + num(r.a_favor) };
+    },
+    { debe: 0, aFavor: 0 },
+  );
 }
 
 export async function misPagos(tenantId: string): Promise<MiPago[]> {

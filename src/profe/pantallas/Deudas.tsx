@@ -23,6 +23,11 @@ export default function Deudas({
 
   const deudores = datos?.filter((f) => f.saldo > 0) ?? [];
   const alDia = datos?.filter((f) => f.saldo <= 0).length ?? 0;
+  // Quienes pagaron de más o por adelantado. Es plata que ya está en tu cuenta
+  // y que se va a ir descontando de lo que les toque: conviene saber quiénes
+  // son antes de reclamarles algo.
+  const conCredito = datos?.filter((f) => f.aFavor > 0) ?? [];
+  const totalCredito = conCredito.reduce((s, f) => s + f.aFavor, 0);
   const total = deudores.reduce((s, f) => s + f.saldo, 0);
   const porConfirmar = deudores.reduce((s, f) => s + f.pendiente, 0);
 
@@ -57,7 +62,7 @@ export default function Deudas({
           </div>
 
           <ul className="flex flex-col gap-2">
-            {deudores
+            {[...deudores]
               .sort((a, b) => b.saldo - a.saldo)
               .map((f) => (
                 <li key={f.alumno.id}>
@@ -76,6 +81,37 @@ export default function Deudas({
               ))}
           </ul>
         </>
+      )}
+
+      {/* ----------------------------------------------------- pagado de más
+          Va después de los deudores porque no es una tarea: no hay nada que
+          hacer con esta plata, se aplica sola a lo que vaya venciendo. Está
+          para que no le reclames a alguien que está adelantado. */}
+      {conCredito.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+            Pagaron por adelantado
+          </h2>
+          <p className="mb-3 text-sm text-brand-taupe">
+            {plata(totalCredito)} a favor de {conCredito.length}{' '}
+            {conCredito.length === 1 ? 'alumno' : 'alumnos'}. Se descuenta solo de lo que
+            les vaya venciendo.
+          </p>
+          <ul className="flex flex-col gap-2">
+            {[...conCredito]
+              .sort((a, b) => b.aFavor - a.aFavor)
+              .map((f) => (
+                <li key={f.alumno.id}>
+                  <Tarjeta>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-brand-cream">{f.alumno.full_name}</p>
+                      <p className="shrink-0 text-brand-sand">{plata(f.aFavor)}</p>
+                    </div>
+                  </Tarjeta>
+                </li>
+              ))}
+          </ul>
+        </div>
       )}
     </Marco>
   );

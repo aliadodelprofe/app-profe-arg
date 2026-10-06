@@ -71,6 +71,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0018_las_clases_se_generan_en_la_base.sql` | `asegurar_clases()`: la regla de qué clases faltan se muda de TypeScript a la base, para que una tarea programada pueda correrla | Aplicada |
 | `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | Aplicada |
 | `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
+| `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -98,6 +99,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/saldo_a_favor.sql` | El saldo a favor: que la vista lo muestre, que se aplique a un cargo nuevo, que correrla de nuevo no impute nada, que **nunca impute más de lo que el alumno pagó**, y que nadie impute en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/comprobantes_viejos.sql` | A quién toca y a quién no el borrado de comprobantes: que cierre el de 7 meses, que no toque el de 2, que no toque uno sin confirmar, que los secretos estén, y que ningún profesor pueda ejecutarlo. Correr como `postgres`. **No prueba el borrado real** — eso se verifica a mano, ver el pie del archivo. Repetible |
 | `supabase/tests/mantenimiento.sql` | La tarea programada: que esté agendada, que corra sin errores, que recorra los grupos de **todos** los profesores, que correrla de nuevo no genere nada, y que ningún profesor pueda ejecutarla ni leer su registro. Correr como `postgres`. Repetible |
 | `supabase/tests/clases_automaticas.sql` | `asegurar_clases()`: que cree todos los días fijos hasta fin del mes que viene, que no duplique, que no vaya hacia atrás, que no resucite una clase cancelada, que respete el fin del grupo y que nadie genere clases en un espacio ajeno. En una transacción que se deshace. Repetible |
@@ -133,7 +135,7 @@ esto necesita el SQL Editor.
 |---|---|---|
 | Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
-| Saldo a favor | Mediano | Toca el modelo. Destraba el pago adelantado, el pack de 4 clases y el sobrante que hoy se informa pero no se guarda |
+
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
 Las pantallas hechas, en `src/profe/`:
@@ -194,7 +196,7 @@ ahí y está bien: no es una tabla.
 Anotadas el 5 de septiembre de 2026, a partir del problema real: **un alumno toma
 la clase y se va sin pagar.**
 
-### 1. Saldo a favor del alumno — pieza faltante del modelo
+### 1. Saldo a favor del alumno — RESUELTO (6/10/2026, migración 0021)
 
 Hoy un pago se imputa a un cargo. Eso deja dos situaciones sin lugar donde vivir:
 
@@ -601,6 +603,45 @@ mes anterior se muestra sin adjetivos — un mes flojo no necesita que la app se
 Y acá aparece por fin el uso de `receipt_deleted_at`, que la 0020 había dejado en la base
 sin nada que la mirara: en un cobro viejo, "el comprobante se borró por antigüedad" no es
 lo mismo que "no mandó comprobante".
+
+### 16. La app cobraba plata que después no sabía que tenía (6/10/2026)
+
+`confirmar_pago()` reparte el pago entre los cargos abiertos y, si sobra, lo informa:
+*"quedaron $18.000 a favor, sin cargo al que aplicarse"*. Hasta la 0021 eso era todo lo que
+pasaba con esa plata: `student_account` calculaba lo pagado sumando **imputaciones**, no
+pagos, así que plata confirmada sin imputar no bajaba ningún saldo ni aparecía en ninguna
+pantalla.
+
+El escenario, con un alumno que paga dos meses juntos en octubre: el 1 de noviembre la
+tarea nocturna crea la cuota de noviembre, el alumno la ve como deuda habiendo entregado
+la plata un mes antes, el profesor lo ve en "Quién me debe", y lo persigue por WhatsApp.
+Al que ya pagó.
+
+**La tarea programada de la 0019 empeoró esto.** Antes la cuota aparecía solo cuando el
+profe abría el grupo, así que el choque era esporádico. Después pasaba solo, todos los
+días 1, sin que nadie lo mirara. Una pieza que automatiza algo correcto puede volver
+sistemático un defecto que antes era ocasional.
+
+**Estaba anotado desde la 0006 y mal clasificado.** Figuraba como "saldo a favor", en la
+lista de funciones que faltaban, descrito como lo que destrabaría el pago adelantado y el
+pack de clases. No era una función faltante: era la app aceptando plata que no podía
+rendir. Para una app de pagos, el defecto más serio que quedaba.
+
+Se cerró con tres piezas: la vista expone `a_favor`, `asegurar_imputaciones()` aplica esa
+plata del cargo más viejo al más nuevo —mismo patrón declarativo de `asegurar_cargos()`—,
+y la tarea nocturna la llama **después** de generar los cargos, porque la plata a favor se
+aplica a cargos que acaban de nacer.
+
+Dos detalles que no son obvios:
+
+- **La vista cambió de forma.** Salía de `charges`, así que un alumno que pagó y no tiene
+  ningún cargo no aparecía — y es justo el caso del que pagó por adelantado. Ahora la base
+  es la unión de quienes tienen cargos y quienes tienen pagos.
+- **Las imputaciones van por espacio, no por grupo.** La plata a favor es del alumno y
+  puede cubrir un cargo de cualquier grupo en el que esté anotado.
+
+Y una fila de la prueba existe solo para esto: **que nunca impute más de lo que el alumno
+pagó.** Equivocarse para el otro lado sería inventar plata que nadie entregó.
 
 ---
 

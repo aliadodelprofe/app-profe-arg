@@ -251,6 +251,10 @@ export type Cuenta = {
   total_cargos: number;
   total_pagado: number;
   saldo: number;
+  // Plata confirmada que todavía no se aplicó a ningún cargo: el que pagó por
+  // adelantado o de más. Hasta la 0021 este número existía en la base y
+  // ninguna pantalla lo miraba.
+  a_favor: number;
 };
 
 export type Alumno = { id: string; full_name: string; status: string };
@@ -282,7 +286,7 @@ export async function traerAlumnos(espacioId: string): Promise<Alumno[]> {
 export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
   const { data, error } = await supabase
     .from('student_account')
-    .select('student_id, total_cargos, total_pagado, saldo')
+    .select('student_id, total_cargos, total_pagado, saldo, a_favor')
     .eq('tenant_id', espacioId);
   if (error) throw new Error(error.message);
   return (data ?? []).map((c) => ({
@@ -290,6 +294,7 @@ export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
     total_cargos: num((c as Record<string, unknown>).total_cargos),
     total_pagado: num((c as Record<string, unknown>).total_pagado),
     saldo: num((c as Record<string, unknown>).saldo),
+    a_favor: num((c as Record<string, unknown>).a_favor),
   }));
 }
 
@@ -323,6 +328,7 @@ export type FilaDeuda = {
   alumno: Alumno;
   saldo: number;
   pendiente: number;
+  aFavor: number;
 };
 
 export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
@@ -333,6 +339,7 @@ export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
   ]);
 
   const saldoPorAlumno = new Map(cuentas.map((c) => [c.student_id, c.saldo]));
+  const aFavorPorAlumno = new Map(cuentas.map((c) => [c.student_id, c.a_favor]));
   const pendientePorAlumno = new Map<string, number>();
   pagos.forEach((p) => {
     pendientePorAlumno.set(p.student_id, (pendientePorAlumno.get(p.student_id) ?? 0) + p.amount);
@@ -342,6 +349,7 @@ export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
     alumno: a,
     saldo: saldoPorAlumno.get(a.id) ?? 0,
     pendiente: pendientePorAlumno.get(a.id) ?? 0,
+    aFavor: aFavorPorAlumno.get(a.id) ?? 0,
   }));
 }
 
@@ -971,4 +979,16 @@ export async function traerCobros(espacioId: string): Promise<Cobro[]> {
       comprobante_borrado: r.receipt_deleted_at != null,
     };
   });
+}
+
+// Aplica la plata a favor de los alumnos del espacio a los cargos que tengan
+// pendientes (migración 0021). La tarea nocturna hace lo mismo; esto es para
+// que no haya que esperar hasta las 3 de la mañana cuando el profe acaba de
+// generar los cargos del mes.
+export async function asegurarImputaciones(espacioId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('asegurar_imputaciones', {
+    p_tenant_id: espacioId,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
 }

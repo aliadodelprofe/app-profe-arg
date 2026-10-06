@@ -3,7 +3,8 @@ import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
-  fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, hoyISO, horarioDe,
+  fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones,
+  hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
   traerFicha, editarFicha,
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
@@ -50,6 +51,7 @@ export default function DetalleGrupo({
   // ------------------------------------------------------------------------
   const [creadas, setCreadas] = useState<string[]>([]);
   const [cargosCreados, setCargosCreados] = useState(0);
+  const [imputados, setImputados] = useState(0);
   const [revisado, setRevisado] = useState(false);
   const [errorGen, setErrorGen] = useState<string | null>(null);
 
@@ -67,6 +69,11 @@ export default function DetalleGrupo({
         }
         const cargos = await asegurarCargos(grupo.id);
         if (cargos > 0) setCargosCreados(cargos);
+        // Y recién después, la plata que algún alumno tenga a favor se aplica a
+        // esos cargos que acaban de nacer. La tarea nocturna hace lo mismo;
+        // esto es para no tener que esperar hasta las 3 de la mañana.
+        const aplicados = await asegurarImputaciones(espacio.id);
+        if (aplicados > 0) setImputados(aplicados);
       })
       .catch((e: Error) => setErrorGen(e.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -125,6 +132,13 @@ export default function DetalleGrupo({
           Se generaron {cargosCreados} {cargosCreados === 1 ? 'cargo' : 'cargos'} por lo que
           viene: la próxima clase de los que pagan por clase, y la cuota del mes de los que
           pagan por mes.
+        </p>
+      )}
+
+      {imputados > 0 && (
+        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+          Se aplicaron {imputados} {imputados === 1 ? 'pago' : 'pagos'} que había a favor de
+          alumnos que habían pagado por adelantado. No les figura como deuda.
         </p>
       )}
 
