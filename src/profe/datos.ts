@@ -243,17 +243,20 @@ export async function marcarAsistencia(params: {
 //      que sea así: hasta que no lo confirmás, no entró. Por eso más abajo se
 //      traen aparte, para poder avisar "debe, pero hay algo esperándote".
 //
-//   2. La vista solo conoce alumnos que tienen algún cargo. Un alumno sin
-//      cargos no aparece, y hay que tratarlo como saldo cero.
+//   2. Desde la 0021 la vista también conoce al alumno que pagó y todavía no
+//      tiene ningún cargo — que es justo el que pagó por adelantado. Antes
+//      salía de `charges` y ese caso no aparecía.
 // ---------------------------------------------------------------------------
 export type Cuenta = {
   student_id: string;
   total_cargos: number;
+  // Lo que el alumno ENTREGÓ: la suma de sus pagos confirmados. No es lo mismo
+  // que lo repartido entre cargos concretos, que es `total_imputado`.
   total_pagado: number;
+  // Las dos caras de la misma resta, cada una recortada en cero (migración
+  // 0022). Exactamente una de las dos puede ser distinta de cero: por eso un
+  // alumno no puede figurar debiendo y con crédito a la vez.
   saldo: number;
-  // Plata confirmada que todavía no se aplicó a ningún cargo: el que pagó por
-  // adelantado o de más. Hasta la 0021 este número existía en la base y
-  // ninguna pantalla lo miraba.
   a_favor: number;
 };
 

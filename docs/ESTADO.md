@@ -71,7 +71,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0018_las_clases_se_generan_en_la_base.sql` | `asegurar_clases()`: la regla de qué clases faltan se muda de TypeScript a la base, para que una tarea programada pueda correrla | Aplicada |
 | `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | Aplicada |
 | `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
-| `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | **Sin aplicar** |
+| `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | Aplicada |
+| `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -642,6 +643,41 @@ Dos detalles que no son obvios:
 
 Y una fila de la prueba existe solo para esto: **que nunca impute más de lo que el alumno
 pagó.** Equivocarse para el otro lado sería inventar plata que nadie entregó.
+
+### Un invariante sostenido por convención, y una prueba que tenía razón (6/10/2026)
+
+La 0021 definió `a_favor` como "lo confirmado menos lo imputado" y dejó `saldo` como "los
+cargos menos lo imputado". Con esas dos definiciones un alumno puede aparecer **debiendo
+$10.000 y teniendo $25.000 a favor al mismo tiempo**: las dos cifras son correctas según su
+definición y juntas no significan nada. En pantalla es peor que un número raro — el alumno
+figura en "Quién me debe" y en "Pagaron por adelantado" a la vez.
+
+**Lo encontró la prueba, y de la manera menos esperada: fallando donde yo tenía razón.** La
+fila 1 esperaba `a_favor = 15000` y la vista devolvía `25000`. El primer reflejo fue
+corregir la expectativa de la prueba. Era al revés: la prueba codificaba la semántica que
+el modelo necesitaba y la vista había implementado otra. Con la 0022 las seis expectativas
+originales pasan sin tocar una línea del archivo de prueba.
+
+**El reflejo peligroso acá es "la prueba está mal, la ajusto".** A veces es cierto. Pero una
+prueba escrita pensando en el comportamiento deseado es un testigo, y ajustarla para que
+pase es romperle el testimonio. Conviene preguntarse primero cuál de los dos tenía razón.
+
+**Y el segundo reflejo, igual de peligroso: "esa ventana dura segundos".** Me dije que
+`confirmar_pago()` imputa en el acto, así que el estado contradictorio sería momentáneo. Al
+revisarlo no era cierto: el alta manual de un cargo no vuelve a imputar, así que entre que
+el profesor crea el cargo y la próxima corrida pasan **horas**. La 0021 dejaba la
+corrección dependiendo de que todo el que crea un cargo se acuerde de imputar después — un
+invariante por convención, que se rompe el día que alguien agrega una cuarta forma de crear
+un cargo.
+
+La 0022 lo sostiene por construcción: `saldo` y `a_favor` son las dos caras de la misma
+resta, cada una recortada en cero. Si una es positiva, la otra es exactamente cero, y no
+depende de que nadie haya corrido nada. `total_pagado` pasa a ser lo que el alumno
+**entregó** y se agrega `total_imputado` para la conciliación cargo por cargo.
+
+`asegurar_imputaciones()` no sobra: sigue siendo la que hace que cada cuota aparezca como
+"Pagada" en la lista del alumno. Lo que deja de ser es la condición para que el saldo esté
+bien.
 
 ---
 
