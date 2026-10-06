@@ -135,7 +135,6 @@ esto necesita el SQL Editor.
 
 | Qué | Tamaño | Nota |
 |---|---|---|
-| Ingreso con Google para el alumno | Chico | Casi todo configuración en Google Cloud. Google ya verifica el correo, así que entra derecho |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
 
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
@@ -181,6 +180,69 @@ con su propia protección: es trabajo aparte. Mientras tanto el profesor le dice
 
 Nota: `control_general.sql` lista 10 tablas. La vista `student_account` no aparece
 ahí y está bien: no es una tabla.
+
+---
+
+## Ingreso con Google (el alumno)
+
+El botón está en `src/alumno/pantallas/Entrar.tsx` y va **arriba** del formulario de correo
+y contraseña, a propósito: ese camino obliga al alumno a inventar una contraseña, salir de
+la app, abrir el mail, confirmar y volver. Cada paso pierde gente, y el que se cae nunca
+llega a ver las clases que su profe ya le cargó.
+
+El botón **no lleva el logo de Google**. Es una marca ajena y no la dibujamos nosotros.
+
+### Configuración, que es casi todo el trabajo
+
+1. **Google Cloud** → proyecto → *Clients* → crear cliente OAuth de tipo *Web application*.
+   - *Authorized JavaScript origins*: `http://localhost:3000` (y el dominio real cuando se
+     despliegue)
+   - *Authorized redirect URIs*: la dirección de callback que muestra la página del
+     proveedor Google en Supabase, con la forma
+     `https://<proyecto>.supabase.co/auth/v1/callback`
+   - Scopes: `openid`, `userinfo.email`, `userinfo.profile`
+2. **Supabase** → Authentication → Providers → Google → pegar Client ID y Client Secret.
+3. **Supabase** → Authentication → URL Configuration → agregar `http://localhost:3000/alumno`
+   a las *Redirect URLs*. Sin esto, Supabase devuelve al alumno al Site URL, y el Site URL
+   es la raíz — o sea, **la app vieja de la comunidad**.
+4. **Antes del deploy:** sacar las direcciones de localhost de Google Cloud.
+
+### El riesgo que hay que verificar, no suponer
+
+Las tres funciones de la 0015 exigen `u.email_confirmed_at is not null` antes de mostrar o
+aceptar una invitación. La documentación de Supabase **no aclara** si el login con un
+proveedor OAuth marca el correo como confirmado. Si no lo marcara, un alumno que entra con
+Google nunca vería su invitación, y no habría ningún error en pantalla que lo explique.
+
+Se verifica después del primer login con Google:
+
+```sql
+select u.email,
+       u.email_confirmed_at is not null as correo_confirmado,
+       (select array_agg(i.provider) from auth.identities i where i.user_id = u.id) as proveedores
+  from auth.users u
+ order by u.created_at desc
+ limit 5;
+```
+
+Si `correo_confirmado` da `false` para el usuario de Google, hay que relajar esa condición
+en una migración nueva: aceptar o un correo confirmado, o una identidad de un proveedor que
+ya verifica el correo.
+
+---
+
+## Rediseño pendiente: nombre, logo y paleta
+
+Decisión tomada el 6/10/2026: la app nueva va a tener **su propia identidad visual**,
+distinta de la de la comunidad. Falta definir nombre, logo y paleta.
+
+**La buena noticia es que hoy es barato.** Toda la app nueva usa cuatro tokens de color
+definidos en `src/index.css` (`brand-dark`, `brand-taupe`, `brand-sand`, `brand-cream`), así
+que cambiar la paleta son cuatro líneas. Lo único fuera del sistema son siete usos de rojo
+para deudas y errores, que convendría convertir en un quinto token antes del cambio.
+
+**Y se encarece con cada pantalla nueva que escriba un color a mano.** La regla a mantener:
+ningún componente usa un color que no sea un token.
 
 ---
 
