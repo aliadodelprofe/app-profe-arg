@@ -72,7 +72,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0019_tarea_programada.sql` | `pg_cron` todas las noches a las 03:00: genera clases y cargos de todos los grupos sin que nadie abra la app | Aplicada |
 | `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
 | `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | Aplicada |
-| `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | **Sin aplicar** |
+| `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -107,7 +107,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
-Últimos resultados (17 de septiembre de 2026):
+Últimos resultados (6 de octubre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
 - `aislamiento_alumno.sql` → **16 de 16 PASA**
@@ -117,6 +117,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `npm run prueba:fechas` → **15 de 15 PASA** (eran 18; las de clases se mudaron a `clases_automaticas.sql` en la 0018)
 - `mantenimiento.sql` → **6 de 6 PASA**
 - `comprobantes_viejos.sql` → **6 de 6 PASA**
+- `saldo_a_favor.sql` → **6 de 6 PASA** (con la 0022; con la 0021 sola fallaba la fila 1)
 - `control_general.sql` → **11 tablas en `ok`** (`mantenimiento_log` con 0 reglas es correcto: cero políticas es "nadie")
 
 ---
