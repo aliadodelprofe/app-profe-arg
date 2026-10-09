@@ -7,7 +7,7 @@ import type React from 'react';
 
 export function Marco({ children }: { children: ReactNode }) {
   return (
-    <div className="min-h-screen bg-brand-dark px-5 py-8">
+    <div className="min-h-screen bg-fondo px-5 py-8">
       <div className="mx-auto w-full max-w-2xl">{children}</div>
     </div>
   );
@@ -29,15 +29,15 @@ export function Encabezado({
       {volver && (
         <button
           onClick={volver.alTocar}
-          className="mb-3 text-sm text-brand-taupe hover:text-brand-sand"
+          className="mb-3 text-sm text-tenue hover:text-acento"
         >
           ← {volver.texto}
         </button>
       )}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-brand-cream">{titulo}</h1>
-          {bajada && <p className="text-sm text-brand-taupe">{bajada}</p>}
+          <h1 className="text-2xl font-semibold text-tinta">{titulo}</h1>
+          {bajada && <p className="text-sm text-tenue">{bajada}</p>}
         </div>
         {derecha}
       </div>
@@ -47,14 +47,14 @@ export function Encabezado({
 
 export function Aviso({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+    <p className="rounded-lg border border-alerta/40 bg-alerta/10 px-3 py-2 text-sm text-alerta">
       {children}
     </p>
   );
 }
 
 export function Vacio({ children }: { children: ReactNode }) {
-  return <p className="text-brand-taupe">{children}</p>;
+  return <p className="text-tenue">{children}</p>;
 }
 
 export function Tarjeta({
@@ -65,10 +65,10 @@ export function Tarjeta({
   alTocar?: () => void;
 }) {
   const clases =
-    'w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-left';
+    'w-full rounded-xl border border-linea bg-panel px-4 py-3 text-left';
   if (!alTocar) return <div className={clases}>{children}</div>;
   return (
-    <button onClick={alTocar} className={clases + ' hover:border-brand-sand/40'}>
+    <button onClick={alTocar} className={clases + ' hover:border-acento/40'}>
       {children}
     </button>
   );
@@ -127,7 +127,7 @@ export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
 // Piezas de formulario
 // ---------------------------------------------------------------------------
 const claseInput =
-  'w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-brand-cream outline-none focus:border-brand-sand';
+  'w-full rounded-lg bg-campo border border-linea px-3 py-2 text-tinta outline-none focus:border-acento';
 
 export function Campo({
   etiqueta,
@@ -140,9 +140,9 @@ export function Campo({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-sm text-brand-taupe">{etiqueta}</span>
+      <span className="text-sm text-tenue">{etiqueta}</span>
       {children}
-      {ayuda && <span className="text-xs text-brand-taupe/70">{ayuda}</span>}
+      {ayuda && <span className="text-xs text-tenue/70">{ayuda}</span>}
     </label>
   );
 }
@@ -174,8 +174,8 @@ export function Opciones<T extends string>({
           className={
             'rounded-lg border px-3 py-1.5 text-sm ' +
             (valor === o.valor
-              ? 'border-brand-sand bg-brand-sand text-brand-dark'
-              : 'border-white/15 text-brand-taupe hover:border-brand-sand/40')
+              ? 'border-acento bg-acento text-sobre-acento'
+              : 'border-linea text-tenue hover:border-acento/40')
           }
         >
           {o.texto}
@@ -192,7 +192,7 @@ export function Boton({
   return (
     <button
       {...props}
-      className="rounded-lg bg-brand-sand px-3 py-2 font-medium text-brand-dark disabled:opacity-50"
+      className="rounded-lg bg-acento px-3 py-2 font-medium text-sobre-acento disabled:opacity-50"
     >
       {children}
     </button>
@@ -206,7 +206,7 @@ export function BotonSecundario({
   return (
     <button
       {...props}
-      className="rounded-lg border border-white/15 px-3 py-2 text-sm text-brand-taupe hover:border-brand-sand/40"
+      className="rounded-lg border border-linea px-3 py-2 text-sm text-tenue hover:border-acento/40"
     >
       {children}
     </button>
@@ -257,7 +257,7 @@ export function Confirmacion({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5 backdrop-blur-sm"
       onClick={() => { if (!trabajando) alCancelar(); }}
     >
       <div
@@ -266,10 +266,10 @@ export function Confirmacion({
         aria-label={titulo}
         // Sin esto, un clic adentro del cartel llega al fondo y lo cierra.
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-white/10 bg-brand-dark p-5 shadow-xl"
+        className="w-full max-w-sm rounded-2xl border border-linea bg-panel p-5 shadow-xl"
       >
-        <p className="mb-2 text-lg text-brand-cream">{titulo}</p>
-        <div className="mb-4 text-sm text-brand-taupe">{children}</div>
+        <p className="mb-2 text-lg text-tinta">{titulo}</p>
+        <div className="mb-4 text-sm text-tenue">{children}</div>
         <div className="flex gap-2">
           <Boton type="button" onClick={alConfirmar} disabled={trabajando}>
             {trabajando ? 'Cambiando…' : confirmar}
@@ -280,5 +280,22 @@ export function Confirmacion({
         </div>
       </div>
     </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// La marca.
+//
+// Por ahora es la palabra sola, sin logo. Vive acá y no escrita a mano en cada
+// pantalla, para que el día que haya un logo se cambie en un solo lugar.
+//
+// Aparece únicamente en las pantallas de entrada. Adentro de la app el
+// encabezado lo ocupa el nombre de la escuela del profesor, que es lo que le
+// importa a quien está mirando: la marca del producto ya cumplió su función
+// cuando la persona entró.
+// ----------------------------------------------------------------------------
+export function Marca() {
+  return (
+    <p className="mb-8 text-lg font-semibold tracking-tight text-acento">Sala</p>
   );
 }

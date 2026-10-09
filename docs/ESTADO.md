@@ -239,18 +239,78 @@ confirmado, o una identidad de un proveedor que ya verifica el correo.
 
 ---
 
-## Rediseño pendiente: nombre, logo y paleta
+## La app se llama SALA
 
-Decisión tomada el 6/10/2026: la app nueva va a tener **su propia identidad visual**,
-distinta de la de la comunidad. Falta definir nombre, logo y paleta.
+Decidido el 9/10/2026.
 
-**La buena noticia es que hoy es barato.** Toda la app nueva usa cuatro tokens de color
-definidos en `src/index.css` (`brand-dark`, `brand-taupe`, `brand-sand`, `brand-cream`), así
-que cambiar la paleta son cuatro líneas. Lo único fuera del sistema son siete usos de rojo
-para deudas y errores, que convendría convertir en un quinto token antes del cambio.
+**Por qué Sala.** Es la verdad literal del usuario: el profesor independiente no tiene
+academia, *alquila una sala*. Es la palabra que él ya usa para describir su trabajo, así
+que no hay que explicarle ni construirle significado. No es palabra de baile, así que
+sigue sirviendo cuando entren yoga, música o idiomas.
 
-**Y se encarece con cada pantalla nueva que escriba un color a mano.** La regla a mantener:
-ningún componente usa un color que no sea un token.
+**Viaja.** `sala` significa lo mismo en castellano, italiano y portugués, y los tres
+mercados del plan están cubiertos. Se descartaron por eso *pulso* (en italiano *polso* es
+muñeca) y *nido* (en Italia *asilo nido* es guardería). Se descartó **Tanda** por otro
+motivo: ya es un SaaS de gestión de personal, un rubro vecino.
+
+**Aula** fue la segunda: igual de corta y viaja igual, pero suena a institución educativa
+y el posicionamiento es explícitamente el contrario.
+
+La marca vive en un solo componente, `Marca` en `src/comun/ui.tsx`, y aparece solo en las
+dos pantallas de entrada. Adentro de la app el encabezado lo ocupa el nombre de la escuela
+del profesor: la marca del producto ya cumplió su función cuando la persona entró.
+
+---
+
+## La paleta
+
+Nueve tokens en `src/index.css`, con **modo claro y oscuro** según la preferencia del
+sistema operativo. El profesor que administra de día en la computadora recibe el claro; el
+alumno que mira recaps de noche en el celular, el oscuro. Ninguno de los dos elige nada.
+
+| Token | Para qué |
+|---|---|
+| `fondo` | la página |
+| `panel` | tarjetas y bloques que se despegan |
+| `campo` | adentro de un input |
+| `linea` | bordes y separadores |
+| `tinta` | el texto que se lee |
+| `tenue` | lo secundario: fechas, ayudas, aclaraciones |
+| `acento` | terracota: botones, enlaces, lo tocable |
+| `sobre-acento` | texto arriba del acento |
+| `ok` / `alerta` | pagado o confirmado / deuda o error |
+
+**Los nombres son por función y no por color.** `acento`, no `terracota`. El día que cambie
+el color, el nombre sigue siendo cierto y no hay que tocar ninguna pantalla.
+
+**El oscuro no es el claro invertido:** los grises tiran a marrón y no a azul, y el acento
+se aclara, porque el terracota del modo claro sobre fondo oscuro queda apagado.
+
+### Dos cosas que hubo que resolver
+
+**`index.css` es una sola hoja para las tres apps.** El `body` tenía `#111111` fijo. Si se
+cambiaba, se le rompía el fondo a la app de la comunidad, que vive en la raíz. Por eso el
+fondo cuelga de `html[data-app="sala"]`, que `main.tsx` pone solo en `/profe` y `/alumno`.
+Lo mismo con el `<title>`, que en `index.html` sigue siendo el de la comunidad.
+
+**Los 38 bordes `border-white/10` no eran cosméticos.** Sobre fondo oscuro se ven; sobre
+fondo claro un borde blanco es invisible. Todos pasaron a `border-linea`.
+
+### La regla a mantener
+
+**Ningún componente usa un color que no sea uno de los nueve tokens.** Un color escrito a
+mano es el que no cambia cuando cambia la paleta, y el que se ve mal en el modo que nadie
+probó. La verificación es un comando:
+
+```bash
+grep -rn "brand-\|white/\|black/4\|red-[0-9]" src/profe src/alumno src/comun --include=*.tsx
+```
+
+Tiene que no devolver nada. (La única excepción deliberada es la cortina del cartel de
+confirmación, `bg-black/50`: es una sombra, no un color de la paleta, y tiene que oscurecer
+igual en los dos modos.)
+
+**Falta todavía:** el logo. La marca hoy es la palabra sola.
 
 ---
 

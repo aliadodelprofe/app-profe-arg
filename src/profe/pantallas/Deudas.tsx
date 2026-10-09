@@ -48,14 +48,14 @@ export default function Deudas({
 
       {deudores.length > 0 && (
         <>
-          <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-            <p className="text-2xl font-semibold text-brand-cream">{plata(total)}</p>
-            <p className="text-sm text-brand-taupe">
+          <div className="mb-4 rounded-xl border border-linea bg-panel px-4 py-3">
+            <p className="text-2xl font-semibold text-tinta">{plata(total)}</p>
+            <p className="text-sm text-tenue">
               {deudores.length} {deudores.length === 1 ? 'alumno debe' : 'alumnos deben'}
               {alDia > 0 && ` · ${alDia} al día`}
             </p>
             {porConfirmar > 0 && (
-              <p className="mt-1 text-sm text-brand-sand">
+              <p className="mt-1 text-sm text-acento">
                 {plata(porConfirmar)} esperando que confirmes
               </p>
             )}
@@ -68,11 +68,11 @@ export default function Deudas({
                 <li key={f.alumno.id}>
                   <Tarjeta>
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-brand-cream">{f.alumno.full_name}</p>
-                      <p className="shrink-0 text-red-300">{plata(f.saldo)}</p>
+                      <p className="text-tinta">{f.alumno.full_name}</p>
+                      <p className="shrink-0 text-alerta">{plata(f.saldo)}</p>
                     </div>
                     {f.pendiente > 0 && (
-                      <p className="text-sm text-brand-sand">
+                      <p className="text-sm text-acento">
                         declaró {plata(f.pendiente)} · falta que lo confirmes
                       </p>
                     )}
@@ -89,10 +89,10 @@ export default function Deudas({
           para que no le reclames a alguien que está adelantado. */}
       {conCredito.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
             Pagaron por adelantado
           </h2>
-          <p className="mb-3 text-sm text-brand-taupe">
+          <p className="mb-3 text-sm text-tenue">
             {plata(totalCredito)} a favor de {conCredito.length}{' '}
             {conCredito.length === 1 ? 'alumno' : 'alumnos'}. Se descuenta solo de lo que
             les vaya venciendo.
@@ -104,8 +104,8 @@ export default function Deudas({
                 <li key={f.alumno.id}>
                   <Tarjeta>
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-brand-cream">{f.alumno.full_name}</p>
-                      <p className="shrink-0 text-brand-sand">{plata(f.aFavor)}</p>
+                      <p className="text-tinta">{f.alumno.full_name}</p>
+                      <p className="shrink-0 text-acento">{plata(f.aFavor)}</p>
                     </div>
                   </Tarjeta>
                 </li>

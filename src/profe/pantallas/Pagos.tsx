@@ -74,12 +74,12 @@ export default function Pagos({
 
       {/* Lo que se acaba de resolver, para que quede constancia en pantalla */}
       {Object.entries(resueltos).map(([id, texto]) => (
-        <p key={id} className="mb-2 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+        <p key={id} className="mb-2 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           {texto}
         </p>
       ))}
 
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Para confirmar
       </h2>
 
@@ -93,42 +93,42 @@ export default function Pagos({
             <Tarjeta>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-brand-cream">{p.alumno}</p>
-                  <p className="text-sm text-brand-taupe">
+                  <p className="text-tinta">{p.alumno}</p>
+                  <p className="text-sm text-tenue">
                     declarado {fecha(p.declared_at.slice(0, 10))}
                     {p.paid_on && ` · transferido ${fecha(p.paid_on)}`}
                   </p>
-                  {p.note && <p className="text-sm text-brand-taupe">{p.note}</p>}
+                  {p.note && <p className="text-sm text-tenue">{p.note}</p>}
                   {p.enlace ? (
                     <a
                       href={p.enlace} target="_blank" rel="noreferrer"
-                      className="text-sm text-brand-sand underline"
+                      className="text-sm text-acento underline"
                     >
                       ver comprobante
                     </a>
                   ) : p.receipt_url ? (
-                    <p className="text-sm text-brand-taupe">
+                    <p className="text-sm text-tenue">
                       Mandó comprobante, pero no se pudo abrir. Recargá la página.
                     </p>
                   ) : (
-                    <p className="text-sm text-brand-taupe">Sin comprobante.</p>
+                    <p className="text-sm text-tenue">Sin comprobante.</p>
                   )}
                 </div>
-                <p className="shrink-0 text-lg text-brand-cream">{plata(p.amount)}</p>
+                <p className="shrink-0 text-lg text-tinta">{plata(p.amount)}</p>
               </div>
 
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => confirmar(p)}
                   disabled={trabajando === p.id}
-                  className="rounded-lg bg-brand-sand px-3 py-1.5 text-sm font-medium text-brand-dark disabled:opacity-50"
+                  className="rounded-lg bg-acento px-3 py-1.5 text-sm font-medium text-sobre-acento disabled:opacity-50"
                 >
                   {trabajando === p.id ? 'Confirmando…' : `Confirmar ${plata(p.amount)}`}
                 </button>
                 <button
                   onClick={() => rechazar(p)}
                   disabled={trabajando === p.id}
-                  className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-brand-taupe disabled:opacity-50"
+                  className="rounded-lg border border-linea px-3 py-1.5 text-sm text-tenue disabled:opacity-50"
                 >
                   Rechazar
                 </button>

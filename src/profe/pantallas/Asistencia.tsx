@@ -107,7 +107,7 @@ export default function Asistencia({
       )}
 
       {inscriptos && inscriptos.length > 0 && (
-        <p className="mb-3 text-sm text-brand-taupe">
+        <p className="mb-3 text-sm text-tenue">
           {marcados} de {inscriptos.length} marcados
         </p>
       )}
@@ -123,15 +123,15 @@ export default function Asistencia({
             <li key={i.id}>
               <Tarjeta>
                 <div className="mb-2 flex items-start justify-between gap-3">
-                  <p className="text-brand-cream">{alumno.full_name}</p>
+                  <p className="text-tinta">{alumno.full_name}</p>
                   <div className="shrink-0 text-right">
                     {debe ? (
-                      <p className="text-red-300">debe {plata(cuenta.saldo)}</p>
+                      <p className="text-alerta">debe {plata(cuenta.saldo)}</p>
                     ) : (
-                      <p className="text-sm text-brand-taupe">al día</p>
+                      <p className="text-sm text-tenue">al día</p>
                     )}
                     {cuenta?.pendiente > 0 && (
-                      <p className="text-xs text-brand-sand">
+                      <p className="text-xs text-acento">
                         declaró {plata(cuenta.pendiente)}
                       </p>
                     )}
@@ -147,8 +147,8 @@ export default function Asistencia({
                         className={
                           'rounded-lg border px-3 py-1.5 text-sm ' +
                           (elegido
-                            ? 'border-brand-sand bg-brand-sand text-brand-dark'
-                            : 'border-white/15 text-brand-taupe hover:border-brand-sand/40')
+                            ? 'border-acento bg-acento text-sobre-acento'
+                            : 'border-linea text-tenue hover:border-acento/40')
                         }
                       >
                         {nombreAsistencia[e]}
@@ -213,7 +213,7 @@ function Recap({ clase }: { clase: Clase }) {
         <Boton type="button" onClick={guardar} disabled={guardando}>
           {guardando ? 'Guardando…' : 'Guardar recap'}
         </Boton>
-        {guardado && <span className="text-sm text-brand-sand">Guardado</span>}
+        {guardado && <span className="text-sm text-acento">Guardado</span>}
       </div>
     </div>
   );

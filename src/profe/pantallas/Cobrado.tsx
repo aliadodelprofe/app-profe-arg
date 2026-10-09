@@ -39,7 +39,7 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
 
   return (
     <>
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Cobrado
       </h2>
 
@@ -47,7 +47,7 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
         <select
           value={mes}
           onChange={(e) => setMes(e.target.value)}
-          className="mb-3 rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-brand-cream"
+          className="mb-3 rounded-lg border border-linea bg-campo px-3 py-2 text-sm text-tinta"
         >
           {meses.map((m) => (
             <option key={m} value={m}>{mesEnPalabras(m)}</option>
@@ -55,15 +55,15 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
         </select>
       )}
 
-      <div className="mb-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <p className="text-3xl font-semibold text-brand-cream">{plata(total)}</p>
-        <p className="text-sm text-brand-taupe">
+      <div className="mb-3 rounded-xl border border-linea bg-panel px-4 py-3">
+        <p className="text-3xl font-semibold text-tinta">{plata(total)}</p>
+        <p className="text-sm text-tenue">
           entraron en {mesEnPalabras(mes)}
           {delMes.length > 0 && ` · ${delMes.length} ${delMes.length === 1 ? 'pago' : 'pagos'}`}
         </p>
 
         {hayConQueComparar && (
-          <p className="mt-1 text-sm text-brand-taupe">
+          <p className="mt-1 text-sm text-tenue">
             {diferencia === 0
               ? `Igual que en ${mesEnPalabras(anterior)}.`
               : `${plata(Math.abs(diferencia))} ${diferencia > 0 ? 'más' : 'menos'} que en ` +
@@ -85,18 +85,18 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
               <Tarjeta>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-brand-cream">{c.alumno}</p>
-                    <p className="text-sm text-brand-taupe">{fecha(c.fecha)}</p>
-                    {c.note && <p className="text-sm text-brand-taupe">{c.note}</p>}
+                    <p className="text-tinta">{c.alumno}</p>
+                    <p className="text-sm text-tenue">{fecha(c.fecha)}</p>
+                    {c.note && <p className="text-sm text-tenue">{c.note}</p>}
                     {/* Que el comprobante no esté no es lo mismo que no haberlo
                         mandado. A los 6 meses se borra solo. */}
                     {c.comprobante_borrado && (
-                      <p className="text-xs text-brand-taupe/70">
+                      <p className="text-xs text-tenue/70">
                         El comprobante se borró por antigüedad.
                       </p>
                     )}
                   </div>
-                  <p className="shrink-0 text-lg text-brand-cream">{plata(c.amount)}</p>
+                  <p className="shrink-0 text-lg text-tinta">{plata(c.amount)}</p>
                 </div>
               </Tarjeta>
             </li>

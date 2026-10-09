@@ -94,7 +94,7 @@ function Adentro({ sesion }: { sesion: Session }) {
         <Encabezado titulo="Todavía no tenés clases" bajada={correo} derecha={<Salir />} />
         <Vacio>
           Ningún profesor te anotó todavía con este correo. Pedile que te anote
-          usando <span className="text-brand-cream">{correo}</span> — si te anotó con
+          usando <span className="text-tinta">{correo}</span> — si te anotó con
           otro, con ese otro vas a tener que entrar.
         </Vacio>
       </Marco>
@@ -114,7 +114,7 @@ function Adentro({ sesion }: { sesion: Session }) {
         derecha={
           <button
             onClick={() => setElegida(null)}
-            className="rounded-lg border border-white/15 px-3 py-1.5 text-sm text-brand-sand"
+            className="rounded-lg border border-linea px-3 py-1.5 text-sm text-acento"
           >
             Cambiar
           </button>
@@ -130,8 +130,8 @@ function Adentro({ sesion }: { sesion: Session }) {
         {fichas.map((f) => (
           <li key={f.id}>
             <Tarjeta alTocar={() => setElegida(f.id)}>
-              <p className="text-brand-cream">{f.escuela?.name ?? 'Escuela'}</p>
-              <p className="text-sm text-brand-taupe">
+              <p className="text-tinta">{f.escuela?.name ?? 'Escuela'}</p>
+              <p className="text-sm text-tenue">
                 {f.escuela?.discipline ?? 'sin disciplina'}
               </p>
             </Tarjeta>

@@ -103,9 +103,9 @@ export default function FormularioGrupo({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">{grupo ? 'Editar grupo' : 'Nuevo grupo'}</p>
+      <p className="text-tinta">{grupo ? 'Editar grupo' : 'Nuevo grupo'}</p>
 
       <Campo etiqueta="Nombre">
         <Texto
@@ -151,7 +151,7 @@ export default function FormularioGrupo({
         <select
           value={dia}
           onChange={(e) => setDia(e.target.value)}
-          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-brand-cream outline-none focus:border-brand-sand"
+          className="w-full rounded-lg border border-linea bg-campo px-3 py-2 text-tinta outline-none focus:border-acento"
         >
           <option value="">Sin día fijo</option>
           {NOMBRE_DIA.map((n, i) => (
@@ -178,7 +178,7 @@ export default function FormularioGrupo({
           Los precios son del grupo, no de cada alumno. Lo que elige el alumno
           al inscribirse es cuál de estas dos formas usa.
          ------------------------------------------------------------------ */}
-      <p className="rounded-lg border border-white/10 px-3 py-2 text-xs text-brand-taupe">
+      <p className="rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
         El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes
         entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas.
         El descuento del mes es tu herramienta para eso.

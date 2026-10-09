@@ -20,7 +20,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Marco, Aviso, Campo, Texto, Boton } from '../../comun/ui';
+import { Marco, Aviso, Campo, Texto, Boton, Marca } from '../../comun/ui';
 
 export default function Entrar() {
   const [creando, setCreando] = useState(false);
@@ -73,10 +73,11 @@ export default function Entrar() {
   return (
     <Marco>
       <div className="mx-auto max-w-sm">
-        <h1 className="mb-1 text-2xl font-semibold text-brand-cream">
+        <Marca />
+        <h1 className="mb-1 text-2xl font-semibold text-tinta">
           {creando ? 'Crear mi cuenta' : 'Entrar'}
         </h1>
-        <p className="mb-6 text-sm text-brand-taupe">Mis clases y mi cuenta</p>
+        <p className="mb-6 text-sm text-tenue">Mis clases y mi cuenta</p>
 
         {/* El camino corto, arriba. Sin el logo de Google a propósito: es una
             marca ajena y no la vamos a dibujar nosotros. */}
@@ -84,18 +85,18 @@ export default function Entrar() {
           type="button"
           onClick={conGoogle}
           disabled={trabajando}
-          className="w-full rounded-lg border border-brand-sand/40 px-3 py-2.5 font-medium text-brand-cream hover:border-brand-sand disabled:opacity-50"
+          className="w-full rounded-lg border border-acento/40 px-3 py-2.5 font-medium text-tinta hover:border-acento disabled:opacity-50"
         >
           {trabajando ? 'Un segundo…' : 'Entrar con Google'}
         </button>
-        <p className="mt-2 text-xs text-brand-taupe">
+        <p className="mt-2 text-xs text-tenue">
           Entrá con la cuenta de Google que tenga el mismo correo que le diste a tu profe.
         </p>
 
         <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs uppercase tracking-wide text-brand-taupe">o con tu correo</span>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="h-px flex-1 bg-panel" />
+          <span className="text-xs uppercase tracking-wide text-tenue">o con tu correo</span>
+          <div className="h-px flex-1 bg-panel" />
         </div>
 
         <form onSubmit={enviar} className="flex flex-col gap-3">
@@ -124,14 +125,14 @@ export default function Entrar() {
         {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
 
         {aviso && (
-          <p className="mt-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+          <p className="mt-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
             {aviso}
           </p>
         )}
 
         <button
           onClick={() => { setCreando(!creando); setError(null); setAviso(null); }}
-          className="mt-6 text-sm text-brand-taupe underline hover:text-brand-sand"
+          className="mt-6 text-sm text-tenue underline hover:text-acento"
         >
           {creando ? 'Ya tengo cuenta, quiero entrar' : 'Es mi primera vez, quiero crear mi cuenta'}
         </button>

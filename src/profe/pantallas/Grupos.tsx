@@ -37,17 +37,17 @@ export default function Grupos({
       <div className="mb-5 flex flex-col gap-2">
         <button
           onClick={alVerDeudas}
-          className="w-full rounded-xl border border-brand-sand/30 bg-brand-sand/5 px-4 py-3 text-left hover:border-brand-sand/60"
+          className="w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left hover:border-acento/60"
         >
-          <p className="text-brand-sand">Quién me debe →</p>
-          <p className="text-sm text-brand-taupe">Estado de cuenta de todo el espacio</p>
+          <p className="text-acento">Quién me debe →</p>
+          <p className="text-sm text-tenue">Estado de cuenta de todo el espacio</p>
         </button>
         <button
           onClick={alVerPagos}
-          className="w-full rounded-xl border border-brand-sand/30 bg-brand-sand/5 px-4 py-3 text-left hover:border-brand-sand/60"
+          className="w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left hover:border-acento/60"
         >
-          <p className="text-brand-sand">Pagos por confirmar →</p>
-          <p className="text-sm text-brand-taupe">Transferencias que declararon tus alumnos</p>
+          <p className="text-acento">Pagos por confirmar →</p>
+          <p className="text-sm text-tenue">Transferencias que declararon tus alumnos</p>
         </button>
       </div>
 
@@ -71,12 +71,12 @@ export default function Grupos({
             <li key={g.id}>
               <Tarjeta alTocar={() => alElegir(g)}>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-brand-cream">{g.name}</p>
-                  <span className="shrink-0 rounded-full border border-white/15 px-2 py-0.5 text-xs text-brand-taupe">
+                  <p className="text-tinta">{g.name}</p>
+                  <span className="shrink-0 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
                     {nombreFormato[g.format]}
                   </span>
                 </div>
-                <p className="text-sm text-brand-taupe">
+                <p className="text-sm text-tenue">
                   {[
                     horarioDe(g),
                     g.level,
@@ -91,7 +91,7 @@ export default function Grupos({
                   <a
                     href={linkMapa(g.address)} target="_blank" rel="noreferrer"
                     onClick={(e) => e.stopPropagation()}
-                    className="text-sm text-brand-sand underline"
+                    className="text-sm text-acento underline"
                   >
                     {g.address} · ver en el mapa
                   </a>

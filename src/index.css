@@ -1,10 +1,89 @@
 @import "tailwindcss";
 
 @theme {
+  /* --------------------------------------------------------------------
+     PALETA DE LA APP VIEJA (la comunidad, en la raíz).
+     No se toca: esos componentes la usan. La app nueva no usa ninguna.
+     -------------------------------------------------------------------- */
   --color-brand-dark: #111111;
   --color-brand-taupe: #56554e;
   --color-brand-sand: #e7d9cf;
   --color-brand-cream: #eeede9;
+
+  /* ====================================================================
+     SALA — la paleta de la app nueva
+     ====================================================================
+
+     Los nombres son por FUNCIÓN y no por color: `acento` y no `terracota`.
+     El día que cambiemos el color, el nombre sigue siendo cierto y no hay
+     que tocar ninguna pantalla.
+
+     Toda la app usa estos nueve tokens y ninguno más. Un color escrito a
+     mano en un componente es el que después no cambia cuando cambia la
+     paleta, y el que se ve mal en el modo que nadie probó.
+
+     Valores de MODO CLARO. Los del oscuro están más abajo.
+     ==================================================================== */
+
+  /* Superficies */
+  --color-fondo:  #faf6f1;   /* la página: papel, no blanco puro */
+  --color-panel:  #ffffff;   /* tarjetas y bloques que se despegan */
+  --color-campo:  #ffffff;   /* adentro de un input */
+  --color-linea:  #e7dcd0;   /* bordes y separadores */
+
+  /* Texto */
+  --color-tinta:  #2b2420;   /* el texto que se lee */
+  --color-tenue:  #78685c;   /* lo secundario: fechas, ayudas, aclaraciones */
+
+  /* Acción */
+  --color-acento:        #b4542c;  /* terracota: botones, enlaces, lo tocable */
+  --color-sobre-acento:  #ffffff;  /* texto arriba del acento */
+
+  /* Estados. Son dos y alcanzan: algo salió bien, algo requiere atención. */
+  --color-ok:     #35715a;   /* pagado, confirmado, al día */
+  --color-alerta: #a3231b;   /* deuda, error */
+}
+
+/* ----------------------------------------------------------------------
+   MODO OSCURO
+   
+   No es la paleta clara invertida: los grises son CÁLIDOS (tiran a marrón,
+   no a azul) y el acento se aclara, porque el terracota del modo claro
+   sobre fondo oscuro queda apagado y sin contraste.
+   
+   Se activa por la preferencia del sistema operativo. El profesor que
+   administra de día en la computadora recibe el claro; el alumno que mira
+   recaps de noche en el celular, el oscuro. Ninguno de los dos elige nada.
+   ---------------------------------------------------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-fondo:  #16130f;
+    --color-panel:  #211c17;
+    --color-campo:  #1a1510;
+    --color-linea:  #352d25;
+
+    --color-tinta:  #f2eae1;
+    --color-tenue:  #a3907f;
+
+    --color-acento:        #e08a5e;
+    --color-sobre-acento:  #231c16;
+
+    --color-ok:     #74c39d;
+    --color-alerta: #f08a7e;
+  }
+}
+
+/* ----------------------------------------------------------------------
+   El fondo de la página.
+
+   Va atado a `data-app="sala"`, que `main.tsx` pone en el <html> solo
+   cuando la dirección es /profe o /alumno. Sin eso, cambiar el `body` de
+   abajo le rompería el fondo a la app de la comunidad, que vive en la raíz
+   y comparte esta misma hoja de estilos.
+   ---------------------------------------------------------------------- */
+html[data-app="sala"] body {
+  background-color: var(--color-fondo);
+  color: var(--color-tinta);
 }
 
 body {

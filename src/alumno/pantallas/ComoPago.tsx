@@ -31,7 +31,7 @@ export default function ComoPago({
 
   return (
     <div className="mb-8">
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Cómo pago
       </h2>
       <ul className="flex flex-col gap-2">
@@ -106,12 +106,12 @@ function Grupo({
 
   return (
     <Tarjeta>
-      <p className="text-brand-cream">{grupo.name}</p>
+      <p className="text-tinta">{grupo.name}</p>
 
       {vigente && (
-        <p className="text-sm text-brand-taupe">
+        <p className="text-sm text-tenue">
           {futuro ? 'Este mes: ' : 'Pagás '}
-          <span className="text-brand-sand">
+          <span className="text-acento">
             {plata(precioDe(vigente.billing_mode))} {nombre(vigente.billing_mode)}
           </span>
           {vigente.end_date && futuro && ` hasta el ${fecha(vigente.end_date)}`}
@@ -119,9 +119,9 @@ function Grupo({
       )}
 
       {futuro && futuro.start_date && (
-        <p className="text-sm text-brand-taupe">
+        <p className="text-sm text-tenue">
           Desde el {fecha(futuro.start_date)}:{' '}
-          <span className="text-brand-sand">
+          <span className="text-acento">
             {plata(precioDe(futuro.billing_mode))} {nombre(futuro.billing_mode)}
           </span>
         </p>
@@ -131,16 +131,16 @@ function Grupo({
           Se muestra cuánto sale CADA CLASE con la cuota: es el único número que
           se puede comparar con el precio por clase sin tener que pensar. */}
       {comparacion?.conviene && modoQueViene === 'per_session' && (
-        <p className="mt-2 text-sm text-brand-taupe">
+        <p className="mt-2 text-sm text-tenue">
           Con la cuota cada clase te sale{' '}
-          <span className="text-brand-sand">{plata(comparacion.porClaseConCuota)}</span> en vez
+          <span className="text-acento">{plata(comparacion.porClaseConCuota)}</span> en vez
           de {plata(porClase)}. En el año son {plata(comparacion.anualConCuota)} en vez de{' '}
           {plata(comparacion.anualSuelto)}:{' '}
-          <span className="text-brand-sand">te ahorrás {plata(comparacion.ahorroAnual)}</span>.
+          <span className="text-acento">te ahorrás {plata(comparacion.ahorroAnual)}</span>.
         </p>
       )}
       {comparacion?.conviene && modoQueViene === 'per_period' && (
-        <p className="mt-2 text-sm text-brand-taupe">
+        <p className="mt-2 text-sm text-tenue">
           Cada clase te sale {plata(comparacion.porClaseConCuota)}. Viniendo suelto serían{' '}
           {plata(porClase)}.
         </p>
@@ -153,7 +153,7 @@ function Grupo({
           <Boton type="button" onClick={() => setPreguntando(true)} disabled={trabajando}>
             {trabajando ? 'Cambiando…' : `Pasarme a pagar ${nombre(otro)}`}
           </Boton>
-          <p className="mt-1 text-xs text-brand-taupe">
+          <p className="mt-1 text-xs text-tenue">
             Empieza a regir el 1 del mes que viene. Lo de este mes no cambia.
           </p>
         </div>
@@ -168,8 +168,8 @@ function Grupo({
           alCancelar={() => setPreguntando(false)}
         >
           <p>
-            En <span className="text-brand-cream">{grupo.name}</span> vas a pasar a pagar{' '}
-            <span className="text-brand-sand">
+            En <span className="text-tinta">{grupo.name}</span> vas a pasar a pagar{' '}
+            <span className="text-acento">
               {plata(precioOtro)} {nombre(otro)}
             </span>{' '}
             desde el {fecha(desde)}.

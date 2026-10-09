@@ -53,7 +53,7 @@ export default function MiEscuela({
       />
 
       {/* ---------------------------------------------------- próximas clases */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Próximas clases
       </h2>
       {clases.error && <Aviso>{clases.error}</Aviso>}
@@ -71,25 +71,25 @@ export default function MiEscuela({
                 <div className={cancelada ? 'opacity-50' : undefined}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-brand-cream">
+                      <p className="text-tinta">
                         {c.grupo?.name ?? 'Clase'}
                         {cancelada && (
-                          <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-brand-taupe">
+                          <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
                             cancelada
                           </span>
                         )}
                       </p>
-                      {venue && <p className="text-sm text-brand-taupe">{venue}</p>}
+                      {venue && <p className="text-sm text-tenue">{venue}</p>}
                       {address && (
                         <a
                           href={linkMapaDe(address)} target="_blank" rel="noreferrer"
-                          className="text-sm text-brand-sand underline"
+                          className="text-sm text-acento underline"
                         >
                           cómo llegar
                         </a>
                       )}
                     </div>
-                    <p className="shrink-0 text-sm text-brand-taupe">
+                    <p className="shrink-0 text-sm text-tenue">
                       {fecha(c.date)}
                       {c.start_time ? ` · ${c.start_time.slice(0, 5)}` : ''}
                     </p>
@@ -104,7 +104,7 @@ export default function MiEscuela({
       {/* ------------------------------------------------------------- recaps */}
       {pasadas.length > 0 && (
         <>
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
             Lo que vimos
           </h2>
           <ul className="mb-8 flex flex-col gap-2">
@@ -112,12 +112,12 @@ export default function MiEscuela({
               <li key={c.id}>
                 <Tarjeta>
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-brand-cream">{c.title ?? c.grupo?.name ?? 'Clase'}</p>
-                    <p className="shrink-0 text-sm text-brand-taupe">{fecha(c.date)}</p>
+                    <p className="text-tinta">{c.title ?? c.grupo?.name ?? 'Clase'}</p>
+                    <p className="shrink-0 text-sm text-tenue">{fecha(c.date)}</p>
                   </div>
                   {c.recap
-                    ? <p className="mt-1 text-sm text-brand-taupe">{c.recap}</p>
-                    : <p className="mt-1 text-sm text-brand-taupe/60">Sin resumen todavía.</p>}
+                    ? <p className="mt-1 text-sm text-tenue">{c.recap}</p>
+                    : <p className="mt-1 text-sm text-tenue/60">Sin resumen todavía.</p>}
                 </Tarjeta>
               </li>
             ))}
@@ -137,7 +137,7 @@ export default function MiEscuela({
       />
 
       {/* -------------------------------------------------------- mi cuenta */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Mi cuenta
       </h2>
 
@@ -145,8 +145,8 @@ export default function MiEscuela({
 
       {/* Tres estados, no dos. "Al día" y "debés $X" dejaban afuera al que pagó
           por adelantado, que es el que más merece que la app lo reconozca. */}
-      <div className="mb-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-        <p className="text-2xl font-semibold text-brand-cream">
+      <div className="mb-3 rounded-xl border border-linea bg-panel px-4 py-3">
+        <p className="text-2xl font-semibold text-tinta">
           {saldo.datos === null
             ? '…'
             : saldo.datos.debe > 0
@@ -155,7 +155,7 @@ export default function MiEscuela({
                 ? plata(saldo.datos.aFavor)
                 : 'Al día'}
         </p>
-        <p className="text-sm text-brand-taupe">
+        <p className="text-sm text-tenue">
           {saldo.datos === null
             ? ''
             : saldo.datos.debe > 0
@@ -165,7 +165,7 @@ export default function MiEscuela({
                 : 'no debés nada'}
         </p>
         {declarados.length > 0 && (
-          <p className="mt-1 text-sm text-brand-sand">
+          <p className="mt-1 text-sm text-acento">
             Avisaste {plata(declarados.reduce((s, p) => s + p.amount, 0))}. Tu profe lo tiene
             que confirmar.
           </p>
@@ -182,21 +182,21 @@ export default function MiEscuela({
                 <Tarjeta>
                   <div className={saldado ? 'opacity-60' : undefined}>
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-brand-cream">{c.concept}</p>
-                      <p className="shrink-0 text-sm text-brand-sand">{plata(c.amount)}</p>
+                      <p className="text-tinta">{c.concept}</p>
+                      <p className="shrink-0 text-sm text-acento">{plata(c.amount)}</p>
                     </div>
 
                     {/* Lo primero que se dice de un cargo es si está saldado.
                         El vencimiento solo importa mientras siga debiéndose. */}
                     {saldado ? (
-                      <p className="text-sm text-brand-sand">Pagada</p>
+                      <p className="text-sm text-acento">Pagada</p>
                     ) : aMedias ? (
-                      <p className="text-sm text-brand-taupe">
+                      <p className="text-sm text-tenue">
                         Pagaste {plata(c.pagado)} · falta {plata(c.amount - c.pagado)}
                         {c.due_date && ` · vence el ${fecha(c.due_date)}`}
                       </p>
                     ) : c.due_date ? (
-                      <p className="text-sm text-brand-taupe">vence el {fecha(c.due_date)}</p>
+                      <p className="text-sm text-tenue">vence el {fecha(c.due_date)}</p>
                     ) : null}
                   </div>
                 </Tarjeta>
@@ -227,7 +227,7 @@ export default function MiEscuela({
           lo que quiera que lo reciban. */}
       {confirmados.length > 0 && (
         <div className="mb-8 mt-6">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
             Lo que pagué
           </h2>
           <ul className="flex flex-col gap-2">
@@ -236,11 +236,11 @@ export default function MiEscuela({
                 <Tarjeta>
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <p className="text-brand-cream">{plata(p.amount)}</p>
-                      <p className="text-sm text-brand-taupe">{fecha(p.cuando)}</p>
-                      {p.note && <p className="text-sm text-brand-taupe">{p.note}</p>}
+                      <p className="text-tinta">{plata(p.amount)}</p>
+                      <p className="text-sm text-tenue">{fecha(p.cuando)}</p>
+                      {p.note && <p className="text-sm text-tenue">{p.note}</p>}
                     </div>
-                    <p className="shrink-0 text-sm text-brand-sand">confirmado</p>
+                    <p className="shrink-0 text-sm text-acento">confirmado</p>
                   </div>
                 </Tarjeta>
               </li>
@@ -308,9 +308,9 @@ function FormularioAviso({
   return (
     <form
       onSubmit={enviar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Avisar que transferí</p>
+      <p className="text-tinta">Avisar que transferí</p>
 
       <Campo etiqueta="Cuánto">
         <Texto
@@ -324,7 +324,7 @@ function FormularioAviso({
       </Campo>
 
       {falta && (
-        <p className="rounded-lg border border-white/15 px-3 py-2 text-xs text-brand-taupe">
+        <p className="rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
           Estás avisando menos de lo que debés. Está bien si es una seña o un pago
           parcial — se va a descontar de lo que debés y el resto queda pendiente.
         </p>
@@ -336,7 +336,7 @@ function FormularioAviso({
           label le reenvía un segundo clic al mismo input, que lo cierra en el
           acto. Parece que el botón no hace nada. */}
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-brand-taupe">Comprobante (opcional)</span>
+        <span className="text-sm text-tenue">Comprobante (opcional)</span>
         <input
           type="file"
           accept="image/*,application/pdf"
@@ -351,13 +351,13 @@ function FormularioAviso({
             setError(null);
             setArchivo(f);
           }}
-          className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-sm text-brand-cream file:mr-3 file:rounded file:border-0 file:bg-brand-sand file:px-3 file:py-1 file:text-brand-dark"
+          className="w-full rounded-lg border border-linea bg-campo px-3 py-2 text-sm text-tinta file:mr-3 file:rounded file:border-0 file:bg-acento file:px-3 file:py-1 file:text-sobre-acento"
         />
-        <span className="text-xs text-brand-taupe/70">
+        <span className="text-xs text-tenue/70">
           Una foto o el PDF del banco. Hasta {COMPROBANTE_MAX_MB} MB.
         </span>
         {archivo && (
-          <span className="text-xs text-brand-sand">{archivo.name}</span>
+          <span className="text-xs text-acento">{archivo.name}</span>
         )}
       </div>
 
@@ -370,7 +370,7 @@ function FormularioAviso({
 
       {error && <Aviso>{error}</Aviso>}
 
-      <p className="text-xs text-brand-taupe">
+      <p className="text-xs text-tenue">
         Esto le avisa a tu profe. Tu cuenta se actualiza cuando él lo confirme.
       </p>
 

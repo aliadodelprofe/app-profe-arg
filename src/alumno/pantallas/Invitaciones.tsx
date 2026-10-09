@@ -42,7 +42,7 @@ export default function Invitaciones({
 }) {
   return (
     <div className="mb-8">
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         {invitaciones.length === 1 ? 'Te anotaron en un curso' : 'Te anotaron en unos cursos'}
       </h2>
       <ul className="flex flex-col gap-2">
@@ -80,9 +80,9 @@ function Fila({
 
   return (
     <Tarjeta>
-      <p className="text-brand-cream">{invitacion.escuela}</p>
-      <p className="text-sm text-brand-taupe">
-        Te anotaron como <span className="text-brand-cream">{invitacion.anotado_como}</span> en{' '}
+      <p className="text-tinta">{invitacion.escuela}</p>
+      <p className="text-sm text-tenue">
+        Te anotaron como <span className="text-tinta">{invitacion.anotado_como}</span> en{' '}
         {invitacion.grupos}.
       </p>
 
@@ -92,17 +92,17 @@ function Fila({
       {invitacion.formas_de_pago.length > 0 && (
         <ul className="mt-2 flex flex-col gap-0.5">
           {invitacion.formas_de_pago.map((f, i) => (
-            <li key={i} className="text-sm text-brand-sand">
+            <li key={i} className="text-sm text-acento">
               {comoTeCobran(f)}
               {f.grupo && invitacion.formas_de_pago.length > 1 && (
-                <span className="text-brand-taupe"> · {f.grupo}</span>
+                <span className="text-tenue"> · {f.grupo}</span>
               )}
             </li>
           ))}
         </ul>
       )}
 
-      <p className="mt-2 text-xs text-brand-taupe">
+      <p className="mt-2 text-xs text-tenue">
         Si aceptás vas a ver tus clases y tu estado de cuenta, y esta escuela va a poder
         cobrarte por las clases que tomes. Después podés pedirle a tu profe que te cambie
         la forma de pago.

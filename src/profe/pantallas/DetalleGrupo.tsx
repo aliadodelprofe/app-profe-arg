@@ -121,14 +121,14 @@ export default function DetalleGrupo({
       {errorGen && <div className="mb-4"><Aviso>{errorGen}</Aviso></div>}
 
       {creadas.length > 0 && (
-        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           Se agregaron {creadas.length} {creadas.length === 1 ? 'clase' : 'clases'} según el
           horario del grupo{horarioDe(grupo) ? ` (${horarioDe(grupo)})` : ''}: {creadas.map((f) => fecha(f)).join(', ')}.
         </p>
       )}
 
       {cargosCreados > 0 && (
-        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           Se generaron {cargosCreados} {cargosCreados === 1 ? 'cargo' : 'cargos'} por lo que
           viene: la próxima clase de los que pagan por clase, y la cuota del mes de los que
           pagan por mes.
@@ -136,15 +136,15 @@ export default function DetalleGrupo({
       )}
 
       {imputados > 0 && (
-        <p className="mb-4 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           Se aplicaron {imputados} {imputados === 1 ? 'pago' : 'pagos'} que había a favor de
           alumnos que habían pagado por adelantado. No les figura como deuda.
         </p>
       )}
 
       {cuantasEsteMes >= 5 && (
-        <p className="mb-4 rounded-lg border border-white/15 px-3 py-2 text-sm text-brand-taupe">
-          Este mes tenés <span className="text-brand-cream">{cuantasEsteMes} clases</span>, no
+        <p className="mb-4 rounded-lg border border-linea px-3 py-2 text-sm text-tenue">
+          Este mes tenés <span className="text-tinta">{cuantasEsteMes} clases</span>, no
           cuatro. A los que pagan por mes no les cobrás de más: la cuota es fija y ya está
           pensada sobre el promedio real del año, que es 4,33 clases por mes. A los que pagan
           por clase sí les va a aparecer un cargo más.
@@ -156,7 +156,7 @@ export default function DetalleGrupo({
           por eso dentro del mismo grupo puede haber uno por clase y otro
           por mes.
          --------------------------------------------------------------- */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Alumnos
       </h2>
 
@@ -233,7 +233,7 @@ export default function DetalleGrupo({
           abre la app, así que se muestra acá y no escondido.
           Tocar una clase abre la asistencia de esa clase.
          --------------------------------------------------------------- */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-brand-taupe">
+      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
         Clases
       </h2>
 
@@ -263,7 +263,7 @@ export default function DetalleGrupo({
               <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
               <BotonSecundario onClick={() => setGenerando(true)}>+ Generar varias</BotonSecundario>
             </div>
-            <p className="mt-2 text-sm text-brand-taupe">
+            <p className="mt-2 text-sm text-tenue">
               {horarioDe(grupo)
                 ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Estos botones son para agregar algo fuera de ese horario.`
                 : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar grupo" y se crean solas.'}
@@ -375,9 +375,9 @@ function FormularioAlumno({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Anotar alumno en {grupo.name}</p>
+      <p className="text-tinta">Anotar alumno en {grupo.name}</p>
 
       <Opciones<'nuevo' | 'existente'>
         valor={quien}
@@ -403,7 +403,7 @@ function FormularioAlumno({
       ) : (
         <Campo etiqueta="Alumno">
           {disponibles.length === 0 ? (
-            <p className="text-sm text-brand-taupe">
+            <p className="text-sm text-tenue">
               {alumnos.datos
                 ? 'No queda nadie de tu escuela sin anotar en este grupo.'
                 : 'Buscando…'}
@@ -413,7 +413,7 @@ function FormularioAlumno({
               required
               value={elegido}
               onChange={(e) => setElegido(e.target.value)}
-              className="w-full rounded-lg border border-white/10 bg-black/40 px-3 py-2 text-brand-cream outline-none focus:border-brand-sand"
+              className="w-full rounded-lg border border-linea bg-campo px-3 py-2 text-tinta outline-none focus:border-acento"
             >
               <option value="">Elegir…</option>
               {disponibles.map((a) => (
@@ -452,8 +452,8 @@ function FormularioAlumno({
       {/* Se suma con el mes ya empezado: cobrarle la cuota entera sería
           cobrarle clases que no va a recibir. */}
       {cobro === 'per_period' && mesEmpezado && (
-        <div className="rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2">
-          <p className="mb-2 text-sm text-brand-sand">
+        <div className="rounded-lg border border-acento/30 bg-acento/5 px-3 py-2">
+          <p className="mb-2 text-sm text-acento">
             {mesEnPalabras(mes)} ya empezó: hubo al menos una clase.
           </p>
           <Opciones<'si' | 'no'>
@@ -464,7 +464,7 @@ function FormularioAlumno({
               { valor: 'no', texto: `Cuota de ${mesEnPalabras(mes)} completa` },
             ]}
           />
-          <p className="mt-2 text-xs text-brand-taupe">
+          <p className="mt-2 text-xs text-tenue">
             {diferir
               ? `Se anota dos veces: por clase hasta fin de ${mesEnPalabras(mes)}, y por mes desde el 1 de ${mesEnPalabras(mesSiguiente(mes))}. Es lo que evita cobrarle clases que ya pasaron.`
               : `Paga ${plata(precioDelGrupo(grupo, 'per_period'))} por ${mesEnPalabras(mes)} aunque ya hayan pasado clases.`}
@@ -536,9 +536,9 @@ function FormularioClase({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Nueva clase de {grupo.name}</p>
+      <p className="text-tinta">Nueva clase de {grupo.name}</p>
 
       <Campo etiqueta="Día">
         <Texto type="date" required value={dia} onChange={(e) => setDia(e.target.value)} />
@@ -639,28 +639,28 @@ function FilaClase({
     <Tarjeta>
       <div className={cancelada ? 'opacity-50' : undefined}>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-brand-cream">
+          <p className="text-tinta">
             {clase.title ?? 'Clase'}
             {cancelada && (
-              <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-brand-taupe">
+              <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
                 cancelada
               </span>
             )}
           </p>
-          <p className="shrink-0 text-sm text-brand-taupe">
+          <p className="shrink-0 text-sm text-tenue">
             {fecha(clase.date)}
             {clase.start_time ? ` · ${clase.start_time.slice(0, 5)}` : ''}
           </p>
         </div>
 
         {(lugar.venue || lugar.address) && (
-          <p className="text-sm text-brand-taupe">
+          <p className="text-sm text-tenue">
             {lugar.venue}
             {lugar.venue && lugar.address && ' · '}
             {lugar.address && (
               <a
                 href={linkMapa(lugar.address)} target="_blank" rel="noreferrer"
-                className="text-brand-sand underline"
+                className="text-acento underline"
               >
                 ver en el mapa
               </a>
@@ -668,7 +668,7 @@ function FilaClase({
           </p>
         )}
 
-        {clase.recap && <p className="mt-1 text-sm text-brand-taupe">{clase.recap}</p>}
+        {clase.recap && <p className="mt-1 text-sm text-tenue">{clase.recap}</p>}
       </div>
 
       {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
@@ -731,9 +731,9 @@ function FormularioEditarClase({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Editar clase</p>
+      <p className="text-tinta">Editar clase</p>
 
       <Campo etiqueta="Día">
         <Texto type="date" required value={dia} onChange={(e) => setDia(e.target.value)} />
@@ -836,9 +836,9 @@ function FormularioSerie({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Generar varias clases de {grupo.name}</p>
+      <p className="text-tinta">Generar varias clases de {grupo.name}</p>
 
       <Campo etiqueta="Primera clase" ayuda={`Cae ${diaSemana(desde)}. Las demás van una por semana, el mismo día.`}>
         <Texto type="date" required value={desde} onChange={(e) => setDesde(e.target.value)} />
@@ -864,15 +864,15 @@ function FormularioSerie({
       </Campo>
 
       {hayQuinta && (
-        <div className="rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm">
-          <p className="text-brand-sand">
+        <div className="rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm">
+          <p className="text-acento">
             Este mes el {diaSemana(desde)} cae una vez más, el {fecha(quinta)}.
             Con cuatro clases ese día queda sin cargar.
           </p>
           <button
             type="button"
             onClick={() => setCuantas(5)}
-            className="mt-1 text-brand-cream underline"
+            className="mt-1 text-tinta underline"
           >
             Agregar esa clase también
           </button>
@@ -880,8 +880,8 @@ function FormularioSerie({
       )}
 
       {/* Las fechas a la vista antes de crear nada */}
-      <div className="rounded-lg border border-white/10 px-3 py-2">
-        <p className="mb-1 text-sm text-brand-taupe">
+      <div className="rounded-lg border border-linea px-3 py-2">
+        <p className="mb-1 text-sm text-tenue">
           Se van a crear {nuevas.length} {nuevas.length === 1 ? 'clase' : 'clases'}
           {hora && ` a las ${hora}`}:
         </p>
@@ -889,7 +889,7 @@ function FormularioSerie({
           {fechas.map((f) => {
             const repetida = yaCargadas.includes(f);
             return (
-              <li key={f} className={repetida ? 'text-brand-taupe line-through' : 'text-brand-cream'}>
+              <li key={f} className={repetida ? 'text-tenue line-through' : 'text-tinta'}>
                 {fecha(f)}
                 {repetida && ' (ya está)'}
               </li>
@@ -961,39 +961,39 @@ function FilaAlumno({
     <Tarjeta>
       <div className={activa ? undefined : 'opacity-50'}>
         <div className="flex items-center justify-between gap-3">
-          <p className="text-brand-cream">
+          <p className="text-tinta">
             {inscripcion.alumno?.full_name ?? 'Alumno sin ficha'}
             {!activa && (
-              <span className="ml-2 rounded-full border border-white/20 px-2 py-0.5 text-xs text-brand-taupe">
+              <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
                 ya no cursa
               </span>
             )}
           </p>
-          <p className="shrink-0 text-sm text-brand-sand">
+          <p className="shrink-0 text-sm text-acento">
             {plata(precioDe(grupo, inscripcion))}{' '}
-            <span className="text-brand-taupe">{nombreCobro[inscripcion.billing_mode]}</span>
+            <span className="text-tenue">{nombreCobro[inscripcion.billing_mode]}</span>
           </p>
         </div>
         {!activa && inscripcion.end_date && (
-          <p className="text-sm text-brand-taupe">hasta el {fecha(inscripcion.end_date)}</p>
+          <p className="text-sm text-tenue">hasta el {fecha(inscripcion.end_date)}</p>
         )}
 
         {/* Si puede entrar al portal o no. La consecuencia de no cargarle el
             correo se ve acá, en el momento, y no tres semanas después cuando
             el alumno pregunta por qué no puede entrar. */}
         {activa && inscripcion.alumno && !inscripcion.alumno.email && (
-          <p className="text-sm text-brand-taupe">
+          <p className="text-sm text-tenue">
             Sin correo: no va a poder entrar a la app.
           </p>
         )}
         {activa && inscripcion.alumno?.email && !inscripcion.alumno.user_id
           && !inscripcion.alumno.invite_rejected_at && (
-          <p className="text-sm text-brand-taupe">
+          <p className="text-sm text-tenue">
             Invitado a {inscripcion.alumno.email}. Todavía no aceptó.
           </p>
         )}
         {activa && inscripcion.alumno?.invite_rejected_at && !inscripcion.alumno.user_id && (
-          <p className="text-sm text-red-300">
+          <p className="text-sm text-alerta">
             Alguien entró con {inscripcion.alumno.email} y dijo que no es esta persona.
             Revisá el correo en "Editar ficha".
           </p>
@@ -1003,7 +1003,7 @@ function FilaAlumno({
       {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
 
       {cobrado && (
-        <p className="mt-2 rounded-lg border border-brand-sand/30 bg-brand-sand/5 px-3 py-2 text-sm text-brand-sand">
+        <p className="mt-2 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
           {cobrado}
         </p>
       )}
@@ -1032,7 +1032,7 @@ function FilaAlumno({
 
       {confirmando ? (
         <div className="mt-3">
-          <p className="mb-2 text-sm text-brand-taupe">
+          <p className="mb-2 text-sm text-tenue">
             Quitar borra la inscripción como si nunca hubiera existido. Si el alumno
             cursó, lo que corresponde es darlo de baja.
           </p>
@@ -1143,7 +1143,7 @@ function FormularioCargo({
   }
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-white/10 p-3">
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-linea p-3">
       {esMensual && (
         <Campo etiqueta="Mes">
           <Texto
@@ -1236,20 +1236,20 @@ function FormularioCuotaDelGrupo({
 
   if (resultado) {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4">
-        <p className="text-brand-sand">
+      <div className="flex flex-col gap-2 rounded-xl border border-linea bg-panel p-4">
+        <p className="text-acento">
           {resultado.cobrados.length === 0
             ? 'No se creó ningún cargo.'
             : `Se cobró a ${resultado.cobrados.length}: ${resultado.cobrados.join(', ')}.`}
         </p>
         {resultado.yaEstaban.length > 0 && (
-          <p className="text-sm text-brand-taupe">
+          <p className="text-sm text-tenue">
             Ya tenían cobrado {mesEnPalabras(periodo)}, no se duplicó:{' '}
             {resultado.yaEstaban.join(', ')}.
           </p>
         )}
         {resultado.sinPrecio.length > 0 && (
-          <p className="text-sm text-brand-taupe">
+          <p className="text-sm text-tenue">
             No se les pudo cobrar porque el grupo no tiene precio mensual:{' '}
             {resultado.sinPrecio.join(', ')}. Cargalo en "Editar grupo".
           </p>
@@ -1262,9 +1262,9 @@ function FormularioCuotaDelGrupo({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Cobrar la cuota del mes</p>
+      <p className="text-tinta">Cobrar la cuota del mes</p>
 
       <Campo etiqueta="Mes">
         <Texto
@@ -1285,8 +1285,8 @@ function FormularioCuotaDelGrupo({
         <Texto type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
       </Campo>
 
-      <div className="rounded-lg border border-white/10 px-3 py-2">
-        <p className="mb-1 text-sm text-brand-taupe">
+      <div className="rounded-lg border border-linea px-3 py-2">
+        <p className="mb-1 text-sm text-tenue">
           Se le va a cobrar a {alcanzados.length}, {plata(precioMensual)} cada uno.
           Total {plata(total)}:
         </p>
@@ -1295,15 +1295,15 @@ function FormularioCuotaDelGrupo({
             const precio = precioDe(grupo, i);
             return (
               <li key={i.id} className="flex justify-between gap-3">
-                <span className="text-brand-cream">{i.alumno!.full_name}</span>
-                <span className={precio === null ? 'text-red-300' : 'text-brand-sand'}>
+                <span className="text-tinta">{i.alumno!.full_name}</span>
+                <span className={precio === null ? 'text-alerta' : 'text-acento'}>
                   {precio === null ? 'el grupo no tiene precio mensual' : plata(precio)}
                 </span>
               </li>
             );
           })}
         </ul>
-        <p className="mt-2 text-xs text-brand-taupe">
+        <p className="mt-2 text-xs text-tenue">
           Los que pagan por clase no aparecen acá: no tienen cuota mensual.
         </p>
       </div>
@@ -1384,8 +1384,8 @@ function FormularioFicha({
   const yaEntro = ficha.datos?.user_id != null;
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-white/10 p-3">
-      <p className="text-brand-cream">Ficha de {ficha.datos?.full_name}</p>
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-linea p-3">
+      <p className="text-tinta">Ficha de {ficha.datos?.full_name}</p>
 
       <Campo etiqueta="Cómo lo anotás" ayuda="El nombre con el que aparece en tu lista.">
         <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />

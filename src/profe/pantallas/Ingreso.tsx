@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Marco, Aviso } from '../../comun/ui';
+import { Marco, Aviso, Marca } from '../../comun/ui';
 
 export default function Ingreso() {
   const [email, setEmail] = useState('');
@@ -22,13 +22,14 @@ export default function Ingreso() {
   }
 
   const input =
-    'rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-brand-cream outline-none focus:border-brand-sand';
+    'rounded-lg bg-campo border border-linea px-3 py-2 text-tinta outline-none focus:border-acento';
 
   return (
     <Marco>
       <div className="mx-auto max-w-sm">
-        <h1 className="mb-1 text-2xl font-semibold text-brand-cream">Entrar</h1>
-        <p className="mb-6 text-sm text-brand-taupe">App del profesor</p>
+        <Marca />
+        <h1 className="mb-1 text-2xl font-semibold text-tinta">Entrar</h1>
+        <p className="mb-6 text-sm text-tenue">App del profesor</p>
 
         <form onSubmit={entrar} className="flex flex-col gap-3">
           <input
@@ -41,7 +42,7 @@ export default function Ingreso() {
           />
           <button
             type="submit" disabled={entrando}
-            className="rounded-lg bg-brand-sand px-3 py-2 font-medium text-brand-dark disabled:opacity-50"
+            className="rounded-lg bg-acento px-3 py-2 font-medium text-sobre-acento disabled:opacity-50"
           >
             {entrando ? 'Entrando…' : 'Entrar'}
           </button>

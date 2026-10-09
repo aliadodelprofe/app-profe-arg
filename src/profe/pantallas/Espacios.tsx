@@ -56,7 +56,7 @@ export default function Espacios({
             </Vacio>
             <button
               onClick={() => setCreando(true)}
-              className="mt-4 text-sm text-brand-taupe underline hover:text-brand-sand"
+              className="mt-4 text-sm text-tenue underline hover:text-acento"
             >
               Soy profesor y quiero crear mi espacio
             </button>
@@ -93,8 +93,8 @@ export default function Espacios({
         {espacios.map((e) => (
           <li key={e.id}>
             <Tarjeta alTocar={() => alElegir(e)}>
-              <p className="text-brand-cream">{e.name}</p>
-              <p className="text-sm text-brand-taupe">
+              <p className="text-tinta">{e.name}</p>
+              <p className="text-sm text-tenue">
                 {e.discipline ?? 'sin disciplina'} · plan {e.plan}
               </p>
             </Tarjeta>
@@ -142,9 +142,9 @@ function FormularioEspacio({
   return (
     <form
       onSubmit={guardar}
-      className="mt-4 flex flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4"
+      className="mt-4 flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
     >
-      <p className="text-brand-cream">Nuevo espacio</p>
+      <p className="text-tinta">Nuevo espacio</p>
 
       <Campo etiqueta="Nombre" ayuda="Como le decís a tu proyecto. No es la sala donde das clase.">
         <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
