@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { traerGrupos, nombreFormato, fecha, linkMapa, horarioDe } from '../datos';
+import { traerGrupos, nombreFormato, linkMapa, horarioDe, periodoDe, hoyISO } from '../datos';
 import type { Espacio, Grupo } from '../datos';
 import { Marco, Aviso, Vacio, Tarjeta, Titulo, Etiqueta, useCarga, BotonSecundario } from '../../comun/ui';
 import FormularioGrupo from './FormularioGrupo';
@@ -65,16 +65,15 @@ export default function Grupos({
                   <Etiqueta>{nombreFormato[g.format]}</Etiqueta>
                 </div>
                 <p className="text-sm text-tenue">
-                  {[
-                    horarioDe(g),
-                    g.level,
-                    g.venue,
-                    g.capacity ? `cupo ${g.capacity}` : null,
-                    g.end_date ? `hasta ${fecha(g.end_date)}` : null,
-                  ]
+                  {[horarioDe(g), g.level, g.venue, g.capacity ? `cupo ${g.capacity}` : null]
                     .filter(Boolean)
                     .join(' · ') || 'sin horario fijo'}
                 </p>
+                {/* El período de una formación va en su propia línea y no
+                    mezclado entre el nivel y el cupo: es lo que la define. */}
+                {periodoDe(g, hoyISO()) && (
+                  <p className="text-sm text-acento">{periodoDe(g, hoyISO())}</p>
+                )}
                 {g.address && (
                   <a
                     href={linkMapa(g.address)} target="_blank" rel="noreferrer"

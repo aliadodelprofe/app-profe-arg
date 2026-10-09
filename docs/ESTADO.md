@@ -402,10 +402,60 @@ tiene seis tarjetas, estén vacías o no, deja de leerse a la semana.
 (lo cobrado). Una pantalla que arranca con el resumen del mes te hace bajar para encontrar
 lo que tenés que hacer.
 
+### El menú se dibujaba abajo (9/10/2026)
+
+La barra de computadora estaba después del contenido en el documento y era `sticky`.
+`sticky` pega un elemento al borde **cuando el scroll lo alcanza**: puesto al final,
+aparecía abajo de toda la página. Un menú "arriba" que se dibuja abajo no es un problema de
+estilo, es orden del documento. Ahora `Navegacion` se renderiza **antes** del contenido, y
+su contenedor interno usa el mismo ancho y margen que las pantallas para que el menú y el
+título queden sobre la misma línea vertical.
+
+La barra de celular es `fixed`, así que dónde esté en el documento no cambia dónde se
+dibuja.
+
+### La tipografía
+
+**Plus Jakarta Sans.** Geométrica pero con las curvas abiertas, que es lo que la hace
+cálida en vez de corporativa, y con números de ancho fijo — importa en una app donde se
+comparan montos uno debajo del otro.
+
+El `system-ui` anterior no era feo, era **neutro**. Y lo neutro en una interfaz se lee como
+"esto es una página web", porque es la letra que usan las páginas que no eligieron ninguna.
+
+Se carga desde `main.tsx` y no con un `@import` en el CSS: la hoja es una sola para las tres
+apps, y un `@import` se descargaría también al entrar a la app de la comunidad, que no la
+usa.
+
 ### Pendiente
 
 `DetalleGrupo` sigue siendo largo: avisos, alumnos, clases, altas de cargos y formularios
 apilados. Es el próximo candidato a cortar en bloques.
+
+---
+
+## Las formaciones tienen principio y fin (9/10/2026)
+
+`groups.end_date` existía desde la 0003 y el formulario ya lo pedía — pero estaba **al final
+de un formulario largo, debajo de "Cupo (opcional)"**, y no se mostraba en ninguna pantalla
+salvo mezclado en una línea de datos sueltos separados por puntos.
+
+Una formación es un programa con principio y fin: dos meses, ocho clases. Las fechas son lo
+que la define, no un detalle opcional. Además son las que hacen que `asegurar_clases()` deje
+de generar clases y que `asegurar_cargos()` no cobre un mes que el grupo ya no cursa.
+
+Qué cambió:
+
+- Las dos fechas suben al principio del formulario, juntas, y para una formación son
+  **obligatorias**: sin fecha de término el formulario no guarda.
+- Una nota explica para qué sirven, en vez de dejarlo implícito.
+- `periodoDe()` en `datos.ts` dice el período en castellano según en qué momento está:
+  *"del 1/11 al 30/12"*, *"termina el 30/12"*, *"terminó el 30/12"*. Devuelve null para los
+  grupos regulares, que no terminan.
+- Se muestra en su propia línea en la tarjeta del grupo y en el encabezado del detalle.
+
+**No era una función que faltaba: era una función que no se encontraba.** Vale la pena
+distinguir los dos casos antes de ponerse a construir.
 
 ---
 

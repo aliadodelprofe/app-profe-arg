@@ -12,7 +12,7 @@
 // ============================================================================
 import { supabase } from '../lib/supabase';
 import {
-  NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente,
+  NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente, fecha,
 } from '../comun/fechas';
 
 // Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
@@ -1024,4 +1024,28 @@ export async function traerClasesDelEspacio(
     .order('start_time', { nullsFirst: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as ClaseDelEspacio[];
+}
+
+// ---------------------------------------------------------------------------
+// EL PERÍODO DE UNA FORMACIÓN
+//
+// Una formación es un programa con principio y fin —dos meses, ocho clases— y
+// eso es lo que la define. Hasta ahora las fechas estaban en el formulario
+// como dos campos opcionales al final, debajo del cupo, y no se mostraban en
+// ninguna pantalla salvo mezcladas en una línea de datos sueltos.
+//
+// Devuelve null para los grupos regulares: esos no terminan, y decir "sin
+// fecha de fin" sería ruido.
+// ---------------------------------------------------------------------------
+export function periodoDe(
+  g: { format: Formato; start_date: string | null; end_date: string | null },
+  hoy: string,
+): string | null {
+  if (g.format !== 'cycle') return null;
+  if (!g.end_date) return 'sin fecha de fin';
+  if (g.end_date < hoy) return `terminó el ${fecha(g.end_date)}`;
+  if (g.start_date && g.start_date > hoy) {
+    return `del ${fecha(g.start_date)} al ${fecha(g.end_date)}`;
+  }
+  return `termina el ${fecha(g.end_date)}`;
 }

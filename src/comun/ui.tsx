@@ -74,12 +74,32 @@ export function Tarjeta({
   children: ReactNode;
   alTocar?: () => void;
 }) {
+  // La sombra es mínima y solo se nota en modo claro, que es donde una
+  // tarjeta sin sombra sobre fondo casi blanco se lee como un rectángulo
+  // dibujado y no como algo apoyado.
   const clases =
-    'w-full rounded-xl border border-linea bg-panel p-4 text-left';
+    'w-full rounded-2xl border border-linea bg-panel p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
   if (!alTocar) return <div className={clases}>{children}</div>;
+  // Una tarjeta que se toca tiene que avisar que se toca. En el celular no
+  // hay `hover`, así que lo que comunica es el `active`: el hundido de medio
+  // píxel al apretar es lo que separa "esto es una app" de "esto es un div".
   return (
-    <button onClick={alTocar} className={clases + ' hover:border-acento/40'}>
-      {children}
+    <button
+      onClick={alTocar}
+      className={
+        clases +
+        ' flex items-start justify-between gap-3 transition hover:border-acento/40' +
+        ' active:scale-[0.99] active:bg-acento/5'
+      }
+    >
+      <span className="min-w-0 flex-1">{children}</span>
+      <svg
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        aria-hidden="true"
+        className="mt-1 h-4 w-4 shrink-0 text-tenue"
+      >
+        <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </button>
   );
 }
@@ -202,7 +222,7 @@ export function Boton({
   return (
     <button
       {...props}
-      className="rounded-lg bg-acento px-3 py-2 font-medium text-sobre-acento disabled:opacity-50"
+      className="rounded-xl bg-acento px-4 py-2.5 font-medium text-sobre-acento transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
     >
       {children}
     </button>
@@ -216,7 +236,7 @@ export function BotonSecundario({
   return (
     <button
       {...props}
-      className="rounded-lg border border-linea px-3 py-2 text-sm text-tenue hover:border-acento/40"
+      className="rounded-xl border border-linea px-4 py-2.5 text-sm text-tenue transition hover:border-acento/40 active:scale-[0.98]"
     >
       {children}
     </button>
@@ -452,22 +472,34 @@ export function Navegacion<T extends string>({
 
   return (
     <>
-      {/* Celular: fija abajo. El padding de abajo respeta la zona del gesto
-          de inicio en los iPhone sin botón. */}
+      {/* Computadora: arriba. Va PRIMERO en el documento a propósito.
+          
+          Antes estaba después del contenido y era `sticky`, que solo pega un
+          elemento al borde cuando el scroll lo alcanza: puesto al final,
+          aparecía abajo de toda la página. Un menú "arriba" que se dibuja
+          abajo no es un detalle de estilo, es orden del documento.
+          
+          El contenido interno se alinea con el de las pantallas (mismo ancho
+          máximo y mismo margen lateral) para que el menú y el título queden
+          sobre la misma línea vertical. */}
+      <nav
+        className="sticky top-0 z-40 hidden border-b border-linea bg-fondo/85 backdrop-blur sm:block"
+        aria-label="Secciones"
+      >
+        <div className="mx-auto flex max-w-2xl items-center gap-1 px-5 py-2.5">
+          <span className="mr-4 font-semibold tracking-tight text-acento">{NOMBRE}</span>
+          {pestanas.map((p) => boton(p, false))}
+        </div>
+      </nav>
+
+      {/* Celular: fija abajo, donde llega el pulgar. Al ser `fixed`, dónde
+          esté en el documento no cambia dónde se dibuja. El padding de abajo
+          respeta la zona del gesto de inicio en los iPhone sin botón. */}
       <nav
         className="fixed inset-x-0 bottom-0 z-40 flex border-t border-linea bg-panel px-2 pb-[env(safe-area-inset-bottom,0px)] sm:hidden"
         aria-label="Secciones"
       >
         {pestanas.map((p) => boton(p, true))}
-      </nav>
-
-      {/* Computadora: arriba, pegada al borde superior al hacer scroll. */}
-      <nav
-        className="sticky top-0 z-40 mb-6 hidden items-center gap-1 border-b border-linea bg-fondo/90 py-2 backdrop-blur sm:flex"
-        aria-label="Secciones"
-      >
-        <span className="mr-3 pl-1 font-semibold tracking-tight text-acento">{NOMBRE}</span>
-        {pestanas.map((p) => boton(p, false))}
       </nav>
     </>
   );

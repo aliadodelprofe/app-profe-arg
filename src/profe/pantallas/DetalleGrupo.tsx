@@ -10,6 +10,7 @@ import {
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   inscribirConArranqueDiferido, mesSiguiente,
   nombreFormato, nombreCobro, fecha, plata,
+  periodoDe,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
 import type {
@@ -90,7 +91,13 @@ export default function DetalleGrupo({
     <Marco>
       <Encabezado
         titulo={grupo.name}
-        bajada={[nombreFormato[grupo.format], horarioDe(grupo), grupo.level, grupo.venue]
+        bajada={[
+          nombreFormato[grupo.format],
+          periodoDe(grupo, hoyISO()),
+          horarioDe(grupo),
+          grupo.level,
+          grupo.venue,
+        ]
           .filter(Boolean)
           .join(' · ')}
         volver={{ texto: 'Mis grupos', alTocar: alVolver }}

@@ -46,6 +46,12 @@ export default function FormularioGrupo({
     setGuardando(true);
     setError(null);
 
+    if (formato === 'cycle' && !hasta) {
+      setError('Una formación necesita fecha de término: es lo que define cuánto dura.');
+      setGuardando(false);
+      return;
+    }
+
     const datos: DatosGrupo = {
       name: nombre.trim(),
       format: formato,
@@ -207,6 +213,39 @@ export default function FormularioGrupo({
         </Campo>
       )}
 
+      {/* Las fechas van ACÁ y no al final del formulario. En una formación son
+          lo que define el producto —un programa de dos meses— y además lo que
+          hace que las clases dejen de generarse solas cuando termina. Estaban
+          abajo de "Cupo (opcional)", tratadas como un detalle. */}
+      {formato === 'cycle' ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Campo etiqueta="Arranca">
+            <Texto
+              type="date" required value={desde}
+              onChange={(e) => setDesde(e.target.value)}
+            />
+          </Campo>
+          <Campo etiqueta="Termina">
+            <Texto
+              type="date" required value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+            />
+          </Campo>
+        </div>
+      ) : (
+        <Campo etiqueta="Empieza (opcional)" ayuda="Dejalo vacío si el grupo ya viene andando.">
+          <Texto type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+        </Campo>
+      )}
+
+      {formato === 'cycle' && (
+        <p className="-mt-1 rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
+          Una formación es un programa con principio y fin. Después de la fecha de término
+          dejan de generarse clases solas, y a nadie se le genera una cuota por un mes que
+          el grupo ya no cursa.
+        </p>
+      )}
+
       <Campo etiqueta="Nivel (opcional)">
         <Texto value={nivel} placeholder="Principiante" onChange={(e) => setNivel(e.target.value)} />
       </Campo>
@@ -225,16 +264,6 @@ export default function FormularioGrupo({
       <Campo etiqueta="Cupo (opcional)">
         <Texto type="number" min="1" value={cupo} onChange={(e) => setCupo(e.target.value)} />
       </Campo>
-
-      <Campo etiqueta="Empieza (opcional)">
-        <Texto type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
-      </Campo>
-
-      {formato === 'cycle' && (
-        <Campo etiqueta="Termina">
-          <Texto type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
-        </Campo>
-      )}
 
       {error && <Aviso>{error}</Aviso>}
 

@@ -38,6 +38,15 @@ const ruta = window.location.pathname;
 function marcarAppNueva() {
   document.documentElement.dataset.app = 'nueva';
   document.title = NOMBRE;
+
+  // La tipografía se carga ACÁ y no con un @import en el CSS, porque la hoja
+  // de estilos es una sola para las tres apps: un @import se descargaría
+  // también al entrar a la app de la comunidad, que no la usa.
+  const fuente = document.createElement('link');
+  fuente.rel = 'stylesheet';
+  fuente.href =
+    'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap';
+  document.head.appendChild(fuente);
 }
 
 if (ruta.startsWith('/profe')) {

@@ -114,6 +114,15 @@ function Adentro({ sesion }: { sesion: Session }) {
 
     return (
       <>
+        <Navegacion
+          activa={tab}
+          alElegir={irA}
+          pestanas={[
+            { id: 'hoy', texto: 'Hoy', icono: IconoHoy },
+            { id: 'grupos', texto: 'Grupos', icono: IconoGrupos },
+            { id: 'cobros', texto: 'Cobros', icono: IconoCobros },
+          ]}
+        />
         {tab === 'hoy' && (
           <Hoy
             espacio={espacio}
@@ -141,15 +150,6 @@ function Adentro({ sesion }: { sesion: Session }) {
         )}
         {tab === 'cobros' && <Cobros espacio={espacio} />}
 
-        <Navegacion
-          activa={tab}
-          alElegir={irA}
-          pestanas={[
-            { id: 'hoy', texto: 'Hoy', icono: IconoHoy },
-            { id: 'grupos', texto: 'Grupos', icono: IconoGrupos },
-            { id: 'cobros', texto: 'Cobros', icono: IconoCobros },
-          ]}
-        />
       </>
     );
   }

@@ -87,6 +87,19 @@
 html[data-app="nueva"] body {
   background-color: var(--color-fondo);
   color: var(--color-tinta);
+
+  /* Plus Jakarta Sans: geométrica pero con las curvas abiertas, que es lo que
+     la hace cálida en vez de corporativa. Los números son de ancho fijo, que
+     importa en una app donde se comparan montos uno debajo del otro.
+
+     El `system-ui` de antes no era feo: era neutro. Y lo neutro, en una
+     interfaz, se lee como "esto es una página web", porque es la letra que
+     usan las páginas que no eligieron ninguna. */
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.5;
 }
 
 body {

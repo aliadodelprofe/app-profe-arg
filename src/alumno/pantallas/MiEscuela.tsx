@@ -57,7 +57,10 @@ export default function MiEscuela({
     .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
   return (
-    <Marco conBarra>
+    <>
+      <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
+
+      <Marco conBarra>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <Titulo>{ficha.escuela?.name ?? 'Mis clases'}</Titulo>
@@ -263,12 +266,8 @@ export default function MiEscuela({
         </>
       )}
 
-      <Navegacion<Tab>
-        activa={tab}
-        alElegir={setTab}
-        pestanas={pestanas}
-      />
     </Marco>
+    </>
   );
 }
 
