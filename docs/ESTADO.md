@@ -207,14 +207,23 @@ El botón **no lleva el logo de Google**. Es una marca ajena y no la dibujamos n
    es la raíz — o sea, **la app vieja de la comunidad**.
 4. **Antes del deploy:** sacar las direcciones de localhost de Google Cloud.
 
-### El riesgo que hay que verificar, no suponer
+### El riesgo que se verificó — y quedó descartado (6/10/2026)
 
 Las tres funciones de la 0015 exigen `u.email_confirmed_at is not null` antes de mostrar o
 aceptar una invitación. La documentación de Supabase **no aclara** si el login con un
 proveedor OAuth marca el correo como confirmado. Si no lo marcara, un alumno que entra con
-Google nunca vería su invitación, y no habría ningún error en pantalla que lo explique.
+Google nunca vería su invitación, y no habría ningún error en pantalla que lo explicara.
 
-Se verifica después del primer login con Google:
+Se verificó después del primer login con Google, y la respuesta es que **sí lo marca**:
+
+```
+email                    correo_confirmado   proveedores
+tomaselmore1@gmail.com   true                ["google"]
+```
+
+O sea que las funciones de la 0015 lo aceptan sin cambios y no hizo falta ninguna
+migración. La consulta para repetir la verificación, si algún día cambia el comportamiento
+de Supabase o se agrega otro proveedor:
 
 ```sql
 select u.email,
@@ -225,9 +234,8 @@ select u.email,
  limit 5;
 ```
 
-Si `correo_confirmado` da `false` para el usuario de Google, hay que relajar esa condición
-en una migración nueva: aceptar o un correo confirmado, o una identidad de un proveedor que
-ya verifica el correo.
+Si algún proveedor diera `false`, habría que relajar esa condición: aceptar o un correo
+confirmado, o una identidad de un proveedor que ya verifica el correo.
 
 ---
 
