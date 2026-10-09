@@ -45,6 +45,24 @@
 }
 
 /* ----------------------------------------------------------------------
+   AVATARES
+
+   El color de cada avatar sale del nombre de la persona: el mismo alumno
+   tiene siempre el mismo, y en una lista de doce la variedad de tonos es lo
+   que permite encontrar a alguien de un vistazo sin leer.
+
+   El tono (hue) lo calcula el componente; la saturación y la luminosidad
+   viven acá porque son lo que tiene que cambiar entre modo claro y oscuro.
+   Sin esto, los avatares pastel del modo claro quedan como manchas blancas
+   sobre el fondo oscuro.
+   ---------------------------------------------------------------------- */
+html[data-app="nueva"] {
+  --avatar-sat: 42%;
+  --avatar-fondo: 89%;
+  --avatar-letra: 30%;
+}
+
+/* ----------------------------------------------------------------------
    MODO OSCURO
    
    No es la paleta clara invertida: los grises son CÁLIDOS (tiran a marrón,
@@ -56,6 +74,12 @@
    recaps de noche en el celular, el oscuro. Ninguno de los dos elige nada.
    ---------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
+  html[data-app="nueva"] {
+    --avatar-sat: 38%;
+    --avatar-fondo: 24%;
+    --avatar-letra: 80%;
+  }
+
   :root {
     --color-fondo:  #16130f;
     --color-panel:  #211c17;
@@ -158,4 +182,36 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+
+/* ----------------------------------------------------------------------
+   MOVIMIENTO
+
+   Dos animaciones y alcanzan. Lo que separa una app de una página no es que
+   se mueva mucho: es que lo que aparece, aparezca desde algún lado. Una hoja
+   que se materializa de golpe se lee como un error de la pantalla.
+
+   `prefers-reduced-motion` las apaga: para quien marcó esa preferencia en su
+   sistema, el movimiento no es decoración, es un síntoma.
+   ---------------------------------------------------------------------- */
+@keyframes subir {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes aparecer {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes latir {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+.anim-subir    { animation: subir 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.anim-aparecer { animation: aparecer 160ms ease-out; }
+.anim-latir    { animation: latir 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-subir, .anim-aparecer, .anim-latir { animation: none; }
 }

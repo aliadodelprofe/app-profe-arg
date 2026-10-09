@@ -538,3 +538,275 @@ export const IconoClases = (
     <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
   </svg>
 );
+
+// ============================================================================
+// LAS PIEZAS QUE HACEN QUE ESTO SE SIENTA UNA APP Y NO UN SISTEMA
+//
+// Son cinco y ninguna agrega información: cambian cómo se recorre la misma.
+// Juntas son la diferencia entre una tabla con bordes y una lista que se
+// puede barrer con el pulgar.
+// ============================================================================
+
+// ----------------------------------------------------------------------------
+// AVATAR
+//
+// Antes no había una sola inicial en toda la app, y esa es la razón número uno
+// por la que se veía a "sistema de gestión": las listas de personas sin caras
+// se leen como filas de una planilla.
+//
+// El color sale del nombre, así que el mismo alumno tiene siempre el mismo y
+// en una lista de doce la variedad de tonos permite encontrar a alguien sin
+// leer. La saturación y la luminosidad viven en index.css porque son lo que
+// cambia entre modo claro y oscuro.
+// ----------------------------------------------------------------------------
+function tonoDe(texto: string): number {
+  let h = 0;
+  for (let i = 0; i < texto.length; i++) h = (h * 31 + texto.charCodeAt(i)) % 360;
+  return h;
+}
+
+// Dos iniciales como mucho. "María de los Ángeles Pérez" es MP, no MDLAP.
+function inicialesDe(nombre: string): string {
+  const partes = nombre.trim().split(/\s+/).filter((p) => p.length > 2);
+  const uso = partes.length > 0 ? partes : nombre.trim().split(/\s+/);
+  return (uso[0]?.[0] ?? '?').concat(uso.length > 1 ? uso[uso.length - 1][0] : '').toUpperCase();
+}
+
+export function Avatar({ nombre, chico = false }: { nombre: string; chico?: boolean }) {
+  const h = tonoDe(nombre);
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        backgroundColor: `hsl(${h} var(--avatar-sat) var(--avatar-fondo))`,
+        color: `hsl(${h} var(--avatar-sat) var(--avatar-letra))`,
+      }}
+      className={
+        'flex shrink-0 items-center justify-center rounded-full font-semibold ' +
+        (chico ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm')
+      }
+    >
+      {inicialesDe(nombre)}
+    </span>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// LISTA Y FILA
+//
+// El cambio más grande de todos. Antes cada elemento era una tarjeta con marco
+// y aire alrededor, una debajo de la otra: eso es una tabla disfrazada, y se
+// lee como una tabla.
+//
+// Una app usa renglones pegados, separados por una rayita, **de borde a
+// borde**. En el celular la lista rompe el margen de la página (`-mx-5`) y
+// toca los dos lados de la pantalla, que es lo que hace que se sienta parte
+// del aparato y no un documento adentro de una ventana. En pantalla grande
+// vuelve a ser una tarjeta redondeada, porque ahí el borde a borde sería una
+// línea de un metro.
+// ----------------------------------------------------------------------------
+export function Lista({ children }: { children: ReactNode }) {
+  return (
+    <ul className="-mx-5 divide-y divide-linea border-y border-linea bg-panel sm:mx-0 sm:rounded-2xl sm:border">
+      {children}
+    </ul>
+  );
+}
+
+export function Fila({
+  avatar,
+  titulo,
+  detalle,
+  valor,
+  bajoValor,
+  alTocar,
+  children,
+}: {
+  avatar?: string;              // el nombre del que sale la inicial
+  titulo: ReactNode;
+  detalle?: ReactNode;
+  valor?: ReactNode;            // lo que va a la derecha: un monto, una hora
+  bajoValor?: ReactNode;
+  alTocar?: () => void;
+  children?: ReactNode;         // lo que cuelga abajo: botones, avisos
+}) {
+  const cuerpo = (
+    <>
+      <div className="flex items-center gap-3">
+        {avatar !== undefined && <Avatar nombre={avatar} />}
+        <div className="min-w-0 flex-1">
+          <div className="truncate font-medium text-tinta">{titulo}</div>
+          {detalle && <div className="truncate text-sm text-tenue">{detalle}</div>}
+        </div>
+        {(valor || bajoValor) && (
+          <div className="shrink-0 text-right">
+            {valor && <div className="tabular-nums text-tinta">{valor}</div>}
+            {bajoValor && <div className="text-xs text-tenue">{bajoValor}</div>}
+          </div>
+        )}
+        {alTocar && (
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+            aria-hidden="true" className="h-4 w-4 shrink-0 text-tenue"
+          >
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </div>
+      {children && <div className="mt-3">{children}</div>}
+    </>
+  );
+
+  return (
+    <li>
+      {alTocar ? (
+        <button
+          onClick={alTocar}
+          className="w-full px-5 py-3 text-left transition active:bg-acento/5 sm:px-4"
+        >
+          {cuerpo}
+        </button>
+      ) : (
+        <div className="px-5 py-3 sm:px-4">{cuerpo}</div>
+      )}
+    </li>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// HOJA — el formulario que sube desde abajo
+//
+// Antes los formularios se abrían ADENTRO de la página y empujaban todo lo de
+// abajo. Eso tiene dos problemas: perdés de vista dónde estabas, y la pantalla
+// cambia de alto de golpe mientras la estás mirando.
+//
+// Una hoja tapa lo de atrás sin borrarlo, y al cerrarse devuelve la pantalla
+// intacta. En el celular sube desde abajo —queda al alcance del pulgar—; en
+// pantalla grande es un cuadro centrado, porque una hoja pegada al borde
+// inferior de un monitor queda lejísimos del ojo.
+// ----------------------------------------------------------------------------
+export function Hoja({
+  titulo,
+  alCerrar,
+  children,
+}: {
+  titulo: string;
+  alCerrar: () => void;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    function tecla(e: KeyboardEvent) {
+      if (e.key === 'Escape') alCerrar();
+    }
+    document.addEventListener('keydown', tecla);
+    const antes = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', tecla);
+      document.body.style.overflow = antes;
+    };
+  }, [alCerrar]);
+
+  return (
+    <div
+      className="anim-aparecer fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-5"
+      onClick={alCerrar}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={titulo}
+        onClick={(e) => e.stopPropagation()}
+        className="anim-subir max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border-t border-linea bg-panel sm:max-w-lg sm:rounded-3xl sm:border"
+      >
+        {/* El tirador. No hace nada: está porque es lo que le dice a cualquiera
+            que esto es una hoja y que se cierra tirándola para abajo. */}
+        <div className="flex justify-center pt-3 sm:hidden">
+          <div className="h-1 w-10 rounded-full bg-linea" />
+        </div>
+
+        <div className="flex items-center justify-between gap-4 px-5 pb-3 pt-4">
+          <h2 className="text-lg font-semibold tracking-tight text-tinta">{titulo}</h2>
+          <button
+            onClick={alCerrar}
+            aria-label="Cerrar"
+            className="-mr-1 rounded-full p-1.5 text-tenue transition hover:bg-acento/10 hover:text-tinta"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+              <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// ESQUELETO
+//
+// Reemplaza a la palabra "Buscando…". No es cosmético: un texto que dice
+// "buscando" no te anticipa nada, y cuando llegan los datos la pantalla salta.
+// El esqueleto ocupa desde el principio el lugar y la forma de lo que viene,
+// así que cuando aparece el contenido no se mueve nada.
+// ----------------------------------------------------------------------------
+export function Esqueleto({ filas = 3 }: { filas?: number }) {
+  return (
+    <div className="-mx-5 divide-y divide-linea border-y border-linea bg-panel sm:mx-0 sm:rounded-2xl sm:border">
+      {Array.from({ length: filas }).map((_, i) => (
+        <div key={i} className="anim-latir flex items-center gap-3 px-5 py-3 sm:px-4">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-linea" />
+          <div className="min-w-0 flex-1">
+            <div className="h-3.5 w-1/3 rounded bg-linea" />
+            <div className="mt-2 h-3 w-1/2 rounded bg-linea" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// SEGMENTOS — las solapas de adentro de una pantalla
+//
+// Para cortar una pantalla larga en dos vistas que compiten por el mismo
+// lugar. No es lo mismo que la navegación de abajo: aquella te lleva a otra
+// parte de la app, esta cambia qué estás mirando sin moverte.
+// ----------------------------------------------------------------------------
+export function Segmentos<T extends string>({
+  valor,
+  opciones,
+  alElegir,
+}: {
+  valor: T;
+  opciones: { id: T; texto: string; cuantos?: number }[];
+  alElegir: (id: T) => void;
+}) {
+  return (
+    <div className="mb-4 flex gap-1 rounded-xl bg-linea/50 p-1">
+      {opciones.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => alElegir(o.id)}
+          className={
+            'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ' +
+            (o.id === valor
+              ? 'bg-panel text-tinta shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+              : 'text-tenue hover:text-tinta')
+          }
+        >
+          {o.texto}
+          {o.cuantos !== undefined && (
+            <span className="ml-1.5 tabular-nums opacity-60">{o.cuantos}</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}

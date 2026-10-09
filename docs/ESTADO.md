@@ -427,10 +427,50 @@ Se carga desde `main.tsx` y no con un `@import` en el CSS: la hoja es una sola p
 apps, y un `@import` se descargaría también al entrar a la app de la comunidad, que no la
 usa.
 
+### Las cinco piezas que separan una app de un sistema (9/10/2026)
+
+Viven en `comun/ui.tsx` y ninguna agrega información: cambian cómo se recorre la misma.
+
+| Pieza | Qué resuelve |
+|---|---|
+| `Avatar` | No había una sola inicial en toda la app. Una lista de personas sin caras se lee como filas de una planilla. El color sale del nombre, así cada alumno tiene siempre el mismo y en una lista de doce se encuentra a alguien sin leer |
+| `Lista` + `Fila` | **El cambio más grande.** Antes cada elemento era una tarjeta con marco y aire alrededor: eso es una tabla disfrazada. Ahora son renglones pegados, separados por una rayita y **de borde a borde** en el celular. En pantalla grande vuelven a ser una tarjeta redondeada, porque ahí el borde a borde sería una línea de un metro |
+| `Hoja` | Los formularios se abrían *adentro* de la página y la empujaban: perdías de vista dónde estabas y la pantalla cambiaba de alto mientras la mirabas. Ahora suben desde abajo y al cerrarse devuelven la pantalla intacta |
+| `Esqueleto` | Reemplaza la palabra "Buscando…". Ocupa desde el principio el lugar y la forma de lo que viene, así cuando llegan los datos no salta nada |
+| `Segmentos` | Para cortar una pantalla larga en dos vistas. No es lo mismo que la barra de abajo: aquella lleva a otra parte de la app, esta cambia qué mirás sin moverte |
+
+**Sobre las referencias.** Instagram, TikTok y Spotify son apps de consumo de contenido:
+pantalla completa, imagen al borde, inmersivas. Copiar eso en una herramienta donde se
+cargan asistencias y se confirma plata la vuelve más difícil de usar. Las referencias
+correctas son Uber, Revolut y Splitwise: herramientas que se sienten como apps.
+
+El color de los avatares usa variables (`--avatar-sat`, `--avatar-fondo`, `--avatar-letra`)
+porque el tono lo calcula el componente pero la saturación y la luminosidad son lo que
+tiene que cambiar entre modo claro y oscuro. Sin eso, los pasteles del modo claro quedan
+como manchas blancas sobre fondo oscuro.
+
+Hay tres animaciones (`subir`, `aparecer`, `latir`) y se apagan con
+`prefers-reduced-motion`: para quien marcó esa preferencia, el movimiento no es decoración.
+
+### DetalleGrupo, cortado (9/10/2026)
+
+Era un scroll de 1400 líneas con cuatro avisos apilados, alumnos, clases, y cinco
+formularios que se abrían en el medio de la página. Ahora:
+
+- **Cabecera** con el nombre, el volver, y el formato, el período, el horario, el nivel y
+  el estudio como etiquetas en vez de una línea de texto separada por puntos.
+- **Los cuatro avisos se juntan en uno.** Son lo mismo: lo que la app hizo sola al abrir el
+  grupo. Antes eran cuatro cajas que empujaban el contenido real abajo del pliegue.
+- **Solapas Alumnos / Clases** con la cuenta de cada una.
+- **Los cinco formularios pasan a hojas.** Incluido el de editar una clase, que antes
+  reemplazaba la fila en la lista — o sea que la lista cambiaba de forma mientras la mirabas.
+
+Lo mismo en `Grupos` (nuevo grupo) y en el portal del alumno (avisar una transferencia).
+
 ### Pendiente
 
-`DetalleGrupo` sigue siendo largo: avisos, alumnos, clases, altas de cargos y formularios
-apilados. Es el próximo candidato a cortar en bloques.
+Las listas del portal del alumno todavía son tarjetas sueltas: faltan pasarlas a
+`Lista`/`Fila`. Y falta una tanda de nombres.
 
 ---
 

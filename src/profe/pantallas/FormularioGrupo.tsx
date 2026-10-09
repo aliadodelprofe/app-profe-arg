@@ -109,10 +109,8 @@ export default function FormularioGrupo({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
-      <p className="text-tinta">{grupo ? 'Editar grupo' : 'Nuevo grupo'}</p>
-
       <Campo etiqueta="Nombre">
         <Texto
           required value={nombre} placeholder="Bachata principiantes, martes"

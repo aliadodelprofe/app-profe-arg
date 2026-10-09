@@ -17,8 +17,9 @@ import type {
   Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro, DatosFicha,
 } from '../datos';
 import {
-  Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
-  Campo, Texto, Opciones, Boton, BotonSecundario,
+  Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Area, Opciones,
+  Boton, BotonSecundario,
+  Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto,
 } from '../../comun/ui';
 
 export default function DetalleGrupo({
@@ -37,11 +38,6 @@ export default function DetalleGrupo({
   const [grupo, setGrupo] = useState(grupoInicial);
   const inscripciones = useCarga(() => traerInscripciones(grupo.id), [grupo.id]);
   const clases = useCarga(() => traerClases(grupo.id), [grupo.id]);
-  const [anotando, setAnotando] = useState(false);
-  const [cargandoClase, setCargandoClase] = useState(false);
-  const [generando, setGenerando] = useState(false);
-  const [editandoGrupo, setEditandoGrupo] = useState(false);
-  const [cobrando, setCobrando] = useState(false);
 
   // ------------------------------------------------------------------------
   // El horario fijo, en acción.
@@ -87,70 +83,65 @@ export default function DetalleGrupo({
   const cuantasEsteMes =
     clases.datos?.filter((c) => c.status === 'scheduled' && mesDe(c.date) === mesActual).length ?? 0;
 
+  // Qué estoy mirando, y qué hoja está abierta. Antes todo esto eran cinco
+  // banderas de "estoy editando X" que abrían formularios adentro de la
+  // página y la empujaban para abajo.
+  type Vista = 'alumnos' | 'clases';
+  const [vista, setVista] = useState<Vista>('alumnos');
+  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'cuota' | 'clase' | 'serie'>(null);
+
+  const activos = inscripciones.datos?.filter((i) => i.status === 'active') ?? [];
+  const hayMensuales = activos.some((i) => i.billing_mode === 'per_period');
+
+  // Las cuatro novedades son lo mismo: lo que la app hizo sola al abrir el
+  // grupo. Antes eran cuatro cajas apiladas que empujaban el contenido real
+  // abajo del pliegue. Van juntas, en una.
+  const novedades = [
+    creadas.length > 0 &&
+      `Se agregaron ${creadas.length} ${creadas.length === 1 ? 'clase' : 'clases'} según el horario del grupo: ${creadas.map((f) => fecha(f)).join(', ')}.`,
+    cargosCreados > 0 &&
+      `Se generaron ${cargosCreados} ${cargosCreados === 1 ? 'cargo' : 'cargos'} por lo que viene.`,
+    imputados > 0 &&
+      `Se aplicaron ${imputados} ${imputados === 1 ? 'pago' : 'pagos'} que había a favor. A esos alumnos no les figura como deuda.`,
+  ].filter(Boolean) as string[];
+
   return (
     <Marco>
-      <Encabezado
-        titulo={grupo.name}
-        bajada={[
-          nombreFormato[grupo.format],
-          periodoDe(grupo, hoyISO()),
-          horarioDe(grupo),
-          grupo.level,
-          grupo.venue,
-        ]
-          .filter(Boolean)
-          .join(' · ')}
-        volver={{ texto: 'Mis grupos', alTocar: alVolver }}
-        derecha={
-          !editandoGrupo && (
-            <BotonSecundario onClick={() => setEditandoGrupo(true)}>Editar grupo</BotonSecundario>
-          )
-        }
-      />
+      {/* ----------------------------------------------------- la cabecera */}
+      <button
+        onClick={alVolver}
+        className="-ml-1 mb-3 flex items-center gap-1 rounded-lg px-1 py-1 text-sm text-tenue transition hover:text-acento"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+          <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        Mis grupos
+      </button>
 
-      {editandoGrupo && (
-        <div className="mb-6">
-          <FormularioGrupo
-            espacio={espacio}
-            grupo={grupo}
-            alCerrar={() => setEditandoGrupo(false)}
-            alGuardar={(g) => {
-              setEditandoGrupo(false);
-              setGrupo(g);
-              // El horario pudo cambiar: hay que volver a revisar qué falta.
-              setRevisado(false);
-              clases.recargar();
-            }}
-          />
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <Titulo>{grupo.name}</Titulo>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <Etiqueta tono="acento">{nombreFormato[grupo.format]}</Etiqueta>
+            {periodoDe(grupo, hoyISO()) && <Etiqueta>{periodoDe(grupo, hoyISO())}</Etiqueta>}
+            {horarioDe(grupo) && <Etiqueta>{horarioDe(grupo)}</Etiqueta>}
+            {grupo.level && <Etiqueta>{grupo.level}</Etiqueta>}
+            {grupo.venue && <Etiqueta>{grupo.venue}</Etiqueta>}
+          </div>
         </div>
-      )}
+        <BotonSecundario onClick={() => setHoja('editar')}>Editar</BotonSecundario>
+      </div>
 
       {errorGen && <div className="mb-4"><Aviso>{errorGen}</Aviso></div>}
 
-      {creadas.length > 0 && (
-        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
-          Se agregaron {creadas.length} {creadas.length === 1 ? 'clase' : 'clases'} según el
-          horario del grupo{horarioDe(grupo) ? ` (${horarioDe(grupo)})` : ''}: {creadas.map((f) => fecha(f)).join(', ')}.
-        </p>
-      )}
-
-      {cargosCreados > 0 && (
-        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
-          Se generaron {cargosCreados} {cargosCreados === 1 ? 'cargo' : 'cargos'} por lo que
-          viene: la próxima clase de los que pagan por clase, y la cuota del mes de los que
-          pagan por mes.
-        </p>
-      )}
-
-      {imputados > 0 && (
-        <p className="mb-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
-          Se aplicaron {imputados} {imputados === 1 ? 'pago' : 'pagos'} que había a favor de
-          alumnos que habían pagado por adelantado. No les figura como deuda.
-        </p>
+      {novedades.length > 0 && (
+        <div className="anim-aparecer mb-4 rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-sm text-acento">
+          {novedades.map((n) => <p key={n}>{n}</p>)}
+        </div>
       )}
 
       {cuantasEsteMes >= 5 && (
-        <p className="mb-4 rounded-lg border border-linea px-3 py-2 text-sm text-tenue">
+        <p className="mb-4 rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
           Este mes tenés <span className="text-tinta">{cuantasEsteMes} clases</span>, no
           cuatro. A los que pagan por mes no les cobrás de más: la cuota es fija y ya está
           pensada sobre el promedio real del año, que es 4,33 clases por mes. A los que pagan
@@ -158,143 +149,152 @@ export default function DetalleGrupo({
         </p>
       )}
 
-      {/* ---------------------------------------------------------------
-          Alumnos. Cómo paga cada uno sale de la inscripción, no del grupo:
-          por eso dentro del mismo grupo puede haber uno por clase y otro
-          por mes.
-         --------------------------------------------------------------- */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Alumnos
-      </h2>
+      {/* ------------------------------------------------------- las solapas */}
+      <Segmentos<Vista>
+        valor={vista}
+        alElegir={setVista}
+        opciones={[
+          { id: 'alumnos', texto: 'Alumnos', cuantos: activos.length },
+          { id: 'clases', texto: 'Clases', cuantos: clases.datos?.length },
+        ]}
+      />
 
-      {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
-      {!inscripciones.datos && !inscripciones.error && <Vacio>Buscando…</Vacio>}
-      {inscripciones.datos?.length === 0 && (
-        <Vacio>Todavía no hay nadie inscripto en este grupo.</Vacio>
-      )}
+      {/* ------------------------------------------------------------ alumnos */}
+      {vista === 'alumnos' && (
+        <>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Boton onClick={() => setHoja('anotar')}>Anotar alumno</Boton>
+            {hayMensuales && (
+              <BotonSecundario onClick={() => setHoja('cuota')}>
+                Cobrar la cuota del mes
+              </BotonSecundario>
+            )}
+          </div>
 
-      <ul className="mb-3 flex flex-col gap-2">
-        {inscripciones.datos?.map((i) => (
-          <li key={i.id}>
-            <FilaAlumno
-              espacio={espacio}
-              grupo={grupo}
-              inscripcion={i}
-              alCambiar={inscripciones.recargar}
-            />
-          </li>
-        ))}
-      </ul>
-
-      {/* Cobrar la cuota del mes a todo el grupo de una. Solo aparece si hay
-          alguien que paga por mes: al que paga por clase no hay cuota que
-          cobrarle. */}
-      {inscripciones.datos?.some(
-        (i) => i.status === 'active' && i.billing_mode === 'per_period',
-      ) && (
-        <div className="mb-3">
-          {cobrando ? (
-            <FormularioCuotaDelGrupo
-              espacio={espacio}
-              grupo={grupo}
-              inscripciones={inscripciones.datos ?? []}
-              alCerrar={() => setCobrando(false)}
-            />
-          ) : (
-            <BotonSecundario onClick={() => setCobrando(true)}>
-              Cobrar la cuota del mes
-            </BotonSecundario>
+          {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
+          {!inscripciones.datos && !inscripciones.error && <Esqueleto />}
+          {inscripciones.datos?.length === 0 && (
+            <Vacio>Todavía no hay nadie inscripto en este grupo.</Vacio>
           )}
-        </div>
+
+          {inscripciones.datos && inscripciones.datos.length > 0 && (
+            <Lista>
+              {inscripciones.datos.map((i) => (
+                <FilaAlumno
+                  key={i.id}
+                  espacio={espacio}
+                  grupo={grupo}
+                  inscripcion={i}
+                  alCambiar={inscripciones.recargar}
+                />
+              ))}
+            </Lista>
+          )}
+        </>
       )}
 
-      <div className="mb-8">
-        {anotando ? (
+      {/* ------------------------------------------------------------- clases */}
+      {vista === 'clases' && (
+        <>
+          <div className="mb-2 flex flex-wrap gap-2">
+            <Boton onClick={() => setHoja('clase')}>Cargar clase</Boton>
+            <BotonSecundario onClick={() => setHoja('serie')}>Generar varias</BotonSecundario>
+          </div>
+          <p className="mb-4 text-sm text-tenue">
+            {horarioDe(grupo)
+              ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Estos botones son para agregar algo fuera de ese horario.`
+              : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar" y se crean solas.'}
+          </p>
+
+          {clases.error && <Aviso>{clases.error}</Aviso>}
+          {!clases.datos && !clases.error && <Esqueleto />}
+          {clases.datos?.length === 0 && <Vacio>Todavía no hay clases cargadas.</Vacio>}
+
+          {clases.datos && clases.datos.length > 0 && (
+            <Lista>
+              {clases.datos.map((c) => (
+                <FilaClase
+                  key={c.id}
+                  clase={c}
+                  grupo={grupo}
+                  alTomarAsistencia={() => alTomarAsistencia(c)}
+                  alCambiar={clases.recargar}
+                />
+              ))}
+            </Lista>
+          )}
+        </>
+      )}
+
+      {/* --------------------------------------------------------- las hojas */}
+      {hoja === 'editar' && (
+        <Hoja titulo="Editar grupo" alCerrar={() => setHoja(null)}>
+          <FormularioGrupo
+            espacio={espacio}
+            grupo={grupo}
+            alCerrar={() => setHoja(null)}
+            alGuardar={(g) => {
+              setHoja(null);
+              setGrupo(g);
+              // El horario pudo cambiar: hay que volver a revisar qué falta.
+              setRevisado(false);
+              clases.recargar();
+            }}
+          />
+        </Hoja>
+      )}
+
+      {hoja === 'anotar' && (
+        <Hoja titulo="Anotar alumno" alCerrar={() => setHoja(null)}>
           <FormularioAlumno
             espacio={espacio}
             grupo={grupo}
             clases={clases.datos ?? []}
-            yaInscriptos={
-              // Solo los que están cursando ahora. Alguien que se dio de baja
-              // tiene que poder volver a anotarse.
-              inscripciones.datos
-                ?.filter((i) => i.status === 'active')
-                .map((i) => i.alumno?.id)
-                .filter(Boolean) as string[] ?? []
-            }
-            alCerrar={() => setAnotando(false)}
+            yaInscriptos={activos.map((i) => i.alumno?.id).filter(Boolean) as string[]}
+            alCerrar={() => setHoja(null)}
             alAnotar={() => {
-              setAnotando(false);
+              setHoja(null);
               inscripciones.recargar();
               // Recién anotado ya tiene que deber lo que viene.
               setRevisado(false);
             }}
           />
-        ) : (
-          <BotonSecundario onClick={() => setAnotando(true)}>+ Anotar alumno</BotonSecundario>
-        )}
-      </div>
+        </Hoja>
+      )}
 
-      {/* ---------------------------------------------------------------
-          Clases. El recap es el motivo principal por el que un alumno
-          abre la app, así que se muestra acá y no escondido.
-          Tocar una clase abre la asistencia de esa clase.
-         --------------------------------------------------------------- */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Clases
-      </h2>
+      {hoja === 'cuota' && (
+        <Hoja titulo="Cobrar la cuota del mes" alCerrar={() => setHoja(null)}>
+          <FormularioCuotaDelGrupo
+            espacio={espacio}
+            grupo={grupo}
+            inscripciones={inscripciones.datos ?? []}
+            alCerrar={() => setHoja(null)}
+          />
+        </Hoja>
+      )}
 
-      <div className="mb-3">
-        {cargandoClase && (
+      {hoja === 'clase' && (
+        <Hoja titulo="Cargar una clase" alCerrar={() => setHoja(null)}>
           <FormularioClase
             espacio={espacio}
             grupo={grupo}
-            alCerrar={() => setCargandoClase(false)}
-            alCrear={() => { setCargandoClase(false); clases.recargar(); }}
+            alCerrar={() => setHoja(null)}
+            alCrear={() => { setHoja(null); clases.recargar(); }}
           />
-        )}
+        </Hoja>
+      )}
 
-        {generando && (
+      {hoja === 'serie' && (
+        <Hoja titulo="Generar varias clases" alCerrar={() => setHoja(null)}>
           <FormularioSerie
             espacio={espacio}
             grupo={grupo}
             yaCargadas={clases.datos?.map((c) => c.date) ?? []}
-            alCerrar={() => setGenerando(false)}
-            alCrear={() => { setGenerando(false); clases.recargar(); }}
+            alCerrar={() => setHoja(null)}
+            alCrear={() => { setHoja(null); clases.recargar(); }}
           />
-        )}
-
-        {!cargandoClase && !generando && (
-          <>
-            <div className="flex flex-wrap gap-2">
-              <BotonSecundario onClick={() => setCargandoClase(true)}>+ Cargar clase</BotonSecundario>
-              <BotonSecundario onClick={() => setGenerando(true)}>+ Generar varias</BotonSecundario>
-            </div>
-            <p className="mt-2 text-sm text-tenue">
-              {horarioDe(grupo)
-                ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Estos botones son para agregar algo fuera de ese horario.`
-                : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar grupo" y se crean solas.'}
-            </p>
-          </>
-        )}
-      </div>
-
-      {clases.error && <Aviso>{clases.error}</Aviso>}
-      {!clases.datos && !clases.error && <Vacio>Buscando…</Vacio>}
-      {clases.datos?.length === 0 && <Vacio>Todavía no hay clases cargadas.</Vacio>}
-
-      <ul className="flex flex-col gap-2">
-        {clases.datos?.map((c) => (
-          <li key={c.id}>
-            <FilaClase
-              clase={c}
-              grupo={grupo}
-              alTomarAsistencia={() => alTomarAsistencia(c)}
-              alCambiar={clases.recargar}
-            />
-          </li>
-        ))}
-      </ul>
+        </Hoja>
+      )}
     </Marco>
   );
 }
@@ -382,7 +382,7 @@ function FormularioAlumno({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
       <p className="text-tinta">Anotar alumno en {grupo.name}</p>
 
@@ -543,7 +543,7 @@ function FormularioClase({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
       <p className="text-tinta">Nueva clase de {grupo.name}</p>
 
@@ -632,55 +632,44 @@ function FilaClase({
     }
   }
 
-  if (editando) {
-    return (
-      <FormularioEditarClase
-        clase={clase}
-        alCerrar={() => setEditando(false)}
-        alGuardar={() => { setEditando(false); alCambiar(); }}
-      />
-    );
-  }
+  const detalle = [
+    lugar.venue,
+    clase.recap ? clase.recap.slice(0, 60) + (clase.recap.length > 60 ? '…' : '') : null,
+  ].filter(Boolean).join(' · ') || null;
 
   return (
-    <Tarjeta>
-      <div className={cancelada ? 'opacity-50' : undefined}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-tinta">
-            {clase.title ?? 'Clase'}
-            {cancelada && (
-              <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
-                cancelada
-              </span>
-            )}
-          </p>
-          <p className="shrink-0 text-sm text-tenue">
-            {fecha(clase.date)}
-            {clase.start_time ? ` · ${clase.start_time.slice(0, 5)}` : ''}
-          </p>
-        </div>
+    <Fila
+      titulo={
+        <span className={cancelada ? 'line-through opacity-60' : undefined}>
+          {clase.title ?? 'Clase'}
+        </span>
+      }
+      detalle={detalle}
+      valor={fecha(clase.date)}
+      bajoValor={clase.start_time ? clase.start_time.slice(0, 5) : cancelada ? 'cancelada' : undefined}
+    >
+      {lugar.address && (
+        <a
+          href={linkMapa(lugar.address)} target="_blank" rel="noreferrer"
+          className="mb-2 block text-sm text-acento underline"
+        >
+          {lugar.address} · ver en el mapa
+        </a>
+      )}
 
-        {(lugar.venue || lugar.address) && (
-          <p className="text-sm text-tenue">
-            {lugar.venue}
-            {lugar.venue && lugar.address && ' · '}
-            {lugar.address && (
-              <a
-                href={linkMapa(lugar.address)} target="_blank" rel="noreferrer"
-                className="text-acento underline"
-              >
-                ver en el mapa
-              </a>
-            )}
-          </p>
-        )}
+      {error && <div className="mb-2"><Aviso>{error}</Aviso></div>}
 
-        {clase.recap && <p className="mt-1 text-sm text-tenue">{clase.recap}</p>}
-      </div>
+      {editando && (
+        <Hoja titulo="Editar la clase" alCerrar={() => setEditando(false)}>
+          <FormularioEditarClase
+            clase={clase}
+            alCerrar={() => setEditando(false)}
+            alGuardar={() => { setEditando(false); alCambiar(); }}
+          />
+        </Hoja>
+      )}
 
-      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
-
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
         {!cancelada && (
           <BotonSecundario type="button" onClick={alTomarAsistencia}>
             Tomar asistencia
@@ -693,7 +682,7 @@ function FilaClase({
           {cancelada ? 'Reactivar' : 'Cancelar clase'}
         </BotonSecundario>
       </div>
-    </Tarjeta>
+    </Fila>
   );
 }
 
@@ -738,7 +727,7 @@ function FormularioEditarClase({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
       <p className="text-tinta">Editar clase</p>
 
@@ -843,7 +832,7 @@ function FormularioSerie({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
       <p className="text-tinta">Generar varias clases de {grupo.name}</p>
 
@@ -945,8 +934,8 @@ function FilaAlumno({
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
-  const [cobrando, setCobrando] = useState(false);
   const [cobrado, setCobrado] = useState<string | null>(null);
+  const [cobrando, setCobrando] = useState(false);
   const [editandoFicha, setEditandoFicha] = useState(false);
 
   const activa = inscripcion.status === 'active';
@@ -964,43 +953,32 @@ function FilaAlumno({
     }
   }
 
-  return (
-    <Tarjeta>
-      <div className={activa ? undefined : 'opacity-50'}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-tinta">
-            {inscripcion.alumno?.full_name ?? 'Alumno sin ficha'}
-            {!activa && (
-              <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
-                ya no cursa
-              </span>
-            )}
-          </p>
-          <p className="shrink-0 text-sm text-acento">
-            {plata(precioDe(grupo, inscripcion))}{' '}
-            <span className="text-tenue">{nombreCobro[inscripcion.billing_mode]}</span>
-          </p>
-        </div>
-        {!activa && inscripcion.end_date && (
-          <p className="text-sm text-tenue">hasta el {fecha(inscripcion.end_date)}</p>
-        )}
+  const nombre = inscripcion.alumno?.full_name ?? 'Alumno sin ficha';
 
-        {/* Si puede entrar al portal o no. La consecuencia de no cargarle el
-            correo se ve acá, en el momento, y no tres semanas después cuando
-            el alumno pregunta por qué no puede entrar. */}
-        {activa && inscripcion.alumno && !inscripcion.alumno.email && (
-          <p className="text-sm text-tenue">
-            Sin correo: no va a poder entrar a la app.
-          </p>
-        )}
-        {activa && inscripcion.alumno?.email && !inscripcion.alumno.user_id
-          && !inscripcion.alumno.invite_rejected_at && (
-          <p className="text-sm text-tenue">
-            Invitado a {inscripcion.alumno.email}. Todavía no aceptó.
-          </p>
-        )}
+  // El estado del enganche al portal, en una línea. La consecuencia de no
+  // cargarle el correo se ve acá, en el momento, y no tres semanas después
+  // cuando el alumno pregunta por qué no puede entrar.
+  const estadoPortal = !activa
+    ? (inscripcion.end_date ? `ya no cursa · hasta el ${fecha(inscripcion.end_date)}` : 'ya no cursa')
+    : !inscripcion.alumno?.email
+      ? 'sin correo: no va a poder entrar a la app'
+      : inscripcion.alumno.invite_rejected_at && !inscripcion.alumno.user_id
+        ? null
+        : !inscripcion.alumno.user_id
+          ? `invitado a ${inscripcion.alumno.email} · todavía no aceptó`
+          : nombreCobro[inscripcion.billing_mode];
+
+  return (
+    <Fila
+      avatar={nombre}
+      titulo={nombre}
+      detalle={estadoPortal}
+      valor={plata(precioDe(grupo, inscripcion))}
+      bajoValor={nombreCobro[inscripcion.billing_mode]}
+    >
+      <div className={activa ? undefined : 'opacity-60'}>
         {activa && inscripcion.alumno?.invite_rejected_at && !inscripcion.alumno.user_id && (
-          <p className="text-sm text-alerta">
+          <p className="mb-2 text-sm text-alerta">
             Alguien entró con {inscripcion.alumno.email} y dijo que no es esta persona.
             Revisá el correo en "Editar ficha".
           </p>
@@ -1087,7 +1065,7 @@ function FilaAlumno({
           </BotonSecundario>
         </div>
       )}
-    </Tarjeta>
+    </Fila>
   );
 }
 
@@ -1269,7 +1247,7 @@ function FormularioCuotaDelGrupo({
   return (
     <form
       onSubmit={guardar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
       <p className="text-tinta">Cobrar la cuota del mes</p>
 

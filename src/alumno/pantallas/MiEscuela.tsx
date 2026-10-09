@@ -17,7 +17,7 @@ import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
-  Titulo, Seccion, Navegacion, IconoClases, IconoCobros,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Salir from './Salir';
@@ -73,7 +73,7 @@ export default function MiEscuela({
         <>
       <Seccion>Próximas clases</Seccion>
       {clases.error && <Aviso>{clases.error}</Aviso>}
-      {!clases.datos && !clases.error && <Vacio>Buscando…</Vacio>}
+      {!clases.datos && !clases.error && <Esqueleto />}
       {clases.datos && proximas.length === 0 && <Vacio>No hay clases cargadas todavía.</Vacio>}
 
       <ul className="mb-8 flex flex-col gap-2">
@@ -223,19 +223,21 @@ export default function MiEscuela({
         </ul>
       )}
 
-      {declarando ? (
-        <FormularioAviso
-          ficha={ficha}
-          sugerido={saldo.datos?.debe ?? 0}
-          alCerrar={() => setDeclarando(false)}
-          alAvisar={() => {
-            setDeclarando(false);
-            pagos.recargar();
-            saldo.recargar();
-          }}
-        />
-      ) : (
-        <BotonSecundario onClick={() => setDeclarando(true)}>Ya transferí</BotonSecundario>
+      <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
+
+      {declarando && (
+        <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>
+          <FormularioAviso
+            ficha={ficha}
+            sugerido={saldo.datos?.debe ?? 0}
+            alCerrar={() => setDeclarando(false)}
+            alAvisar={() => {
+              setDeclarando(false);
+              pagos.recargar();
+              saldo.recargar();
+            }}
+          />
+        </Hoja>
       )}
 
       {/* ------------------------------------------------------- lo que pagué
@@ -327,10 +329,8 @@ function FormularioAviso({
   return (
     <form
       onSubmit={enviar}
-      className="flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="flex flex-col gap-3"
     >
-      <p className="text-tinta">Avisar que transferí</p>
-
       <Campo etiqueta="Cuánto">
         <Texto
           type="number" min="1" step="any" required value={monto}

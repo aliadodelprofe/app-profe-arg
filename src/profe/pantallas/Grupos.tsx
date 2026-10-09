@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { traerGrupos, nombreFormato, linkMapa, horarioDe, periodoDe, hoyISO } from '../datos';
+import { traerGrupos, nombreFormato, horarioDe, periodoDe, hoyISO } from '../datos';
 import type { Espacio, Grupo } from '../datos';
-import { Marco, Aviso, Vacio, Tarjeta, Titulo, Etiqueta, useCarga, BotonSecundario } from '../../comun/ui';
+import {
+  Marco, Aviso, Vacio, Titulo, Etiqueta, useCarga, Boton,
+  Lista, Fila, Hoja, Esqueleto,
+} from '../../comun/ui';
 import FormularioGrupo from './FormularioGrupo';
 import Salir from './Salir';
 
@@ -41,53 +44,46 @@ export default function Grupos({
         <Salir />
       </div>
 
-      {creando ? (
-        <FormularioGrupo
-          espacio={espacio}
-          alCerrar={() => setCreando(false)}
-          alGuardar={() => { setCreando(false); recargar(); }}
-        />
-      ) : (
-        <BotonSecundario onClick={() => setCreando(true)}>+ Nuevo grupo</BotonSecundario>
+      <div className="mb-4">
+        <Boton onClick={() => setCreando(true)}>Nuevo grupo</Boton>
+      </div>
+
+      {error && <Aviso>{error}</Aviso>}
+      {!datos && !error && <Esqueleto />}
+      {datos?.length === 0 && <Vacio>Todavía no hay grupos en este espacio.</Vacio>}
+
+      {datos && datos.length > 0 && (
+        <Lista>
+          {datos.map((g) => (
+            <Fila
+              key={g.id}
+              // El avatar de un grupo no es una cara, pero cumple la misma
+              // función: darle a cada fila una marca de color propia para
+              // poder encontrarla sin leer.
+              avatar={g.name}
+              titulo={g.name}
+              detalle={
+                [horarioDe(g), g.level, g.venue, g.capacity ? `cupo ${g.capacity}` : null]
+                  .filter(Boolean)
+                  .join(' · ') || 'sin horario fijo'
+              }
+              valor={<Etiqueta>{nombreFormato[g.format]}</Etiqueta>}
+              bajoValor={periodoDe(g, hoyISO()) ?? undefined}
+              alTocar={() => alElegir(g)}
+            />
+          ))}
+        </Lista>
       )}
 
-      <div className="mt-5">
-        {error && <Aviso>{error}</Aviso>}
-        {!datos && !error && <Vacio>Buscando…</Vacio>}
-        {datos?.length === 0 && <Vacio>Todavía no hay grupos en este espacio.</Vacio>}
-
-        <ul className="flex flex-col gap-2">
-          {datos?.map((g) => (
-            <li key={g.id}>
-              <Tarjeta alTocar={() => alElegir(g)}>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="font-medium text-tinta">{g.name}</p>
-                  <Etiqueta>{nombreFormato[g.format]}</Etiqueta>
-                </div>
-                <p className="text-sm text-tenue">
-                  {[horarioDe(g), g.level, g.venue, g.capacity ? `cupo ${g.capacity}` : null]
-                    .filter(Boolean)
-                    .join(' · ') || 'sin horario fijo'}
-                </p>
-                {/* El período de una formación va en su propia línea y no
-                    mezclado entre el nivel y el cupo: es lo que la define. */}
-                {periodoDe(g, hoyISO()) && (
-                  <p className="text-sm text-acento">{periodoDe(g, hoyISO())}</p>
-                )}
-                {g.address && (
-                  <a
-                    href={linkMapa(g.address)} target="_blank" rel="noreferrer"
-                    onClick={(e) => e.stopPropagation()}
-                    className="text-sm text-acento underline"
-                  >
-                    {g.address} · ver en el mapa
-                  </a>
-                )}
-              </Tarjeta>
-            </li>
-          ))}
-        </ul>
-      </div>
+      {creando && (
+        <Hoja titulo="Nuevo grupo" alCerrar={() => setCreando(false)}>
+          <FormularioGrupo
+            espacio={espacio}
+            alCerrar={() => setCreando(false)}
+            alGuardar={() => { setCreando(false); recargar(); }}
+          />
+        </Hoja>
+      )}
     </Marco>
   );
 }
