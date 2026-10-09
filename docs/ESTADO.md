@@ -239,26 +239,54 @@ confirmado, o una identidad de un proveedor que ya verifica el correo.
 
 ---
 
-## La app se llama SALA
+## El nombre: ARIA, provisorio
 
-Decidido el 9/10/2026.
+Elegido el 9/10/2026 **para probarlo**, no como decisión final. Está en
+`src/comun/marca.ts`, en una constante, y cambiarlo toca ese archivo y nada más.
 
-**Por qué Sala.** Es la verdad literal del usuario: el profesor independiente no tiene
-academia, *alquila una sala*. Es la palabra que él ya usa para describir su trabajo, así
-que no hay que explicarle ni construirle significado. No es palabra de baile, así que
-sigue sirviendo cuando entren yoga, música o idiomas.
+**Aria** — la pieza que canta una sola voz. Conocida sin traducción en castellano,
+italiano e inglés. Cálida, con música adentro sin atarse a un instrumento ni a una
+disciplina.
 
-**Viaja.** `sala` significa lo mismo en castellano, italiano y portugués, y los tres
-mercados del plan están cubiertos. Se descartaron por eso *pulso* (en italiano *polso* es
-muñeca) y *nido* (en Italia *asilo nido* es guardería). Se descartó **Tanda** por otro
-motivo: ya es un SaaS de gestión de personal, un rubro vecino.
+**La colisión que hay que tener presente:** *Aria Systems* es un SaaS de **facturación
+recurrente en la nube**. Es enterprise y telecom, otro segmento, pero facturación
+recurrente es lo más cerca de este producto que ninguna de las otras colisiones que
+aparecieron. No bloquea —mercados distintos— pero es el dato a mirar si el nombre se
+confirma.
 
-**Aula** fue la segunda: igual de corta y viaja igual, pero suena a institución educativa
-y el posicionamiento es explícitamente el contrario.
+### Los criterios que fueron apareciendo, en orden
 
-La marca vive en un solo componente, `Marca` en `src/comun/ui.tsx`, y aparece solo en las
-dos pantallas de entrada. Adentro de la app el encabezado lo ocupa el nombre de la escuela
-del profesor: la marca del producto ya cumplió su función cuando la persona entró.
+1. Corto, dos sílabas, que suene a marca y no describa el producto.
+2. Que signifique lo mismo en **castellano, italiano y portugués** (por el plan de
+   expansión). Esto descartó *pulso* (en italiano *polso* es muñeca) y *nido* (en Italia
+   *asilo nido* es guardería).
+3. **Que se pueda decir en inglés al primer intento** — el mercado incluye Estados Unidos,
+   Canadá y Europa. Esto descartó toda una tanda: *Camada*, *Peña*, *Barra*. Nada de ñ, rr
+   ni ll; mejor si termina en vocal.
+4. Que no exista **en la misma categoría**. Este filtro se aplicó mal al principio: que
+   haya un software dental llamado Marea no bloquea nada. Lo que bloquea es un vecino de
+   rubro.
+
+### Descartados y por qué
+
+| Nombre | Motivo |
+|---|---|
+| Sala, Aula | Describen el lugar, y el lugar es alquilado: es lo circunstancial del negocio |
+| Tanda | Ya es un SaaS de gestión de personal — rubro vecino, colisión real |
+| Vela, Faro | Vela Software y FARO Technologies, las dos en software |
+| Lumo, Corso | Muy ocupados: el asistente de Proton, una ferroviaria, una app de Shopify |
+| Pulso, Nido | No viajan al italiano |
+| Camada, Peña, Barra | No se pronuncian en inglés |
+| Marea, Siena | Colisionan en otros rubros; no bloquean pero complican el dominio |
+| Trama | Sobrevivió todo, quedó como alternativa viva |
+| Orla | Sobrevivió todo. "La orla" es la foto de la camada que se recibe — el producto dicho sin describirlo. Alternativa viva |
+
+### Lo que falta
+
+El logo, y confirmar o cambiar el nombre. **Nada está bloqueado por esto:** los tokens de
+color se llaman `acento` y `tinta`, no "el naranja de Aria", y el marcador del CSS dice
+`data-app="nueva"` y no el nombre del producto. La identidad visual no depende de cómo se
+llame.
 
 ---
 

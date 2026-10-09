@@ -3,6 +3,7 @@
 // ============================================================================
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { NOMBRE } from './marca';
 import type React from 'react';
 
 export function Marco({ children }: { children: ReactNode }) {
@@ -286,8 +287,13 @@ export function Confirmacion({
 // ----------------------------------------------------------------------------
 // La marca.
 //
-// Por ahora es la palabra sola, sin logo. Vive acá y no escrita a mano en cada
-// pantalla, para que el día que haya un logo se cambie en un solo lugar.
+// EL NOMBRE ES PROVISORIO. Está acá, en un solo lugar, justamente porque
+// todavía se está decidiendo: cambiarlo es editar esta línea y una más en
+// main.tsx. Ninguna pantalla lo escribe a mano, y los tokens de color se
+// llaman `acento` y `tinta` y no "el naranja de Aria", así que la identidad
+// visual tampoco depende del nombre.
+//
+// Por ahora es la palabra sola, sin logo.
 //
 // Aparece únicamente en las pantallas de entrada. Adentro de la app el
 // encabezado lo ocupa el nombre de la escuela del profesor, que es lo que le
@@ -296,6 +302,6 @@ export function Confirmacion({
 // ----------------------------------------------------------------------------
 export function Marca() {
   return (
-    <p className="mb-8 text-lg font-semibold tracking-tight text-acento">Sala</p>
+    <p className="mb-8 text-lg font-semibold tracking-tight text-acento">{NOMBRE}</p>
   );
 }

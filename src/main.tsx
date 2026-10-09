@@ -3,6 +3,7 @@ import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import './index.css';
+import { NOMBRE } from './comun/marca';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -31,16 +32,19 @@ const ruta = window.location.pathname;
 // fondo a la app de la comunidad.
 // El <title> de index.html es el de la app de la comunidad, y la hoja es una
 // sola. Se cambia acá, igual que el fondo, en vez de editar el html.
-function marcarSala() {
-  document.documentElement.dataset.app = 'sala';
-  document.title = 'Sala';
+//
+// El nombre es provisorio: si cambia, se tocan esta función y el componente
+// Marca de comun/ui.tsx. Nada más.
+function marcarAppNueva() {
+  document.documentElement.dataset.app = 'nueva';
+  document.title = NOMBRE;
 }
 
 if (ruta.startsWith('/profe')) {
-  marcarSala();
+  marcarAppNueva();
   import('./profe/AppProfe').then((m) => montar(m.default));
 } else if (ruta.startsWith('/alumno')) {
-  marcarSala();
+  marcarAppNueva();
   import('./alumno/AppAlumno').then((m) => montar(m.default));
 } else {
   import('./App').then((m) => montar(m.default));

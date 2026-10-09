@@ -11,7 +11,7 @@
   --color-brand-cream: #eeede9;
 
   /* ====================================================================
-     SALA — la paleta de la app nueva
+     LA PALETA DE LA APP NUEVA
      ====================================================================
 
      Los nombres son por FUNCIÓN y no por color: `acento` y no `terracota`.
@@ -76,12 +76,15 @@
 /* ----------------------------------------------------------------------
    El fondo de la página.
 
-   Va atado a `data-app="sala"`, que `main.tsx` pone en el <html> solo
+   Va atado a `data-app="nueva"`, que `main.tsx` pone en el <html> solo
    cuando la dirección es /profe o /alumno. Sin eso, cambiar el `body` de
    abajo le rompería el fondo a la app de la comunidad, que vive en la raíz
    y comparte esta misma hoja de estilos.
+
+   Dice "nueva" y no el nombre del producto a propósito: el nombre todavía
+   se está decidiendo y esta hoja no tiene por qué enterarse cuando cambie.
    ---------------------------------------------------------------------- */
-html[data-app="sala"] body {
+html[data-app="nueva"] body {
   background-color: var(--color-fondo);
   color: var(--color-tinta);
 }
