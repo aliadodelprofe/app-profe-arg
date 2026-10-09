@@ -6,9 +6,18 @@ import type { ReactNode } from 'react';
 import { NOMBRE } from './marca';
 import type React from 'react';
 
-export function Marco({ children }: { children: ReactNode }) {
+// `conBarra` deja lugar abajo para la navegación fija del celular. Sin eso,
+// la última tarjeta de cualquier lista queda tapada por la barra y nadie se
+// da cuenta hasta que un alumno reclama que "no le aparece" algo que sí está.
+export function Marco({
+  children,
+  conBarra = false,
+}: {
+  children: ReactNode;
+  conBarra?: boolean;
+}) {
   return (
-    <div className="min-h-screen bg-fondo px-5 py-8">
+    <div className={'min-h-screen bg-fondo px-5 py-6 ' + (conBarra ? 'pb-28 sm:pb-10' : 'pb-10')}>
       <div className="mx-auto w-full max-w-2xl">{children}</div>
     </div>
   );
@@ -66,7 +75,7 @@ export function Tarjeta({
   alTocar?: () => void;
 }) {
   const clases =
-    'w-full rounded-xl border border-linea bg-panel px-4 py-3 text-left';
+    'w-full rounded-xl border border-linea bg-panel p-4 text-left';
   if (!alTocar) return <div className={clases}>{children}</div>;
   return (
     <button onClick={alTocar} className={clases + ' hover:border-acento/40'}>
@@ -305,3 +314,195 @@ export function Marca() {
     <p className="mb-8 text-lg font-semibold tracking-tight text-acento">{NOMBRE}</p>
   );
 }
+
+
+// ============================================================================
+// JERARQUÍA
+//
+// El problema que resuelven estas piezas no es estético: antes casi todo el
+// texto de la app era `text-sm` y los títulos de sección eran mayúsculas
+// chiquitas en gris. Con todo del mismo peso, el ojo no tiene por dónde
+// entrar y hay que leer la pantalla entera para encontrar un dato.
+//
+// Son cuatro niveles y alcanzan. Más niveles es volver al mismo problema por
+// el otro lado.
+// ============================================================================
+
+// Nivel 1 — de qué se trata esta pantalla. Uno por pantalla.
+export function Titulo({ children }: { children: ReactNode }) {
+  return <h1 className="text-2xl font-semibold tracking-tight text-tinta">{children}</h1>;
+}
+
+// Nivel 2 — los bloques adentro de una pantalla.
+//
+// Antes eran mayúsculas chiquitas en gris, que es la forma más común de
+// escribir un título que nadie lee. Ahora pesan de verdad y se separan del
+// bloque anterior, que es lo que hace que una pantalla larga se pueda recorrer
+// saltando en vez de leyendo.
+export function Seccion({
+  children,
+  acotacion,
+}: {
+  children: ReactNode;
+  acotacion?: ReactNode;
+}) {
+  return (
+    <div className="mb-3 mt-8 flex items-baseline justify-between gap-3 first:mt-0">
+      <h2 className="text-lg font-semibold tracking-tight text-tinta">{children}</h2>
+      {acotacion && <span className="shrink-0 text-sm text-tenue">{acotacion}</span>}
+    </div>
+  );
+}
+
+// Nivel 3 — EL número. Cuánto te deben, cuánto entró, cuánto debés.
+//
+// Es la razón por la que alguien abre la pantalla, así que se ve antes de
+// leer nada. `tabular-nums` alinea los dígitos para que dos cifras una debajo
+// de la otra se puedan comparar de un vistazo.
+export function Dato({
+  valor,
+  al,
+  tono = 'normal',
+  children,
+}: {
+  valor: string;
+  al: string;
+  tono?: 'normal' | 'alerta' | 'ok';
+  children?: ReactNode;
+}) {
+  const color =
+    tono === 'alerta' ? 'text-alerta' : tono === 'ok' ? 'text-ok' : 'text-tinta';
+  return (
+    <div className="rounded-xl border border-linea bg-panel p-4">
+      <p className={`text-3xl font-semibold tabular-nums tracking-tight ${color}`}>{valor}</p>
+      <p className="mt-0.5 text-sm text-tenue">{al}</p>
+      {children}
+    </div>
+  );
+}
+
+// Nivel 4 — la marquita al costado de algo: un formato, un estado.
+export function Etiqueta({
+  children,
+  tono = 'normal',
+}: {
+  children: ReactNode;
+  tono?: 'normal' | 'acento' | 'alerta' | 'ok';
+}) {
+  const estilo = {
+    normal: 'border-linea text-tenue',
+    acento: 'border-acento/40 text-acento',
+    alerta: 'border-alerta/40 text-alerta',
+    ok: 'border-ok/40 text-ok',
+  }[tono];
+  return (
+    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${estilo}`}>
+      {children}
+    </span>
+  );
+}
+
+
+// ============================================================================
+// NAVEGACIÓN
+//
+// Antes las secciones colgaban una de otra: "quién me debe" y "pagos" vivían
+// adentro de "grupos", así que para ir de una a la otra había que volver
+// atrás primero. Son hermanas, no hijas, y ahora se ven las tres siempre.
+//
+// Abajo en el celular —donde llega el pulgar— y arriba en la computadora,
+// que es donde el ojo busca una navegación. Es la misma lista renderizada dos
+// veces con `sm:`, y no dos componentes: un menú que se puede desincronizar
+// consigo mismo es un menú que en algún momento va a mentir.
+// ============================================================================
+export type Pestana<T extends string> = {
+  id: T;
+  texto: string;
+  icono: ReactNode;
+};
+
+export function Navegacion<T extends string>({
+  pestanas,
+  activa,
+  alElegir,
+}: {
+  pestanas: Pestana<T>[];
+  activa: T;
+  alElegir: (id: T) => void;
+}) {
+  const boton = (p: Pestana<T>, vertical: boolean) => (
+    <button
+      key={p.id}
+      onClick={() => alElegir(p.id)}
+      aria-current={p.id === activa ? 'page' : undefined}
+      className={
+        (vertical
+          ? 'flex flex-1 flex-col items-center gap-1 py-2 text-xs'
+          : 'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm') +
+        ' ' +
+        (p.id === activa
+          ? 'text-acento ' + (vertical ? '' : 'bg-acento/10 font-medium')
+          : 'text-tenue hover:text-tinta')
+      }
+    >
+      {p.icono}
+      {p.texto}
+    </button>
+  );
+
+  return (
+    <>
+      {/* Celular: fija abajo. El padding de abajo respeta la zona del gesto
+          de inicio en los iPhone sin botón. */}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-linea bg-panel px-2 pb-[env(safe-area-inset-bottom,0px)] sm:hidden"
+        aria-label="Secciones"
+      >
+        {pestanas.map((p) => boton(p, true))}
+      </nav>
+
+      {/* Computadora: arriba, pegada al borde superior al hacer scroll. */}
+      <nav
+        className="sticky top-0 z-40 mb-6 hidden items-center gap-1 border-b border-linea bg-fondo/90 py-2 backdrop-blur sm:flex"
+        aria-label="Secciones"
+      >
+        <span className="mr-3 pl-1 font-semibold tracking-tight text-acento">{NOMBRE}</span>
+        {pestanas.map((p) => boton(p, false))}
+      </nav>
+    </>
+  );
+}
+
+// Los íconos son tres formas propias y no una librería: tres dibujos no
+// justifican una dependencia, y cualquier set que bajemos va a tener el estilo
+// de otro producto.
+const svg = 'h-5 w-5 sm:h-4 sm:w-4';
+
+export const IconoHoy = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5l3 2" strokeLinecap="round" />
+  </svg>
+);
+
+export const IconoGrupos = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <circle cx="8" cy="9" r="3" />
+    <circle cx="16" cy="9" r="3" />
+    <path d="M3 19c0-2.8 2.2-5 5-5M21 19c0-2.8-2.2-5-5-5" strokeLinecap="round" />
+  </svg>
+);
+
+export const IconoCobros = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <rect x="3" y="6" width="18" height="12" rx="2" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+);
+
+export const IconoClases = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18M8 3v4M16 3v4" strokeLinecap="round" />
+  </svg>
+);

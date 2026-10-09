@@ -995,3 +995,33 @@ export async function asegurarImputaciones(espacioId: string): Promise<number> {
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
 }
+
+// ---------------------------------------------------------------------------
+// LAS CLASES DE TODO EL ESPACIO, NO LAS DE UN GRUPO
+//
+// `traerClases` pide las de un grupo, que es lo que necesita el detalle. La
+// pantalla de inicio necesita lo contrario: qué hay hoy, sin importar de qué
+// grupo. Un profesor con cuatro grupos no quiere entrar a los cuatro para
+// enterarse de que a las 20:00 tiene bachata.
+// ---------------------------------------------------------------------------
+export type ClaseDelEspacio = Clase & { grupo: { id: string; name: string } | null };
+
+export async function traerClasesDelEspacio(
+  espacioId: string,
+  desde: string,
+  hasta: string,
+): Promise<ClaseDelEspacio[]> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select(
+      'id, date, start_time, duration_min, title, recap, status, venue, address, ' +
+      'grupo:groups(id, name)',
+    )
+    .eq('tenant_id', espacioId)
+    .gte('date', desde)
+    .lte('date', hasta)
+    .order('date')
+    .order('start_time', { nullsFirst: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ClaseDelEspacio[];
+}

@@ -1,5 +1,10 @@
 // ============================================================================
-// Pagos — lo que falta confirmar y lo que ya entró
+// Para confirmar — una SECCIÓN de la pantalla de Cobros, no una pantalla.
+//
+// Dejó de ser pantalla propia cuando las tres vistas de plata se juntaron:
+// quién debe, qué falta confirmar y qué entró son tres preguntas sobre lo
+// mismo, y tenerlas en tres lugares distintos obligaba a recorrer la app para
+// entender un solo tema.
 //
 // Reemplaza al WhatsApp con la captura de pantalla. El alumno declaró una
 // transferencia; acá la das por buena con un toque y el estado de cuenta se
@@ -12,20 +17,12 @@
 // solo "Confirmar" es lo que evita el toque distraído.
 // ============================================================================
 import { useState } from 'react';
-import { traerPagosPorConfirmar, traerCobros, confirmarPago, rechazarPago, fecha, plata } from '../datos';
+import { traerPagosPorConfirmar, confirmarPago, rechazarPago, fecha, plata } from '../datos';
 import type { Espacio, PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../../comun/ui';
-import Cobrado from './Cobrado';
+import { Aviso, Vacio, Tarjeta, Seccion, useCarga } from '../../comun/ui';
 
-export default function Pagos({
-  espacio,
-  alVolver,
-}: {
-  espacio: Espacio;
-  alVolver: () => void;
-}) {
+export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
   const { datos, error } = useCarga(() => traerPagosPorConfirmar(espacio.id), [espacio.id]);
-  const cobros = useCarga(() => traerCobros(espacio.id), [espacio.id]);
 
   // Lo que ya se resolvió en esta pantalla, para sacarlo de la lista sin
   // tener que volver a preguntarle a la base.
@@ -39,7 +36,6 @@ export default function Pagos({
     try {
       const r: ResultadoConfirmacion = await confirmarPago(p.id);
       setResueltos((m) => ({ ...m, [p.id]: mensaje(r) }));
-      cobros.recargar();   // la plata que acaba de entrar tiene que aparecer abajo
     } catch (e) {
       setErrorAccion((e as Error).message);
     }
@@ -61,12 +57,10 @@ export default function Pagos({
   const pendientes = datos?.filter((p) => !resueltos[p.id]) ?? [];
 
   return (
-    <Marco>
-      <Encabezado
-        titulo="Pagos"
-        bajada={espacio.name}
-        volver={{ texto: 'Mis grupos', alTocar: alVolver }}
-      />
+    <>
+      <Seccion acotacion={pendientes.length > 0 ? `${pendientes.length}` : undefined}>
+        Para confirmar
+      </Seccion>
 
       {error && <Aviso>{error}</Aviso>}
       {errorAccion && <div className="mb-4"><Aviso>{errorAccion}</Aviso></div>}
@@ -78,10 +72,6 @@ export default function Pagos({
           {texto}
         </p>
       ))}
-
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Para confirmar
-      </h2>
 
       {datos && pendientes.length === 0 && (
         <Vacio>No hay pagos esperando. Todo al día.</Vacio>
@@ -138,12 +128,7 @@ export default function Pagos({
         ))}
       </ul>
 
-      {/* ------------------------------------------------------- lo cobrado */}
-      <div className="mt-8">
-        {cobros.error && <Aviso>{cobros.error}</Aviso>}
-        {cobros.datos && <Cobrado cobros={cobros.datos} />}
-      </div>
-    </Marco>
+    </>
   );
 }
 

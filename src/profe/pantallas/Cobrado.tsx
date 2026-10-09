@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import type { Cobro } from '../datos';
 import { fecha, plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
-import { Vacio, Tarjeta } from '../../comun/ui';
+import { Vacio, Tarjeta, Seccion, Dato } from '../../comun/ui';
 
 export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
   const [mes, setMes] = useState(mesDe(hoyISO()));
@@ -39,9 +39,7 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
 
   return (
     <>
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Cobrado
-      </h2>
+      <Seccion>Cobrado</Seccion>
 
       {meses.length > 1 && (
         <select
@@ -55,21 +53,22 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
         </select>
       )}
 
-      <div className="mb-3 rounded-xl border border-linea bg-panel px-4 py-3">
-        <p className="text-3xl font-semibold text-tinta">{plata(total)}</p>
-        <p className="text-sm text-tenue">
-          entraron en {mesEnPalabras(mes)}
-          {delMes.length > 0 && ` · ${delMes.length} ${delMes.length === 1 ? 'pago' : 'pagos'}`}
-        </p>
-
-        {hayConQueComparar && (
-          <p className="mt-1 text-sm text-tenue">
-            {diferencia === 0
-              ? `Igual que en ${mesEnPalabras(anterior)}.`
-              : `${plata(Math.abs(diferencia))} ${diferencia > 0 ? 'más' : 'menos'} que en ` +
-                `${mesEnPalabras(anterior)} (${Math.abs(porcentaje)}%).`}
-          </p>
-        )}
+      <div className="mb-3">
+        <Dato
+          valor={plata(total)}
+          al={`entraron en ${mesEnPalabras(mes)}` +
+              (delMes.length > 0 ? ` · ${delMes.length} ${delMes.length === 1 ? 'pago' : 'pagos'}` : '')}
+          tono={total > 0 ? 'ok' : 'normal'}
+        >
+          {hayConQueComparar && (
+            <p className="mt-2 text-sm text-tenue">
+              {diferencia === 0
+                ? `Igual que en ${mesEnPalabras(anterior)}.`
+                : `${plata(Math.abs(diferencia))} ${diferencia > 0 ? 'más' : 'menos'} que en ` +
+                  `${mesEnPalabras(anterior)} (${Math.abs(porcentaje)}%).`}
+            </p>
+          )}
+        </Dato>
       </div>
 
       {delMes.length === 0 ? (

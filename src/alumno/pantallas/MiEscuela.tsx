@@ -13,9 +13,11 @@ import {
   subirComprobante, COMPROBANTE_MAX_MB, misArreglos,
 } from '../datos';
 import type { MiFicha } from '../datos';
+import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
-  Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
+  Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Salir from './Salir';
@@ -33,6 +35,16 @@ export default function MiEscuela({
   const pagos = useCarga(() => misPagos(ficha.tenant_id), [ficha.tenant_id]);
   const arreglos = useCarga(() => misArreglos(ficha.tenant_id), [ficha.tenant_id]);
   const [declarando, setDeclarando] = useState(false);
+  // Dos pestañas y no cinco secciones apiladas. El alumno abre la app por una
+  // de dos razones muy distintas —ver qué viene y repasar lo que vio, o mirar
+  // cómo está de plata— y antes tenía que recorrer una página larga para
+  // llegar a cualquiera de las dos.
+  type Tab = 'clases' | 'cuenta';
+  const [tab, setTab] = useState<Tab>('clases');
+  const pestanas: Pestana<Tab>[] = [
+    { id: 'clases', texto: 'Clases', icono: IconoClases },
+    { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
+  ];
 
   const hoy = hoyISO();
   const proximas = clases.datos?.filter((c) => c.date >= hoy).reverse() ?? [];
@@ -45,17 +57,18 @@ export default function MiEscuela({
     .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
   return (
-    <Marco>
-      <Encabezado
-        titulo={ficha.escuela?.name ?? 'Mis clases'}
-        bajada={ficha.full_name}
-        derecha={derecha ?? <Salir />}
-      />
+    <Marco conBarra>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <Titulo>{ficha.escuela?.name ?? 'Mis clases'}</Titulo>
+          <p className="text-sm text-tenue">{ficha.full_name}</p>
+        </div>
+        {derecha ?? <Salir />}
+      </div>
 
-      {/* ---------------------------------------------------- próximas clases */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Próximas clases
-      </h2>
+      {tab === 'clases' && (
+        <>
+      <Seccion>Próximas clases</Seccion>
       {clases.error && <Aviso>{clases.error}</Aviso>}
       {!clases.datos && !clases.error && <Vacio>Buscando…</Vacio>}
       {clases.datos && proximas.length === 0 && <Vacio>No hay clases cargadas todavía.</Vacio>}
@@ -104,9 +117,7 @@ export default function MiEscuela({
       {/* ------------------------------------------------------------- recaps */}
       {pasadas.length > 0 && (
         <>
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-            Lo que vimos
-          </h2>
+          <Seccion>Lo que vimos</Seccion>
           <ul className="mb-8 flex flex-col gap-2">
             {pasadas.map((c) => (
               <li key={c.id}>
@@ -124,6 +135,11 @@ export default function MiEscuela({
           </ul>
         </>
       )}
+        </>
+      )}
+
+      {tab === 'cuenta' && (
+        <>
 
       {/* --------------------------------------------------------- cómo pago */}
       {arreglos.error && <Aviso>{arreglos.error}</Aviso>}
@@ -137,9 +153,7 @@ export default function MiEscuela({
       />
 
       {/* -------------------------------------------------------- mi cuenta */}
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Mi cuenta
-      </h2>
+      <Seccion>Mi cuenta</Seccion>
 
       {saldo.error && <Aviso>{saldo.error}</Aviso>}
 
@@ -227,9 +241,7 @@ export default function MiEscuela({
           lo que quiera que lo reciban. */}
       {confirmados.length > 0 && (
         <div className="mb-8 mt-6">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-            Lo que pagué
-          </h2>
+          <Seccion>Lo que pagué</Seccion>
           <ul className="flex flex-col gap-2">
             {confirmados.map((p) => (
               <li key={p.id}>
@@ -248,6 +260,14 @@ export default function MiEscuela({
           </ul>
         </div>
       )}
+        </>
+      )}
+
+      <Navegacion<Tab>
+        activa={tab}
+        alElegir={setTab}
+        pestanas={pestanas}
+      />
     </Marco>
   );
 }

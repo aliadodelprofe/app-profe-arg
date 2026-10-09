@@ -17,14 +17,17 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { traerEspacios } from './datos';
 import type { Espacio, Grupo, Clase } from './datos';
-import { Marco, Vacio, Aviso, useCarga } from '../comun/ui';
+import {
+  Marco, Vacio, Aviso, useCarga,
+  Navegacion, IconoHoy, IconoGrupos, IconoCobros,
+} from '../comun/ui';
 import Ingreso from './pantallas/Ingreso';
 import Espacios from './pantallas/Espacios';
 import Grupos from './pantallas/Grupos';
 import DetalleGrupo from './pantallas/DetalleGrupo';
 import Asistencia from './pantallas/Asistencia';
-import Deudas from './pantallas/Deudas';
-import Pagos from './pantallas/Pagos';
+import Hoy from './pantallas/Hoy';
+import Cobros from './pantallas/Cobros';
 
 export default function AppProfe() {
   const [sesion, setSesion] = useState<Session | null>(null);
@@ -47,13 +50,26 @@ export default function AppProfe() {
   return <Adentro key={sesion.user.id} sesion={sesion} />;
 }
 
+// ============================================================================
+// LA ESTRUCTURA
+//
+// Tres secciones hermanas, siempre visibles: HOY, GRUPOS y COBROS. Antes
+// "quién me debe" y "pagos" colgaban de la lista de grupos, así que para ir de
+// una a la otra había que volver atrás. Eran hijas de algo con lo que no
+// tienen relación.
+//
+// Adentro de GRUPOS sí hay profundidad, y ahí está bien: grupo → clase →
+// asistencia es un camino, no un menú. Esas pantallas conservan su "volver" y
+// se quedan sin barra, porque mientras tomás asistencia no querés irte a otro
+// lado de un toque sin querer.
+// ============================================================================
+type Tab = 'hoy' | 'grupos' | 'cobros';
+
 type Vista =
   | { pantalla: 'espacios' }
-  | { pantalla: 'grupos'; espacio: Espacio }
+  | { pantalla: 'tab'; espacio: Espacio; tab: Tab }
   | { pantalla: 'grupo'; espacio: Espacio; grupo: Grupo }
   | { pantalla: 'asistencia'; espacio: Espacio; grupo: Grupo; clase: Clase }
-  | { pantalla: 'deudas'; espacio: Espacio }
-  | { pantalla: 'pagos'; espacio: Espacio };
 
 function Adentro({ sesion }: { sesion: Session }) {
   const espacios = useCarga(traerEspacios, []);
@@ -64,7 +80,7 @@ function Adentro({ sesion }: { sesion: Session }) {
     if (!espacios.datos || vista) return;
     setVista(
       espacios.datos.length === 1
-        ? { pantalla: 'grupos', espacio: espacios.datos[0] }
+        ? { pantalla: 'tab', espacio: espacios.datos[0], tab: 'hoy' }
         : { pantalla: 'espacios' },
     );
   }, [espacios.datos, vista]);
@@ -82,53 +98,69 @@ function Adentro({ sesion }: { sesion: Session }) {
         userId={sesion.user.id}
         espacios={espacios.datos ?? []}
         alCrear={espacios.recargar}
-        alElegir={(espacio) => setVista({ pantalla: 'grupos', espacio })}
+        alElegir={(espacio) => setVista({ pantalla: 'tab', espacio, tab: 'hoy' })}
       />
     );
   }
 
-  // Si hay un solo espacio no hay adónde volver: esta es la pantalla de inicio.
   const volverAEspacios = unico
     ? undefined
     : () => setVista({ pantalla: 'espacios' });
 
-  if (vista.pantalla === 'grupos') {
+  // ------------------------------------------------- las tres hermanas
+  if (vista.pantalla === 'tab') {
+    const { espacio, tab } = vista;
+    const irA = (t: Tab) => setVista({ pantalla: 'tab', espacio, tab: t });
+
     return (
-      <Grupos
-        espacio={vista.espacio}
-        email={email}
-        alVolver={volverAEspacios}
-        alElegir={(grupo) => setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo })}
-        alVerDeudas={() => setVista({ pantalla: 'deudas', espacio: vista.espacio })}
-        alVerPagos={() => setVista({ pantalla: 'pagos', espacio: vista.espacio })}
-      />
+      <>
+        {tab === 'hoy' && (
+          <Hoy
+            espacio={espacio}
+            alVerCobros={() => irA('cobros')}
+            alTomarAsistencia={(clase) => {
+              // La clase de inicio trae su grupo adentro; la pantalla de
+              // asistencia necesita el grupo entero, así que se busca.
+              if (!clase.grupo) return;
+              setVista({
+                pantalla: 'asistencia',
+                espacio,
+                grupo: { id: clase.grupo.id, name: clase.grupo.name } as Grupo,
+                clase,
+              });
+            }}
+          />
+        )}
+        {tab === 'grupos' && (
+          <Grupos
+            espacio={espacio}
+            email={email}
+            alVolver={volverAEspacios}
+            alElegir={(grupo) => setVista({ pantalla: 'grupo', espacio, grupo })}
+          />
+        )}
+        {tab === 'cobros' && <Cobros espacio={espacio} />}
+
+        <Navegacion
+          activa={tab}
+          alElegir={irA}
+          pestanas={[
+            { id: 'hoy', texto: 'Hoy', icono: IconoHoy },
+            { id: 'grupos', texto: 'Grupos', icono: IconoGrupos },
+            { id: 'cobros', texto: 'Cobros', icono: IconoCobros },
+          ]}
+        />
+      </>
     );
   }
 
-  if (vista.pantalla === 'pagos') {
-    return (
-      <Pagos
-        espacio={vista.espacio}
-        alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
-      />
-    );
-  }
-
-  if (vista.pantalla === 'deudas') {
-    return (
-      <Deudas
-        espacio={vista.espacio}
-        alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
-      />
-    );
-  }
-
+  // ------------------------------------- adentro de un grupo: un camino
   if (vista.pantalla === 'grupo') {
     return (
       <DetalleGrupo
         espacio={vista.espacio}
         grupo={vista.grupo}
-        alVolver={() => setVista({ pantalla: 'grupos', espacio: vista.espacio })}
+        alVolver={() => setVista({ pantalla: 'tab', espacio: vista.espacio, tab: 'grupos' })}
         alTomarAsistencia={(clase) =>
           setVista({ pantalla: 'asistencia', espacio: vista.espacio, grupo: vista.grupo, clase })
         }

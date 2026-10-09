@@ -1,5 +1,5 @@
 // ============================================================================
-// Quién me debe
+// Quién te debe — una SECCIÓN de la pantalla de Cobros, no una pantalla.
 //
 // Es la pregunta que hoy se contesta cruzando una planilla a mano. Acá es una
 // consulta sobre la vista student_account.
@@ -10,15 +10,9 @@
 // ============================================================================
 import { traerDeudas, plata } from '../datos';
 import type { Espacio } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga } from '../../comun/ui';
+import { Aviso, Vacio, Tarjeta, Seccion, Dato, useCarga } from '../../comun/ui';
 
-export default function Deudas({
-  espacio,
-  alVolver,
-}: {
-  espacio: Espacio;
-  alVolver: () => void;
-}) {
+export default function QuienDebe({ espacio }: { espacio: Espacio }) {
   const { datos, error } = useCarga(() => traerDeudas(espacio.id), [espacio.id]);
 
   const deudores = datos?.filter((f) => f.saldo > 0) ?? [];
@@ -32,12 +26,10 @@ export default function Deudas({
   const porConfirmar = deudores.reduce((s, f) => s + f.pendiente, 0);
 
   return (
-    <Marco>
-      <Encabezado
-        titulo="Quién me debe"
-        bajada={espacio.name}
-        volver={{ texto: 'Mis grupos', alTocar: alVolver }}
-      />
+    <>
+      <Seccion acotacion={deudores.length > 0 ? `${deudores.length}` : undefined}>
+        Quién te debe
+      </Seccion>
 
       {error && <Aviso>{error}</Aviso>}
       {!datos && !error && <Vacio>Buscando…</Vacio>}
@@ -48,17 +40,18 @@ export default function Deudas({
 
       {deudores.length > 0 && (
         <>
-          <div className="mb-4 rounded-xl border border-linea bg-panel px-4 py-3">
-            <p className="text-2xl font-semibold text-tinta">{plata(total)}</p>
-            <p className="text-sm text-tenue">
-              {deudores.length} {deudores.length === 1 ? 'alumno debe' : 'alumnos deben'}
-              {alDia > 0 && ` · ${alDia} al día`}
-            </p>
-            {porConfirmar > 0 && (
-              <p className="mt-1 text-sm text-acento">
-                {plata(porConfirmar)} esperando que confirmes
-              </p>
-            )}
+          <div className="mb-3">
+            <Dato
+              valor={plata(total)}
+              al={`${deudores.length} ${deudores.length === 1 ? 'alumno debe' : 'alumnos deben'}${alDia > 0 ? ` · ${alDia} al día` : ''}`}
+              tono="alerta"
+            >
+              {porConfirmar > 0 && (
+                <p className="mt-2 text-sm text-acento">
+                  {plata(porConfirmar)} esperando que confirmes
+                </p>
+              )}
+            </Dato>
           </div>
 
           <ul className="flex flex-col gap-2">
@@ -88,10 +81,8 @@ export default function Deudas({
           hacer con esta plata, se aplica sola a lo que vaya venciendo. Está
           para que no le reclames a alguien que está adelantado. */}
       {conCredito.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-            Pagaron por adelantado
-          </h2>
+        <div>
+          <Seccion>Pagaron por adelantado</Seccion>
           <p className="mb-3 text-sm text-tenue">
             {plata(totalCredito)} a favor de {conCredito.length}{' '}
             {conCredito.length === 1 ? 'alumno' : 'alumnos'}. Se descuenta solo de lo que
@@ -113,6 +104,6 @@ export default function Deudas({
           </ul>
         </div>
       )}
-    </Marco>
+    </>
   );
 }

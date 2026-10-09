@@ -342,6 +342,73 @@ igual en los dos modos.)
 
 ---
 
+## La estructura de las pantallas (9/10/2026)
+
+El rediseño no empezó por los colores. El problema era de **estructura**, y los colores no
+lo hubieran tapado.
+
+### Qué estaba mal
+
+1. **No había navegación, había un pozo.** "Quién me debe" y "Pagos por confirmar" colgaban
+   de la lista de grupos. Para ir de una a la otra había que volver atrás. Eran hijas de
+   algo con lo que no tienen relación.
+2. **La pantalla de Grupos hacía tres trabajos:** era el inicio, era la lista y era el menú
+   hacia las otras dos secciones. Los dos botones grandes de arriba empujaban al profesor a
+   irse de la pantalla en la que acababa de entrar.
+3. **Todo pesaba lo mismo.** Casi todo el texto era `text-sm` y los títulos de sección eran
+   mayúsculas chiquitas en gris — la forma más común de escribir un título que nadie lee.
+4. **Scroll infinito** en el detalle del grupo y en la pantalla del alumno.
+
+### Cómo quedó
+
+**Profesor: tres secciones hermanas, siempre visibles.**
+
+| Sección | Qué contesta |
+|---|---|
+| **Hoy** | ¿qué tengo que hacer ahora? La clase que viene con el botón de asistencia, lo que espera confirmación, lo que te deben |
+| **Grupos** | la lista, y adentro el camino grupo → clase → asistencia |
+| **Cobros** | las tres vistas de plata juntas: para confirmar, quién te debe, lo cobrado |
+
+**Alumno: dos pestañas.** *Clases* (lo que viene y los recaps) y *Mi cuenta* (cómo paga,
+el saldo, lo que pagó). Antes eran cinco secciones en una página larga.
+
+La barra va **abajo en el celular** —donde llega el pulgar— y **arriba en la computadora**.
+Es la misma lista renderizada dos veces con `sm:`, no dos componentes: un menú que se puede
+desincronizar consigo mismo en algún momento va a mentir.
+
+**Adentro de Grupos sí hay profundidad, y ahí está bien.** Grupo → clase → asistencia es un
+camino, no un menú. Esas pantallas conservan su "volver" y se quedan **sin barra**: mientras
+tomás asistencia no querés irte a otro lado de un toque sin querer.
+
+### La jerarquía
+
+Cuatro niveles en `comun/ui.tsx`, y alcanzan. Más niveles es volver al mismo problema por
+el otro lado.
+
+| Pieza | Para qué |
+|---|---|
+| `Titulo` | de qué se trata la pantalla. Uno por pantalla |
+| `Seccion` | los bloques adentro. Pesan de verdad y se separan del anterior, para poder recorrer saltando en vez de leyendo |
+| `Dato` | EL número: cuánto te deben, cuánto entró. Con `tabular-nums`, para poder comparar dos cifras de un vistazo |
+| `Etiqueta` | la marquita al costado: un formato, un estado |
+
+### Dos decisiones que no son obvias
+
+**En "Hoy", lo que no hay que hacer no se muestra.** Una pantalla de inicio que siempre
+tiene seis tarjetas, estén vacías o no, deja de leerse a la semana.
+
+**En "Cobros", las acciones van antes que el archivo.** Primero lo que pide una decisión
+(confirmar transferencias), después lo que hay que mirar (las deudas), al final el registro
+(lo cobrado). Una pantalla que arranca con el resumen del mes te hace bajar para encontrar
+lo que tenés que hacer.
+
+### Pendiente
+
+`DetalleGrupo` sigue siendo largo: avisos, alumnos, clases, altas de cargos y formularios
+apilados. Es el próximo candidato a cortar en bloques.
+
+---
+
 ## Orden de construcción del producto
 
 1. ~~Multi-tenant con aislamiento probado~~ ✅

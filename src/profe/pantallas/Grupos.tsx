@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { traerGrupos, nombreFormato, fecha, linkMapa, horarioDe } from '../datos';
 import type { Espacio, Grupo } from '../datos';
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga, BotonSecundario } from '../../comun/ui';
+import { Marco, Aviso, Vacio, Tarjeta, Titulo, Etiqueta, useCarga, BotonSecundario } from '../../comun/ui';
 import FormularioGrupo from './FormularioGrupo';
 import Salir from './Salir';
 
@@ -10,45 +10,35 @@ export default function Grupos({
   email,
   alVolver,
   alElegir,
-  alVerDeudas,
-  alVerPagos,
 }: {
   espacio: Espacio;
   email: string;
-  // Sin alVolver, esta es la pantalla de inicio: el profesor tiene un solo
-  // espacio y no hay lista adonde volver.
+  // Sin alVolver, el profesor tiene un solo espacio y no hay lista adonde
+  // volver. La barra de abajo es la navegación; este "volver" es la excepción.
   alVolver?: () => void;
   alElegir: (grupo: Grupo) => void;
-  alVerDeudas: () => void;
-  alVerPagos: () => void;
 }) {
   const { datos, error, recargar } = useCarga(() => traerGrupos(espacio.id), [espacio.id]);
   const [creando, setCreando] = useState(false);
 
   return (
-    <Marco>
-      <Encabezado
-        titulo="Mis grupos"
-        bajada={alVolver ? espacio.name : `${espacio.name} · ${email}`}
-        volver={alVolver ? { texto: 'Mis espacios', alTocar: alVolver } : undefined}
-        derecha={alVolver ? undefined : <Salir />}
-      />
-
-      <div className="mb-5 flex flex-col gap-2">
-        <button
-          onClick={alVerDeudas}
-          className="w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left hover:border-acento/60"
-        >
-          <p className="text-acento">Quién me debe →</p>
-          <p className="text-sm text-tenue">Estado de cuenta de todo el espacio</p>
-        </button>
-        <button
-          onClick={alVerPagos}
-          className="w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left hover:border-acento/60"
-        >
-          <p className="text-acento">Pagos por confirmar →</p>
-          <p className="text-sm text-tenue">Transferencias que declararon tus alumnos</p>
-        </button>
+    <Marco conBarra>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          {alVolver && (
+            <button
+              onClick={alVolver}
+              className="mb-2 block text-sm text-tenue hover:text-acento"
+            >
+              ← Mis espacios
+            </button>
+          )}
+          <Titulo>Grupos</Titulo>
+          <p className="text-sm text-tenue">
+            {alVolver ? espacio.name : `${espacio.name} · ${email}`}
+          </p>
+        </div>
+        <Salir />
       </div>
 
       {creando ? (
@@ -71,10 +61,8 @@ export default function Grupos({
             <li key={g.id}>
               <Tarjeta alTocar={() => alElegir(g)}>
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-tinta">{g.name}</p>
-                  <span className="shrink-0 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
-                    {nombreFormato[g.format]}
-                  </span>
+                  <p className="font-medium text-tinta">{g.name}</p>
+                  <Etiqueta>{nombreFormato[g.format]}</Etiqueta>
                 </div>
                 <p className="text-sm text-tenue">
                   {[
