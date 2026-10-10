@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase';
 export type MiFicha = {
   id: string;
   full_name: string;
+  avatar_url: string | null;
   tenant_id: string;
   escuela: { name: string; discipline: string | null } | null;
 };
@@ -97,7 +98,7 @@ export async function rechazarInvitacion(studentId: string): Promise<void> {
 export async function misFichas(): Promise<MiFicha[]> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, tenant_id, escuela:tenants(name, discipline)');
+    .select('id, full_name, avatar_url, tenant_id, escuela:tenants(name, discipline)');
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiFicha[];
 }
@@ -273,4 +274,35 @@ export async function cambiarFormaDePago(
   });
   if (error) throw new Error(error.message);
   return String(data);
+}
+
+// ---------------------------------------------------------------------------
+// MI PERFIL
+//
+// El nombre y la foto son de la persona, no del profesor que la anotó. Hasta
+// la 0023 la ficha era del profesor: él la creaba y la editaba para siempre, y
+// el alumno veía el nombre que a él se le hubiera ocurrido escribir.
+//
+// Va por función y no por un update directo porque RLS protege filas y no
+// columnas: dejar al alumno escribir su fila entera le permitiría cambiarse de
+// escuela o pisarse el correo. La función toca exactamente dos columnas.
+// ---------------------------------------------------------------------------
+export async function guardarMiPerfil(
+  nombre: string,
+  avatarUrl?: string | null,
+): Promise<number> {
+  const { data, error } = await supabase.rpc('actualizar_mi_ficha', {
+    p_nombre: nombre,
+    p_avatar_url: avatarUrl ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+// La foto que Google ya tiene de la persona. Si entró con Google, no hay
+// ninguna razón para pedirle que suba una.
+export function fotoDeGoogle(usuario: { user_metadata?: Record<string, unknown> }): string | null {
+  const m = usuario.user_metadata ?? {};
+  const url = (m.avatar_url ?? m.picture) as string | undefined;
+  return url && url.startsWith('https://') ? url : null;
 }

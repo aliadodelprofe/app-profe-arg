@@ -102,7 +102,7 @@ function Adentro({ sesion }: { sesion: Session }) {
   }
 
   if (fichas.length === 1) {
-    return <MiEscuela ficha={fichas[0]} />;
+    return <MiEscuela ficha={fichas[0]} alCambiarPerfil={alResponder} />;
   }
 
   // Cursa con más de un profesor: elige de cuál quiere ver.
@@ -111,6 +111,7 @@ function Adentro({ sesion }: { sesion: Session }) {
     return (
       <MiEscuela
         ficha={actual}
+        alCambiarPerfil={alResponder}
         derecha={
           <button
             onClick={() => setElegida(null)}

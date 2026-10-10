@@ -29,6 +29,8 @@ Estas cuatro no se discuten ni se posponen. La app maneja datos personales de al
 
 **Después de cualquier cambio en el esquema o en las políticas: correr la prueba de los dos profesores.** Dos tenants de prueba, intentar activamente leer y escribir datos del otro desde la sesión de cada uno. Si algo pasa, se frena todo hasta arreglarlo.
 
+**Y correr TODAS las pruebas repetibles, no solo la del tema que se tocó.** Una migración que elimina una columna rompe en silencio cualquier prueba que la nombre, y una prueba que no corre no protege nada. Pasó: la 0011 eliminó `enrollments.agreed_price` y `aislamiento_alumno.sql` —la prueba de aislamiento del portal del alumno— quedó sin poder ejecutarse durante un mes, sin que nadie se enterara. La lista de pruebas está en `docs/ESTADO.md`.
+
 ---
 
 ## Stack

@@ -6,7 +6,7 @@
 // es importante para el profesor, no para el alumno — ponerlo primero sería
 // recibirlo con una factura.
 // ============================================================================
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
@@ -17,17 +17,22 @@ import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
-  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
+import MiPerfil from './MiPerfil';
+import { supabase } from '../../lib/supabase';
+import { fotoDeGoogle } from '../datos';
 import Salir from './Salir';
 
 export default function MiEscuela({
   ficha,
   derecha,
+  alCambiarPerfil,
 }: {
   ficha: MiFicha;
   derecha?: React.ReactNode;
+  alCambiarPerfil?: () => void;
 }) {
   const clases = useCarga(() => misClases(ficha.tenant_id), [ficha.tenant_id]);
   const cargos = useCarga(() => misCargos(ficha.tenant_id), [ficha.tenant_id]);
@@ -41,6 +46,16 @@ export default function MiEscuela({
   // llegar a cualquiera de las dos.
   type Tab = 'clases' | 'cuenta';
   const [tab, setTab] = useState<Tab>('clases');
+  const [perfil, setPerfil] = useState(false);
+  const [fotoGoogle, setFotoGoogle] = useState<string | null>(null);
+
+  // La foto que Google ya tiene, para poder ofrecerla con un toque.
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) setFotoGoogle(fotoDeGoogle(data.user));
+    });
+  }, []);
+
   const pestanas: Pestana<Tab>[] = [
     { id: 'clases', texto: 'Clases', icono: IconoClases },
     { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
@@ -61,13 +76,32 @@ export default function MiEscuela({
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
       <Marco conBarra>
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <Titulo>{ficha.escuela?.name ?? 'Mis clases'}</Titulo>
-          <p className="text-sm text-tenue">{ficha.full_name}</p>
-        </div>
+      {/* La foto es el botón del perfil. Es dónde la busca cualquiera que
+          haya usado una app en los últimos diez años. */}
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <button
+          onClick={() => setPerfil(true)}
+          className="flex min-w-0 items-center gap-3 rounded-xl text-left transition active:opacity-70"
+        >
+          <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} />
+          <div className="min-w-0">
+            <Titulo>{ficha.escuela?.name ?? 'Mis clases'}</Titulo>
+            <p className="truncate text-sm text-tenue">{ficha.full_name}</p>
+          </div>
+        </button>
         {derecha ?? <Salir />}
       </div>
+
+      {perfil && (
+        <Hoja titulo="Mi perfil" alCerrar={() => setPerfil(false)}>
+          <MiPerfil
+            ficha={ficha}
+            fotoSugerida={fotoGoogle}
+            alCerrar={() => setPerfil(false)}
+            alGuardar={() => { setPerfil(false); alCambiarPerfil?.(); }}
+          />
+        </Hoja>
+      )}
 
       {tab === 'clases' && (
         <>

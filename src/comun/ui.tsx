@@ -572,8 +572,33 @@ function inicialesDe(nombre: string): string {
   return (uso[0]?.[0] ?? '?').concat(uso.length > 1 ? uso[uso.length - 1][0] : '').toUpperCase();
 }
 
-export function Avatar({ nombre, chico = false }: { nombre: string; chico?: boolean }) {
+export function Avatar({
+  nombre,
+  foto,
+  chico = false,
+}: {
+  nombre: string;
+  foto?: string | null;
+  chico?: boolean;
+}) {
   const h = tonoDe(nombre);
+  const tam = chico ? 'h-8 w-8' : 'h-10 w-10';
+
+  // Con foto, la foto. Las iniciales son el plan B, no el plan.
+  if (foto) {
+    return (
+      <img
+        src={foto}
+        alt=""
+        className={`${tam} shrink-0 rounded-full object-cover`}
+        // Una dirección de Google puede dejar de funcionar si la persona
+        // cambia su foto. Si pasa, la imagen desaparece y quedan las
+        // iniciales, que es exactamente lo que había antes.
+        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+      />
+    );
+  }
+
   return (
     <span
       aria-hidden="true"
@@ -583,7 +608,7 @@ export function Avatar({ nombre, chico = false }: { nombre: string; chico?: bool
       }}
       className={
         'flex shrink-0 items-center justify-center rounded-full font-semibold ' +
-        (chico ? 'h-8 w-8 text-xs' : 'h-10 w-10 text-sm')
+        tam + (chico ? ' text-xs' : ' text-sm')
       }
     >
       {inicialesDe(nombre)}
@@ -616,6 +641,8 @@ export function Lista({ children }: { children: ReactNode }) {
 
 export function Fila({
   avatar,
+  foto,
+  principal,
   titulo,
   detalle,
   valor,
@@ -624,6 +651,8 @@ export function Fila({
   children,
 }: {
   avatar?: string;              // el nombre del que sale la inicial
+  foto?: string | null;         // si la persona tiene una
+  principal?: ReactNode;        // o algo propio a la izquierda, en vez del avatar
   titulo: ReactNode;
   detalle?: ReactNode;
   valor?: ReactNode;            // lo que va a la derecha: un monto, una hora
@@ -634,7 +663,7 @@ export function Fila({
   const cuerpo = (
     <>
       <div className="flex items-center gap-3">
-        {avatar !== undefined && <Avatar nombre={avatar} />}
+        {principal ?? (avatar !== undefined ? <Avatar nombre={avatar} foto={foto} /> : null)}
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-tinta">{titulo}</div>
           {detalle && <div className="truncate text-sm text-tenue">{detalle}</div>}
@@ -808,5 +837,35 @@ export function Segmentos<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// CHIP DE FECHA
+//
+// El lugar del avatar, cuando la fila no es una persona sino un día. En una
+// lista de clases el dato que se busca con el ojo es la fecha, no el título:
+// "¿cuándo es la próxima?" se contesta mirando una columna de números, no
+// leyendo renglones.
+// ----------------------------------------------------------------------------
+const DIA_CORTO = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+
+export function ChipFecha({ iso, apagado = false }: { iso: string; apagado?: boolean }) {
+  const [a, m, d] = iso.split('-').map(Number);
+  const dow = new Date(Date.UTC(a, m - 1, d)).getUTCDay();
+  return (
+    <span
+      aria-hidden="true"
+      className={
+        'flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border ' +
+        (apagado
+          ? 'border-linea text-tenue'
+          : 'border-acento/25 bg-acento/10 text-acento')
+      }
+    >
+      <span className="text-[10px] uppercase leading-none opacity-70">{DIA_CORTO[dow]}</span>
+      <span className="text-base font-semibold leading-tight tabular-nums">{d}</span>
+    </span>
   );
 }

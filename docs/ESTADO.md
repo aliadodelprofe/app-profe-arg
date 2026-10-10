@@ -73,6 +73,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
 | `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | Aplicada |
 | `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | Aplicada |
+| `0023_el_alumno_es_dueno_de_su_ficha.sql` | `avatar_url` y `actualizar_mi_ficha()`. El profesor crea la ficha y la corrige solo mientras nadie la reclamó | **Sin aplicar** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -100,6 +101,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/ficha_del_alumno.sql` | Quién puede tocar la ficha: que el alumno cambie su nombre y su foto, que la función **no** le toque el correo, que **no** pueda mudarse de escuela, que un nombre vacío no se guarde, y que el profesor corrija solo lo que nadie reclamó. En una transacción que se deshace. Repetible |
 | `supabase/tests/saldo_a_favor.sql` | El saldo a favor: que la vista lo muestre, que se aplique a un cargo nuevo, que correrla de nuevo no impute nada, que **nunca impute más de lo que el alumno pagó**, y que nadie impute en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/comprobantes_viejos.sql` | A quién toca y a quién no el borrado de comprobantes: que cierre el de 7 meses, que no toque el de 2, que no toque uno sin confirmar, que los secretos estén, y que ningún profesor pueda ejecutarlo. Correr como `postgres`. **No prueba el borrado real** — eso se verifica a mano, ver el pie del archivo. Repetible |
 | `supabase/tests/mantenimiento.sql` | La tarea programada: que esté agendada, que corra sin errores, que recorra los grupos de **todos** los profesores, que correrla de nuevo no genere nada, y que ningún profesor pueda ejecutarla ni leer su registro. Correr como `postgres`. Repetible |
@@ -994,6 +996,95 @@ depende de que nadie haya corrido nada. `total_pagado` pasa a ser lo que el alum
 `asegurar_imputaciones()` no sobra: sigue siendo la que hace que cada cuota aparezca como
 "Pagada" en la lista del alumno. Lo que deja de ser es la condición para que el saldo esté
 bien.
+
+### 17. Botones que duplicaban lo que el sistema ya hacía solo (10/10/2026)
+
+El detalle del grupo tenía dos formas de crear cargos a mano: **"Cobrar la cuota del mes"**
+a todo el grupo, y **"Cobrar"** en cada alumno. Las dos son anteriores a `asegurar_cargos()`:
+cuando se escribieron, los cargos los creaba el profesor.
+
+Desde la 0011 la cuota del mes en curso y la próxima clase las genera la base sola, y desde
+la 0019 lo hace **todas las noches sin que nadie abra nada**. O sea que esos botones no
+agregaban nada, y sí podían restar: generar a mano la cuota que ya existe es la forma más
+fácil de cobrarle dos veces a alguien.
+
+- **"Cobrar la cuota del mes" se eliminó.** No hay ningún caso en que haga falta.
+- **El de cada alumno quedó, con otro sentido:** pasa a ser *"Agregar un cargo"*, con el
+  concepto **vacío**. Antes venía precargado con "Cuota septiembre" y el precio del grupo —
+  o sea, proponiendo exactamente lo que ya existía. Ese valor por defecto era la invitación
+  a duplicar. Ahora es para lo único que el automatismo no puede saber: una clase
+  particular, un pack, materiales, un recupero.
+
+**Una función que duplica lo que el sistema ya hace no es una comodidad, es una trampa.**
+Cuando se automatiza algo, hay que ir a buscar los botones que lo hacían antes.
+
+### 18. La ficha era del profesor, y es de la persona (10/10/2026)
+
+El profesor creaba la ficha del alumno y podía editarla para siempre. Eso significa que el
+nombre con el que una persona aparece en la app lo elige otro: un profesor que escribe
+"Juan (el alto)" está nombrando a alguien que no eligió ese nombre y lo ve en su propia app.
+
+Desde la 0023:
+
+- El profesor **crea** la ficha y la **corrige mientras nadie la reclamó**. Ese período
+  existe para arreglar un correo mal tipeado, que es lo único que impide que el alumno
+  entre. (Y no hay riesgo de que la haya reclamado con el correo equivocado: reclamarla
+  exige que el correo coincida, así que si estaba mal, nadie pudo.)
+- Una vez reclamada, el nombre y la foto son del alumno.
+
+**Por qué esto NO es una política de RLS.** La tentación era `for update using (user_id =
+auth.uid())`. Sería un agujero, por la razón que ya nos mordió: **RLS protege filas, no
+columnas.** Esa política deja cambiar cualquier campo de la fila, y ahí hay tres que no son
+del alumno: `tenant_id` (mudarse a la escuela de otro profesor con su historial encima),
+`email` (engancharse invitaciones dirigidas a otra persona) y `status` (darse de alta
+después de que lo dieron de baja). Por eso es una función `security definer` que escribe
+**exactamente dos columnas**: lo que no está en el `update` no se puede tocar, y eso no
+depende de que nadie se olvide de nada.
+
+La foto se toma de Google cuando el alumno entra con Google. Queda anotado el límite: es
+una dirección de Google y puede dejar de funcionar si la persona cambia su foto. Si pasa,
+se cae a las iniciales, que es lo que había antes. La solución definitiva sería copiar la
+imagen a nuestro depósito al reclamar la ficha; hoy no vale la complejidad.
+
+### El listado de clases (10/10/2026)
+
+Era una sola lista con **todas** las clases del grupo, de la más nueva a la más vieja, sin
+cortes. Un grupo regular acumula cuatro por mes: a los seis meses son veinticuatro
+renglones iguales.
+
+Y el orden estaba al revés de la pregunta. Lo que un profesor busca en esa pantalla es
+*"cuándo es la próxima"*, no *"cuándo fue la última"* — con las pasadas arriba, lo que viene
+quedaba abajo del pliegue.
+
+Ahora son dos listas: **Próximas** (de hoy en adelante, de la más cercana a la más lejana,
+y es la vista por defecto) y **Ya dadas** (para atrás, de a diez). Las dos agrupadas por mes.
+Y la fecha pasó a ser un chip a la izquierda en lugar de texto a la derecha: en una lista de
+clases el dato que se busca con el ojo es el día, y una columna de números se barre sin leer.
+
+### Una prueba que no corría desde hacía un mes (10/10/2026)
+
+Al correr `aislamiento_alumno.sql` después de la 0023, falló así:
+
+```
+ERROR: 42703: column "agreed_price" of relation "enrollments" does not exist
+```
+
+No lo rompió la 0023. Lo rompió **la 0011**, un mes antes: esa migración eliminó
+`enrollments.agreed_price` cuando los precios pasaron a ser del grupo, y la preparación de
+esta prueba seguía insertando esa columna.
+
+Durante ese mes se tocaron las políticas y el esquema varias veces, y **la prueba de
+aislamiento del portal del alumno —una de las más importantes que hay— no se ejecutó ni
+una vez.** No falló: no corrió. Nadie se enteró porque nadie la llamó.
+
+**Una prueba que no se ejecuta no protege nada, y además da la tranquilidad de existir.**
+Es el mismo problema que la fila de los secretos de Vault, visto desde otro ángulo: ahí la
+prueba corría y no miraba; acá ni siquiera corría.
+
+La regla que se agregó a `CLAUDE.md`: después de un cambio de esquema o de políticas se
+corren **todas** las pruebas repetibles, no solo la del tema que se tocó. Una migración que
+elimina una columna rompe en silencio cualquier prueba que la nombre, esté o no relacionada
+con lo que se estaba haciendo.
 
 ---
 

@@ -83,6 +83,7 @@ export type Inscripcion = {
   alumno: {
     id: string;
     full_name: string;
+    avatar_url: string | null;
     email: string | null;
     user_id: string | null;
     invite_rejected_at: string | null;
@@ -148,7 +149,7 @@ export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]
     .from('enrollments')
     .select(
       'id, billing_mode, status, end_date, ' +
-      'alumno:students(id, full_name, email, user_id, invite_rejected_at)',
+      'alumno:students(id, full_name, avatar_url, email, user_id, invite_rejected_at)',
     )
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);

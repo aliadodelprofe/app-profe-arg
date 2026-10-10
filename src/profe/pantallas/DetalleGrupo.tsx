@@ -19,7 +19,7 @@ import type {
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Area, Opciones,
   Boton, BotonSecundario,
-  Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto,
+  Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto, ChipFecha,
 } from '../../comun/ui';
 
 export default function DetalleGrupo({
@@ -88,10 +88,9 @@ export default function DetalleGrupo({
   // página y la empujaban para abajo.
   type Vista = 'alumnos' | 'clases';
   const [vista, setVista] = useState<Vista>('alumnos');
-  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'cuota' | 'clase' | 'serie'>(null);
+  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase' | 'serie'>(null);
 
   const activos = inscripciones.datos?.filter((i) => i.status === 'active') ?? [];
-  const hayMensuales = activos.some((i) => i.billing_mode === 'per_period');
 
   // Las cuatro novedades son lo mismo: lo que la app hizo sola al abrir el
   // grupo. Antes eran cuatro cajas apiladas que empujaban el contenido real
@@ -164,11 +163,6 @@ export default function DetalleGrupo({
         <>
           <div className="mb-4 flex flex-wrap gap-2">
             <Boton onClick={() => setHoja('anotar')}>Anotar alumno</Boton>
-            {hayMensuales && (
-              <BotonSecundario onClick={() => setHoja('cuota')}>
-                Cobrar la cuota del mes
-              </BotonSecundario>
-            )}
           </div>
 
           {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
@@ -211,17 +205,12 @@ export default function DetalleGrupo({
           {clases.datos?.length === 0 && <Vacio>Todavía no hay clases cargadas.</Vacio>}
 
           {clases.datos && clases.datos.length > 0 && (
-            <Lista>
-              {clases.datos.map((c) => (
-                <FilaClase
-                  key={c.id}
-                  clase={c}
-                  grupo={grupo}
-                  alTomarAsistencia={() => alTomarAsistencia(c)}
-                  alCambiar={clases.recargar}
-                />
-              ))}
-            </Lista>
+            <ListaDeClases
+              clases={clases.datos}
+              grupo={grupo}
+              alTomarAsistencia={alTomarAsistencia}
+              alCambiar={clases.recargar}
+            />
           )}
         </>
       )}
@@ -258,17 +247,6 @@ export default function DetalleGrupo({
               // Recién anotado ya tiene que deber lo que viene.
               setRevisado(false);
             }}
-          />
-        </Hoja>
-      )}
-
-      {hoja === 'cuota' && (
-        <Hoja titulo="Cobrar la cuota del mes" alCerrar={() => setHoja(null)}>
-          <FormularioCuotaDelGrupo
-            espacio={espacio}
-            grupo={grupo}
-            inscripciones={inscripciones.datos ?? []}
-            alCerrar={() => setHoja(null)}
           />
         </Hoja>
       )}
@@ -602,14 +580,113 @@ function FormularioClase({
 // cargos, y hacerla desaparecer del calendario de un alumno que la vio
 // anunciada es peor que mostrarla tachada.
 // ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// EL LISTADO DE CLASES
+//
+// Antes era una sola lista con TODAS las clases del grupo, de la más nueva a
+// la más vieja, sin cortes. Un grupo regular acumula cuatro por mes: a los
+// seis meses son veinticuatro renglones iguales y no hay dónde poner el ojo.
+//
+// Y el orden estaba al revés de la pregunta. Lo que un profesor busca en esta
+// pantalla es "cuándo es la próxima", no "cuándo fue la última". Con las
+// pasadas arriba, lo que viene quedaba abajo del pliegue.
+//
+// Ahora son dos listas separadas:
+//
+//   PRÓXIMAS — de hoy en adelante, de la más cercana a la más lejana. Es la
+//              vista por defecto y casi siempre son tres o cuatro renglones.
+//   PASADAS  — para atrás, agrupadas por mes, de a diez. El historial se
+//              consulta, no se recorre: nadie necesita ver los doce meses
+//              juntos, y si los necesita, el botón está.
+// ----------------------------------------------------------------------------
+function ListaDeClases({
+  clases,
+  grupo,
+  alTomarAsistencia,
+  alCambiar,
+}: {
+  clases: Clase[];
+  grupo: Grupo;
+  alTomarAsistencia: (clase: Clase) => void;
+  alCambiar: () => void;
+}) {
+  type Cual = 'proximas' | 'pasadas';
+  const [cual, setCual] = useState<Cual>('proximas');
+  const [cuantasPasadas, setCuantasPasadas] = useState(10);
+
+  const hoy = hoyISO();
+  // `clases` viene de la más nueva a la más vieja. Lo que viene se da vuelta:
+  // la próxima tiene que ser la primera.
+  const proximas = clases.filter((c) => c.date >= hoy).slice().reverse();
+  const pasadas = clases.filter((c) => c.date < hoy);
+  const visibles = cual === 'proximas' ? proximas : pasadas.slice(0, cuantasPasadas);
+
+  // Agrupadas por mes. Doce renglones corridos son una pared; con el mes
+  // arriba de cada tramo, la lista se recorre saltando.
+  const porMes: { mes: string; clases: Clase[] }[] = [];
+  visibles.forEach((c) => {
+    const mes = mesDe(c.date);
+    const ultimo = porMes[porMes.length - 1];
+    if (ultimo && ultimo.mes === mes) ultimo.clases.push(c);
+    else porMes.push({ mes, clases: [c] });
+  });
+
+  return (
+    <>
+      <Segmentos<Cual>
+        valor={cual}
+        alElegir={setCual}
+        opciones={[
+          { id: 'proximas', texto: 'Próximas', cuantos: proximas.length },
+          { id: 'pasadas', texto: 'Ya dadas', cuantos: pasadas.length },
+        ]}
+      />
+
+      {visibles.length === 0 && (
+        <Vacio>
+          {cual === 'proximas'
+            ? 'No hay clases por venir. Cargá una, o generá varias de una.'
+            : 'Todavía no se dio ninguna clase.'}
+        </Vacio>
+      )}
+
+      {porMes.map((tramo) => (
+        <div key={tramo.mes} className="mb-5">
+          <p className="mb-2 text-sm font-medium text-tenue">{mesEnPalabras(tramo.mes)}</p>
+          <Lista>
+            {tramo.clases.map((c) => (
+              <FilaClase
+                key={c.id}
+                clase={c}
+                grupo={grupo}
+                pasada={cual === 'pasadas'}
+                alTomarAsistencia={() => alTomarAsistencia(c)}
+                alCambiar={alCambiar}
+              />
+            ))}
+          </Lista>
+        </div>
+      ))}
+
+      {cual === 'pasadas' && pasadas.length > cuantasPasadas && (
+        <BotonSecundario onClick={() => setCuantasPasadas((n) => n + 10)}>
+          Ver {Math.min(10, pasadas.length - cuantasPasadas)} más
+        </BotonSecundario>
+      )}
+    </>
+  );
+}
+
 function FilaClase({
   clase,
   grupo,
+  pasada = false,
   alTomarAsistencia,
   alCambiar,
 }: {
   clase: Clase;
   grupo: Grupo;
+  pasada?: boolean;
   alTomarAsistencia: () => void;
   alCambiar: () => void;
 }) {
@@ -639,14 +716,15 @@ function FilaClase({
 
   return (
     <Fila
+      principal={<ChipFecha iso={clase.date} apagado={cancelada || pasada} />}
       titulo={
         <span className={cancelada ? 'line-through opacity-60' : undefined}>
           {clase.title ?? 'Clase'}
         </span>
       }
       detalle={detalle}
-      valor={fecha(clase.date)}
-      bajoValor={clase.start_time ? clase.start_time.slice(0, 5) : cancelada ? 'cancelada' : undefined}
+      valor={clase.start_time ? clase.start_time.slice(0, 5) : undefined}
+      bajoValor={cancelada ? 'cancelada' : clase.recap ? 'con recap' : undefined}
     >
       {lugar.address && (
         <a
@@ -971,6 +1049,7 @@ function FilaAlumno({
   return (
     <Fila
       avatar={nombre}
+      foto={inscripcion.alumno?.avatar_url}
       titulo={nombre}
       detalle={estadoPortal}
       valor={plata(precioDe(grupo, inscripcion))}
@@ -994,17 +1073,17 @@ function FilaAlumno({
       )}
 
       {editandoFicha && inscripcion.alumno && (
-        <div className="mt-3">
+        <Hoja titulo="Corregir la ficha" alCerrar={() => setEditandoFicha(false)}>
           <FormularioFicha
             alumnoId={inscripcion.alumno.id}
             alCerrar={() => setEditandoFicha(false)}
             alGuardar={() => { setEditandoFicha(false); alCambiar(); }}
           />
-        </div>
+        </Hoja>
       )}
 
       {cobrando && (
-        <div className="mt-3">
+        <Hoja titulo="Agregar un cargo" alCerrar={() => setCobrando(false)}>
           <FormularioCargo
             espacio={espacio}
             grupo={grupo}
@@ -1012,7 +1091,7 @@ function FilaAlumno({
             alCerrar={() => setCobrando(false)}
             alCobrar={(texto) => { setCobrando(false); setCobrado(texto); }}
           />
-        </div>
+        </Hoja>
       )}
 
       {confirmando ? (
@@ -1035,14 +1114,19 @@ function FilaAlumno({
         </div>
       ) : (
         <div className="mt-3 flex flex-wrap gap-2">
-          {!editandoFicha && (
+          {/* Solo mientras nadie la reclamó. Una vez que el alumno entró, el
+              nombre y la foto son suyos (migración 0023) y la base rechaza el
+              cambio igual: esconder el botón es para no ofrecer algo que no se
+              puede hacer. El período sirve para corregir un correo mal
+              tipeado, que es lo único que impide que el alumno entre. */}
+          {!editandoFicha && !inscripcion.alumno?.user_id && (
             <BotonSecundario type="button" onClick={() => setEditandoFicha(true)}>
-              Editar ficha
+              Corregir la ficha
             </BotonSecundario>
           )}
           {activa && !cobrando && (
             <BotonSecundario type="button" onClick={() => setCobrando(true)}>
-              Cobrar
+              Agregar un cargo
             </BotonSecundario>
           )}
           {activa ? (
@@ -1070,7 +1154,16 @@ function FilaAlumno({
 }
 
 // ----------------------------------------------------------------------------
-// Cobrarle a un alumno
+// Agregarle un cargo a un alumno
+//
+// OJO CON PARA QUÉ ES ESTO. La cuota del mes y la próxima clase las genera
+// asegurar_cargos() sola, todas las noches. Este formulario NO es para eso:
+// es para lo único que el automatismo no puede saber —una clase particular,
+// un pack, materiales, un recupero.
+//
+// Antes venía precargado con "Cuota septiembre" y el precio del grupo, o sea
+// proponiendo exactamente lo que ya existía. Ese valor por defecto era una
+// invitación a cobrar dos veces lo mismo, así que el concepto arranca vacío.
 //
 // El concepto viene escrito según cómo paga: no es lo mismo "Cuota septiembre
 // 2026" que "Clase 08/09". El monto viene con el precio que se le acordó a esa
@@ -1093,13 +1186,7 @@ function FormularioCargo({
   const esMensual = inscripcion.billing_mode === 'per_period';
 
   const [periodo, setPeriodo] = useState(mesActual);
-  const [concepto, setConcepto] = useState(
-    esMensual
-      ? `Cuota ${mesEnPalabras(mesActual)}`
-      : inscripcion.billing_mode === 'one_time'
-        ? 'Inscripción'
-        : `Clase ${fecha(hoyISO())}`,
-  );
+  const [concepto, setConcepto] = useState('');
   const [monto, setMonto] = useState(precioDe(grupo, inscripcion)?.toString() ?? '');
   // La cuota vence al EMPEZAR el mes, no al terminarlo: si venciera al final,
   // el alumno cursa las cuatro clases y recién ahí se ve que no pagó.
@@ -1177,146 +1264,19 @@ function FormularioCargo({
 // Igual que con las clases, se muestra a quién se le va a cobrar y cuánto
 // ANTES de crear nada, y no se cobra dos veces el mismo mes.
 // ----------------------------------------------------------------------------
-function FormularioCuotaDelGrupo({
-  espacio,
-  grupo,
-  inscripciones,
-  alCerrar,
-}: {
-  espacio: Espacio;
-  grupo: Grupo;
-  inscripciones: Inscripcion[];
-  alCerrar: () => void;
-}) {
-  const mesActual = hoyISO().slice(0, 7);
-  const [periodo, setPeriodo] = useState(mesActual);
-  const [concepto, setConcepto] = useState(`Cuota ${mesEnPalabras(mesActual)}`);
-  // Vence al empezar el mes, no al terminarlo.
-  const [vence, setVence] = useState(inicioDelMes(mesActual));
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-  const [resultado, setResultado] = useState<ResultadoCobro | null>(null);
-
-  const alcanzados = inscripciones.filter(
-    (i) => i.status === 'active' && i.billing_mode === 'per_period' && i.alumno,
-  );
-  const precioMensual = grupo.price_per_period;
-  const total = alcanzados.reduce((s, i) => s + (precioDe(grupo, i) ?? 0), 0);
-
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    setGuardando(true);
-    setError(null);
-    try {
-      setResultado(
-        await cobrarCuotaDelGrupo(
-          espacio.id, grupo, inscripciones, periodo, concepto.trim(), vence || null,
-        ),
-      );
-    } catch (err) {
-      setError((err as Error).message);
-    }
-    setGuardando(false);
-  }
-
-  if (resultado) {
-    return (
-      <div className="flex flex-col gap-2 rounded-xl border border-linea bg-panel p-4">
-        <p className="text-acento">
-          {resultado.cobrados.length === 0
-            ? 'No se creó ningún cargo.'
-            : `Se cobró a ${resultado.cobrados.length}: ${resultado.cobrados.join(', ')}.`}
-        </p>
-        {resultado.yaEstaban.length > 0 && (
-          <p className="text-sm text-tenue">
-            Ya tenían cobrado {mesEnPalabras(periodo)}, no se duplicó:{' '}
-            {resultado.yaEstaban.join(', ')}.
-          </p>
-        )}
-        {resultado.sinPrecio.length > 0 && (
-          <p className="text-sm text-tenue">
-            No se les pudo cobrar porque el grupo no tiene precio mensual:{' '}
-            {resultado.sinPrecio.join(', ')}. Cargalo en "Editar grupo".
-          </p>
-        )}
-        <div><BotonSecundario type="button" onClick={alCerrar}>Cerrar</BotonSecundario></div>
-      </div>
-    );
-  }
-
-  return (
-    <form
-      onSubmit={guardar}
-      className="flex flex-col gap-3"
-    >
-      <p className="text-tinta">Cobrar la cuota del mes</p>
-
-      <Campo etiqueta="Mes">
-        <Texto
-          type="month" required value={periodo}
-          onChange={(e) => {
-            setPeriodo(e.target.value);
-            setConcepto(`Cuota ${mesEnPalabras(e.target.value)}`);
-            setVence(inicioDelMes(e.target.value));
-          }}
-        />
-      </Campo>
-
-      <Campo etiqueta="Concepto">
-        <Texto required value={concepto} onChange={(e) => setConcepto(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Vence (opcional)">
-        <Texto type="date" value={vence} onChange={(e) => setVence(e.target.value)} />
-      </Campo>
-
-      <div className="rounded-lg border border-linea px-3 py-2">
-        <p className="mb-1 text-sm text-tenue">
-          Se le va a cobrar a {alcanzados.length}, {plata(precioMensual)} cada uno.
-          Total {plata(total)}:
-        </p>
-        <ul className="flex flex-col gap-0.5 text-sm">
-          {alcanzados.map((i) => {
-            const precio = precioDe(grupo, i);
-            return (
-              <li key={i.id} className="flex justify-between gap-3">
-                <span className="text-tinta">{i.alumno!.full_name}</span>
-                <span className={precio === null ? 'text-alerta' : 'text-acento'}>
-                  {precio === null ? 'el grupo no tiene precio mensual' : plata(precio)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <p className="mt-2 text-xs text-tenue">
-          Los que pagan por clase no aparecen acá: no tienen cuota mensual.
-        </p>
-      </div>
-
-      {error && <Aviso>{error}</Aviso>}
-
-      <div className="flex gap-2">
-        <Boton type="submit" disabled={guardando}>
-          {guardando ? 'Cobrando…' : `Cobrar a ${alcanzados.length}`}
-        </Boton>
-        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
-      </div>
-    </form>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// Editar la ficha de un alumno
+// Acá vivía "Cobrar la cuota del mes a todo el grupo".
 //
-// El campo que importa es el correo: sin él, el alumno no puede entrar al
-// portal, y hasta hoy no había forma de agregárselo a una ficha ya creada. Un
-// profesor con veinte alumnos cargados no podía abrirles la app a ninguno sin
-// volver a crearlos.
+// Se eliminó el 10/10/2026. Era anterior a asegurar_cargos(): cuando se
+// escribió, los cargos los creaba el profesor a mano. Desde la 0011 la cuota
+// del mes en curso la genera la base sola, y desde la 0019 lo hace todas las
+// noches sin que nadie abra nada.
 //
-// Se pide la ficha entera al abrir el formulario en vez de arrastrar todos los
-// campos en la lista de inscripciones: la lista se ve siempre, el formulario
-// casi nunca.
+// O sea que el botón no agregaba nada y sí podía restar: generar la cuota a
+// mano sobre la que ya existe es la forma más fácil de cobrarle dos veces a
+// alguien. Una función que duplica lo que el sistema ya hace no es una
+// comodidad, es una trampa.
 // ----------------------------------------------------------------------------
+
 function FormularioFicha({
   alumnoId,
   alCerrar,

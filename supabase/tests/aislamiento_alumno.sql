@@ -61,15 +61,18 @@ begin;
      and not exists (select 1 from public.students s
                       where s.tenant_id = t.id and s.full_name = 'Alumno Portal');
 
-  insert into public.groups (tenant_id, name, format, level)
-  select t.id, 'Grupo de Prueba', 'regular', 'Principiante'
+  insert into public.groups (tenant_id, name, format, level, price_per_session)
+  select t.id, 'Grupo de Prueba', 'regular', 'Principiante', 5000
     from public.tenants t
    where t.name = 'Escuela de Prueba 2'
      and not exists (select 1 from public.groups g
                       where g.tenant_id = t.id and g.name = 'Grupo de Prueba');
 
-  insert into public.enrollments (tenant_id, group_id, student_id, billing_mode, agreed_price)
-  select g.tenant_id, g.id, s.id, 'per_session', 5000
+  -- Sin precio en la inscripción: desde la 0011 el precio es del GRUPO. Esta
+  -- línea tenía `agreed_price` y dejó a esta prueba sin poder correr durante
+  -- un mes, porque nadie la volvió a correr después de aquella migración.
+  insert into public.enrollments (tenant_id, group_id, student_id, billing_mode)
+  select g.tenant_id, g.id, s.id, 'per_session'
     from public.groups g
     join public.students s on s.tenant_id = g.tenant_id
    where g.name = 'Grupo de Prueba'
