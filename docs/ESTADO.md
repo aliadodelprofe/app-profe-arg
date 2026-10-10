@@ -73,7 +73,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0020_borrar_comprobantes_viejos.sql` | Los comprobantes se borran a los 6 meses de confirmado el pago. Necesita `pg_net` y dos secretos en Vault | Aplicada |
 | `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | Aplicada |
 | `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | Aplicada |
-| `0023_el_alumno_es_dueno_de_su_ficha.sql` | `avatar_url` y `actualizar_mi_ficha()`. El profesor crea la ficha y la corrige solo mientras nadie la reclamó | **Sin aplicar** |
+| `0023_el_alumno_es_dueno_de_su_ficha.sql` | `avatar_url` y `actualizar_mi_ficha()`. El profesor crea la ficha y la corrige solo mientras nadie la reclamó | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -97,7 +97,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/control_general.sql` | Después de **cada** migración. Ninguna tabla puede decir `ABIERTA` |
 | `supabase/tests/aislamiento.sql` | La prueba de los dos profesores sobre `tenants` y `tenant_members`. La Parte 1 se corre una sola vez; la Parte 2 es repetible |
 | `supabase/tests/aislamiento_cargos.sql` | La misma prueba sobre las tablas de plata (`charges`, `payments`, `payment_allocations`) y la vista `student_account`. Intenta leer **y escribir** en el espacio ajeno. Repetible |
-| `supabase/tests/aislamiento_alumno.sql` | El portal del alumno: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
+| `supabase/tests/aislamiento_alumno.sql` | El portal del alumno, **verificado por propiedad y no por cantidad**: que un alumno vea lo suyo y **no lo de su compañero de grupo**. Requiere `alumno1@prueba.com`. Dispara la alerta de Supabase a propósito. Repetible |
 | `supabase/tests/confirmar_pago.sql` | La función que mueve plata: que solo la use el profesor dueño, que impute bien y que el doble toque no impute dos veces. Corre dentro de una transacción que se deshace. Repetible |
 | `supabase/tests/invitaciones.sql` | Que cada uno vea solo las invitaciones dirigidas a su correo, que aceptar enganche, que no se acepte dos veces y que una rechazada no se pueda aceptar. En una transacción que se deshace. Repetible |
 | `supabase/tests/cargos_automaticos.sql` | `asegurar_cargos()`: que genere lo que falta, que llamarla de nuevo no duplique, que respete la baja y la fecha de fin, y que nadie genere cargos en un espacio ajeno. En una transacción que se deshace. Repetible |
@@ -109,10 +109,10 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 
-Últimos resultados (6 de octubre de 2026):
+Últimos resultados (10 de octubre de 2026):
 - `aislamiento.sql` Parte 2 → **3 de 3 PASA**
 - `aislamiento_cargos.sql` → **5 de 5 PASA**
-- `aislamiento_alumno.sql` → **16 de 16 PASA**
+- `aislamiento_alumno.sql` → **19 de 19 PASA** (reescrita por propiedad el 10/10/2026)
 - `confirmar_pago.sql` → **6 de 6 PASA**
 - `cargos_automaticos.sql` → **7 de 7 PASA**
 - `forma_de_pago.sql` → **6 de 6 PASA**
@@ -120,6 +120,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 - `mantenimiento.sql` → **6 de 6 PASA**
 - `comprobantes_viejos.sql` → **6 de 6 PASA**
 - `saldo_a_favor.sql` → **6 de 6 PASA** (con la 0022; con la 0021 sola fallaba la fila 1)
+- `ficha_del_alumno.sql` → **6 de 6 PASA**
 - `control_general.sql` → **11 tablas en `ok`** (`mantenimiento_log` con 0 reglas es correcto: cero políticas es "nadie")
 
 ---
@@ -1085,6 +1086,31 @@ La regla que se agregó a `CLAUDE.md`: después de un cambio de esquema o de pol
 corren **todas** las pruebas repetibles, no solo la del tema que se tocó. Una migración que
 elimina una columna rompe en silencio cualquier prueba que la nombre, esté o no relacionada
 con lo que se estaba haciendo.
+
+### Y una vez que corrió, dijo "FUGA DE DATOS" sin que hubiera ninguna
+
+Arreglada la columna, la prueba corrió y dio seis FALLA, una de ellas con el cartel de
+**FUGA DE DATOS**. No había ninguna fuga.
+
+Todas las filas que verificaban lo ajeno —*no ve la ficha de su compañera*, *no ve sus
+cargos*, *no ve sus pagos*— dieron 0. Las que fallaban eran las de **lo propio**, y fallaban
+por ver de más: el alumno tenía ficha en 2 escuelas en vez de 1, estaba en 3 grupos, y esos
+grupos acumulaban 24 clases porque **la tarea nocturna de la 0019 se las viene generando
+sola**.
+
+La prueba preguntaba `count(*) = 1`. Era cierto el día que se escribió.
+
+**Contar no es verificar aislamiento.** `count(*) = 1` confunde *"ve de más de lo suyo"* con
+*"ve lo ajeno"*, y lo único que importa es lo segundo. Peor: una prueba de seguridad que
+grita cuando crece la data propia es una prueba que se aprende a ignorar — y el día que
+grite de verdad va a parecer lo mismo que las otras diez veces.
+
+Se reescribió por **propiedad**: cada fila verifica que no haya **ni una** fila visible que
+no sea suya (`where x.student_id not in (las fichas de auth.uid())`). Eso es cierto con un
+grupo y con cuarenta, y no se degrada con el uso.
+
+**La regla general:** una prueba de aislamiento se escribe contra una propiedad, nunca
+contra una foto de los datos. La foto envejece; la propiedad no.
 
 ---
 

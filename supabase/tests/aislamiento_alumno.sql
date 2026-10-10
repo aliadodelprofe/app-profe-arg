@@ -222,13 +222,35 @@ begin;
               then 'FALTA - crealo en Authentication > Users' else 'OK' end as resultado,
          0::bigint                                              as filas
 
+  -- ==========================================================================
+  -- CÓMO SE VERIFICA, Y POR QUÉ CAMBIÓ (10/10/2026)
+  --
+  -- Estas filas preguntaban `count(*) = 1`: una ficha, una escuela, un grupo,
+  -- una clase. Era cierto el día que se escribieron, cuando la base de
+  -- desarrollo tenía exactamente esos datos.
+  --
+  -- Dejó de serlo sin que nada se rompiera: el alumno de prueba quedó anotado
+  -- en más grupos, pasó a tener ficha en dos escuelas, y la tarea nocturna de
+  -- la 0019 le fue generando clases. La prueba empezó a dar FALLA —y una de
+  -- las filas decía "FUGA DE DATOS"— cuando no había ninguna fuga.
+  --
+  -- El error de fondo: contar no es verificar aislamiento. `count(*) = 1`
+  -- confunde "ve de más de lo suyo" con "ve lo ajeno", y lo único que importa
+  -- es lo segundo. Una prueba de seguridad que grita cuando crece la data
+  -- propia es una prueba que se aprende a ignorar, y el día que grite de
+  -- verdad va a parecer lo mismo.
+  --
+  -- Ahora cada fila verifica una PROPIEDAD: que no haya NI UNA fila visible
+  -- que no sea suya. Eso es cierto con un grupo y con cuarenta.
+  -- ==========================================================================
+
   union all
   select 'SI ve su propia ficha',
-         case when count(*) = 1 then 'PASA' else 'FALLA - no ve lo suyo' end, count(*)
+         case when count(*) >= 1 then 'PASA' else 'FALLA - no ve lo suyo' end, count(*)
     from public.students where user_id = auth.uid()
 
   union all
-  select 'NO ve la ficha de su companera de grupo',
+  select 'NO ve la ficha de ningun otro alumno',
          case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
     from public.students where user_id is distinct from auth.uid()
 
@@ -238,49 +260,73 @@ begin;
     from public.tenant_members
 
   union all
-  select 'SI ve su escuela',
-         case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
-    from public.tenants
+  select 'NO ve ninguna escuela donde no tenga ficha',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.tenants t
+   where t.id not in (select s.tenant_id from public.students s where s.user_id = auth.uid())
 
   union all
-  select 'SI ve su grupo',
-         case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
-    from public.groups
+  select 'NO ve ningun grupo en el que no este anotado',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.groups g
+   where g.id not in (
+           select e.group_id from public.enrollments e
+            join public.students s on s.id = e.student_id
+           where s.user_id = auth.uid())
 
   union all
-  select 'SI ve la clase de su grupo (el recap)',
-         case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
-    from public.sessions
+  select 'NO ve ninguna clase de un grupo ajeno',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.sessions x
+   where x.group_id not in (
+           select e.group_id from public.enrollments e
+            join public.students s on s.id = e.student_id
+           where s.user_id = auth.uid())
 
   union all
-  select 'Ve UNA sola inscripcion, la suya (no la de su companera)',
-         case when count(*) = 1 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
-    from public.enrollments
+  select 'SI ve el recap de su clase',
+         case when count(*) >= 1 then 'PASA' else 'FALLA - no ve lo suyo' end, count(*)
+    from public.sessions where title = 'Clase de prueba'
 
   union all
-  select 'Ve UNA sola asistencia, la suya (no la de su companera)',
-         case when count(*) = 1 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
-    from public.attendance
+  select 'NO ve ninguna inscripcion que no sea suya',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.enrollments e
+   where e.student_id not in (select s.id from public.students s where s.user_id = auth.uid())
+
+  union all
+  select 'NO ve ninguna asistencia que no sea suya',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.attendance a
+   where a.student_id not in (select s.id from public.students s where s.user_id = auth.uid())
 
   union all
   select 'SI ve su cargo',
-         case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
+         case when count(*) >= 1 then 'PASA' else 'FALLA - no ve lo suyo' end, count(*)
     from public.charges where concept = 'Clase de prueba'
 
   union all
-  select 'NO ve los cargos de su companera',
+  select 'NO ve el cargo de su companera',
          case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
     from public.charges where concept = 'Cuota de prueba'
 
   union all
-  select 'NO ve los pagos de su companera',
+  select 'NO ve ningun cargo que no sea suyo',
          case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
-    from public.payments where note = 'Pago de prueba'
+    from public.charges c
+   where c.student_id not in (select s.id from public.students s where s.user_id = auth.uid())
 
   union all
-  select 'SI ve su estado de cuenta, y solo el suyo',
-         case when count(*) = 1 then 'PASA' else 'FALLA' end, count(*)
-    from public.student_account
+  select 'NO ve ningun pago que no sea suyo',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.payments p
+   where p.student_id not in (select s.id from public.students s where s.user_id = auth.uid())
+
+  union all
+  select 'NO ve el estado de cuenta de nadie mas',
+         case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end, count(*)
+    from public.student_account sa
+   where sa.student_id not in (select s.id from public.students s where s.user_id = auth.uid())
 
   union all
   select 'SI puede declarar un pago propio',
