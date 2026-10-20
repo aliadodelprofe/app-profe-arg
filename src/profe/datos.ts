@@ -1116,7 +1116,14 @@ export async function asegurarImputaciones(espacioId: string): Promise<number> {
 // grupo. Un profesor con cuatro grupos no quiere entrar a los cuatro para
 // enterarse de que a las 20:00 tiene bachata.
 // ---------------------------------------------------------------------------
-export type ClaseDelEspacio = Clase & { grupo: { id: string; name: string } | null };
+// El grupo viene ENTERO y no con el id y el nombre. Antes venían solo esos dos
+// y la pantalla de Hoy armaba un Grupo falso con un "as Grupo" para pasárselo a
+// asistencia: todo lo demás —los precios, el formato, el horario— quedaba en
+// undefined, y al volver de tomar asistencia la pantalla del grupo se caía
+// entera al intentar mostrar un precio que no existía. Un objeto a medias
+// disfrazado de objeto entero es una bomba con retardo; traerlo completo
+// cuesta tres columnas más en la consulta.
+export type ClaseDelEspacio = Clase & { grupo: Grupo | null };
 
 export async function traerClasesDelEspacio(
   espacioId: string,
@@ -1127,7 +1134,7 @@ export async function traerClasesDelEspacio(
     .from('sessions')
     .select(
       'id, date, start_time, duration_min, title, recap, status, venue, address, ' +
-      'grupo:groups(id, name)',
+      `grupo:groups(${COLUMNAS_GRUPO})`,
     )
     .eq('tenant_id', espacioId)
     .gte('date', desde)

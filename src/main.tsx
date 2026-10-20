@@ -2,17 +2,22 @@ import { StrictMode } from 'react';
 import type { ComponentType } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { Limite } from './comun/Limite';
 import './index.css';
 import { NOMBRE } from './comun/marca';
 
 const root = createRoot(document.getElementById('root')!);
 
-function montar(Componente: ComponentType) {
+// Cada app con su red de contención. Compartirlas era un error silencioso: la
+// app nueva mostraba el logo y el título de la app de la comunidad al
+// romperse, y su botón de "limpiar datos" borra el almacenamiento de ESA app.
+function montar(Componente: ComponentType, nueva: boolean) {
+  const Red = nueva ? Limite : ErrorBoundary;
   root.render(
     <StrictMode>
-      <ErrorBoundary>
+      <Red>
         <Componente />
-      </ErrorBoundary>
+      </Red>
     </StrictMode>,
   );
 }
@@ -51,10 +56,10 @@ function marcarAppNueva() {
 
 if (ruta.startsWith('/profe')) {
   marcarAppNueva();
-  import('./profe/AppProfe').then((m) => montar(m.default));
+  import('./profe/AppProfe').then((m) => montar(m.default, true));
 } else if (ruta.startsWith('/alumno')) {
   marcarAppNueva();
-  import('./alumno/AppAlumno').then((m) => montar(m.default));
+  import('./alumno/AppAlumno').then((m) => montar(m.default, true));
 } else {
-  import('./App').then((m) => montar(m.default));
+  import('./App').then((m) => montar(m.default, false));
 }

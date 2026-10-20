@@ -69,7 +69,10 @@ type Vista =
   | { pantalla: 'espacios' }
   | { pantalla: 'tab'; espacio: Espacio; tab: Tab }
   | { pantalla: 'grupo'; espacio: Espacio; grupo: Grupo }
-  | { pantalla: 'asistencia'; espacio: Espacio; grupo: Grupo; clase: Clase }
+  // Asistencia se abre desde dos lados —desde Hoy y desde el grupo— así que
+  // lleva anotado de dónde vino. Antes volvía siempre al grupo, de modo que
+  // entrabas desde Hoy, marcabas asistencia y aparecías en otra pantalla.
+  | { pantalla: 'asistencia'; espacio: Espacio; grupo: Grupo; clase: Clase; volverA: Vista }
 
 function Adentro({ sesion }: { sesion: Session }) {
   const espacios = useCarga(traerEspacios, []);
@@ -128,14 +131,16 @@ function Adentro({ sesion }: { sesion: Session }) {
             espacio={espacio}
             alVerCobros={() => irA('cobros')}
             alTomarAsistencia={(clase) => {
-              // La clase de inicio trae su grupo adentro; la pantalla de
-              // asistencia necesita el grupo entero, así que se busca.
+              // La clase trae su grupo entero adentro (ver ClaseDelEspacio en
+              // datos.ts). Acá antes se armaba uno falso con id y nombre, y el
+              // resto de las columnas viajaba en undefined.
               if (!clase.grupo) return;
               setVista({
                 pantalla: 'asistencia',
                 espacio,
-                grupo: { id: clase.grupo.id, name: clase.grupo.name } as Grupo,
+                grupo: clase.grupo,
                 clase,
+                volverA: { pantalla: 'tab', espacio, tab: 'hoy' },
               });
             }}
           />
@@ -162,7 +167,13 @@ function Adentro({ sesion }: { sesion: Session }) {
         grupo={vista.grupo}
         alVolver={() => setVista({ pantalla: 'tab', espacio: vista.espacio, tab: 'grupos' })}
         alTomarAsistencia={(clase) =>
-          setVista({ pantalla: 'asistencia', espacio: vista.espacio, grupo: vista.grupo, clase })
+          setVista({
+            pantalla: 'asistencia',
+            espacio: vista.espacio,
+            grupo: vista.grupo,
+            clase,
+            volverA: { pantalla: 'grupo', espacio: vista.espacio, grupo: vista.grupo },
+          })
         }
       />
     );
@@ -173,9 +184,7 @@ function Adentro({ sesion }: { sesion: Session }) {
       espacio={vista.espacio}
       grupo={vista.grupo}
       clase={vista.clase}
-      alVolver={() =>
-        setVista({ pantalla: 'grupo', espacio: vista.espacio, grupo: vista.grupo })
-      }
+      alVolver={() => setVista(vista.volverA)}
     />
   );
 }

@@ -98,7 +98,11 @@ export function fecha(iso: string): string {
   return `${d}/${m}/${a}`;
 }
 
-export function plata(n: number | null): string {
-  if (n === null) return '—';
+// Acepta undefined además de null, y no porque dé lo mismo: un dato que falta
+// es un dato que falta y se muestra como raya. Lo que no puede pasar es que
+// una columna que no vino en una consulta tire abajo la pantalla entera, que
+// es exactamente lo que pasaba cuando acá entraba un undefined.
+export function plata(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 }
