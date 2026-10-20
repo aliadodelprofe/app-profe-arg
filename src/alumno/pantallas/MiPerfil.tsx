@@ -42,6 +42,27 @@ export default function MiPerfil({
   // lo que acabás de tocar se lee como si fuera de otra cosa, o no se lee.
   const [errorFoto, setErrorFoto] = useState<string | null>(null);
 
+  // La foto se guarda SOLA, sin pasar por el botón de guardar. Elegir una
+  // imagen ya es la confirmación: después de recortarla y verla en el círculo,
+  // pedir un segundo paso es pedir dos veces lo mismo — y si te vas sin darlo,
+  // la foto que ya viste puesta no estaba puesta.
+  //
+  // Se guarda con el nombre que YA ESTÁ en la ficha y no con el del campo: si
+  // estabas a mitad de tipear un nombre nuevo, cambiar la foto no tiene por
+  // qué comprometer eso. El nombre sigue siendo del botón.
+  async function aplicarFoto(url: string | null) {
+    setSubiendo(true);
+    setErrorFoto(null);
+    try {
+      await guardarMiPerfil(ficha.full_name, url);
+      setFoto(url);
+      alGuardar();
+    } catch (err) {
+      setErrorFoto((err as Error).message);
+    }
+    setSubiendo(false);
+  }
+
   async function subir(recortada: Blob) {
     setARecortar(null);
     setSubiendo(true);
@@ -49,11 +70,11 @@ export default function MiPerfil({
     try {
       const url = await subirMiFoto(recortada);
       if (!url) throw new Error('La foto se subió pero el servidor no devolvió su dirección.');
-      setFoto(url);
+      await aplicarFoto(url);
     } catch (err) {
       setErrorFoto((err as Error).message);
+      setSubiendo(false);
     }
-    setSubiendo(false);
   }
 
   async function guardar(e: FormEvent) {
@@ -102,12 +123,20 @@ export default function MiPerfil({
           </label>
 
           {fotoSugerida && foto !== fotoSugerida && (
-            <BotonSecundario type="button" onClick={() => setFoto(fotoSugerida)}>
+            <BotonSecundario
+              type="button"
+              disabled={subiendo}
+              onClick={() => void aplicarFoto(fotoSugerida)}
+            >
               Usar mi foto de Google
             </BotonSecundario>
           )}
           {foto && (
-            <BotonSecundario type="button" onClick={() => { setFoto(null); setErrorFoto(null); }}>
+            <BotonSecundario
+              type="button"
+              disabled={subiendo}
+              onClick={() => void aplicarFoto(null)}
+            >
               Sacar la foto
             </BotonSecundario>
           )}
@@ -130,7 +159,7 @@ export default function MiPerfil({
 
       <Campo
         etiqueta="Cómo querés que te llamen"
-        ayuda="Es lo que ve tu profesor en sus listas."
+        ayuda="Es lo que ve tu profesor en sus listas. Se guarda con el botón de abajo; la foto se guarda sola."
       >
         <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
       </Campo>
