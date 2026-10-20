@@ -10,15 +10,17 @@ import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
-  subirComprobante, COMPROBANTE_MAX_MB, misArreglos,
+  subirComprobante, COMPROBANTE_MAX_MB, misArreglos, misMediosDePago,
 } from '../datos';
-import type { MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo } from '../datos';
+import type {
+  MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo, DondeTransferir as TipoDestino,
+} from '../datos';
 import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
-  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato,
+  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import MiPerfil from './MiPerfil';
@@ -40,6 +42,7 @@ export default function MiEscuela({
   const saldo = useCarga(() => miSaldo(ficha.tenant_id), [ficha.tenant_id]);
   const pagos = useCarga(() => misPagos(ficha.tenant_id), [ficha.tenant_id]);
   const arreglos = useCarga(() => misArreglos(ficha.tenant_id), [ficha.tenant_id]);
+  const destinos = useCarga(() => misMediosDePago(ficha.tenant_id), [ficha.tenant_id]);
   // Dos pestañas y no cinco secciones apiladas. El alumno abre la app por una
   // de dos razones muy distintas —ver qué viene y repasar lo que vio, o mirar
   // cómo está de plata— y antes tenía que recorrer una página larga para
@@ -109,6 +112,7 @@ export default function MiEscuela({
           pagos={pagos.datos}
           arreglos={arreglos.datos ?? []}
           errorArreglos={arreglos.error}
+          destinos={destinos.datos ?? []}
           alCambiarArreglo={() => {
             arreglos.recargar();
             cargos.recargar();
@@ -135,11 +139,13 @@ export default function MiEscuela({
 // ----------------------------------------------------------------------------
 function FormularioAviso({
   ficha,
+  destinos,
   sugerido,
   alCerrar,
   alAvisar,
 }: {
   ficha: MiFicha;
+  destinos: TipoDestino[];
   sugerido: number;
   alCerrar: () => void;
   alAvisar: () => void;
@@ -184,6 +190,24 @@ function FormularioAviso({
       onSubmit={enviar}
       className="flex flex-col gap-3"
     >
+      {/* Los datos para transferir van ACÁ ARRIBA y no solo en la pantalla de
+          atrás. Este es el momento exacto en que el alumno los necesita: abre
+          esta hoja para avisar que pagó, y si todavía no pagó, acá tiene el
+          alias para hacerlo sin cerrar nada. */}
+      {destinos.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl border border-linea bg-campo/50 p-3">
+          <p className="text-sm text-tenue">
+            Transferile a {destinos[0].holder}
+            {destinos[0].bank ? ` · ${destinos[0].bank}` : ''}
+          </p>
+          {destinos[0].alias && <CopiarDato etiqueta="Alias" valor={destinos[0].alias} />}
+          {destinos[0].cbu && <CopiarDato etiqueta="CBU / CVU" valor={destinos[0].cbu} />}
+          {destinos[0].note && (
+            <p className="text-sm text-tenue">{destinos[0].note}</p>
+          )}
+        </div>
+      )}
+
       <Campo etiqueta="Cuánto">
         <Texto
           type="number" min="1" step="any" required value={monto}
@@ -287,6 +311,7 @@ function MiCuenta({
   pagos,
   arreglos,
   errorArreglos,
+  destinos,
   alCambiarArreglo,
   alAvisar,
 }: {
@@ -297,6 +322,7 @@ function MiCuenta({
   pagos: MiPago[] | null;
   arreglos: MiArreglo[];
   errorArreglos: string | null;
+  destinos: TipoDestino[];
   alCambiarArreglo: () => void;
   alAvisar: () => void;
 }) {
@@ -354,6 +380,7 @@ function MiCuenta({
         <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>
           <FormularioAviso
             ficha={ficha}
+            destinos={destinos}
             sugerido={saldo?.debe ?? 0}
             alCerrar={() => setDeclarando(false)}
             alAvisar={() => { setDeclarando(false); alAvisar(); }}
@@ -415,9 +442,48 @@ function MiCuenta({
         </>
       )}
 
+      {/* ------------------------------------------------- dónde transferir */}
+      <DondeTransferir destinos={destinos} />
+
       {/* --------------------------------------------------------- cómo pago */}
       {errorArreglos && <div className="mt-6"><Aviso>{errorArreglos}</Aviso></div>}
       <ComoPago arreglos={arreglos} alCambiar={alCambiarArreglo} />
+    </>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// DÓNDE TRANSFERIR
+//
+// Lo que el profesor cargó una vez (migración 0024). Si no cargó nada, esto no
+// se dibuja: un cartel que dice "tu profe todavía no puso sus datos" le pasa
+// al alumno un problema que no puede resolver.
+//
+// Los datos van en botones de copiar y no como texto suelto. Un CBU son
+// veintidós dígitos: pedirle a alguien que los tipee en la app del banco es
+// pedirle que se equivoque.
+// ----------------------------------------------------------------------------
+function DondeTransferir({ destinos }: { destinos: TipoDestino[] }) {
+  if (destinos.length === 0) return null;
+
+  return (
+    <>
+      <Seccion>Dónde transferir</Seccion>
+      <Lista>
+        {destinos.map((d) => (
+          <Fila
+            key={d.id}
+            titulo={d.holder}
+            detalle={d.bank}
+          >
+            <div className="flex flex-col gap-2">
+              {d.alias && <CopiarDato etiqueta="Alias" valor={d.alias} />}
+              {d.cbu && <CopiarDato etiqueta="CBU / CVU" valor={d.cbu} />}
+              {d.note && <p className="text-sm text-tenue">{d.note}</p>}
+            </div>
+          </Fila>
+        ))}
+      </Lista>
     </>
   );
 }

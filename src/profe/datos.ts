@@ -1146,6 +1146,72 @@ export async function traerClasesDelEspacio(
 }
 
 // ---------------------------------------------------------------------------
+// DÓNDE LE TRANSFIEREN AL PROFE  (migración 0024)
+//
+// Lo cargan acá y lo leen los alumnos de ese espacio. El alumno nunca escribe
+// sobre esta tabla: eso lo garantiza la política de RLS, no estas funciones.
+//
+// Archivar en vez de borrar: un medio de pago viejo explica transferencias
+// viejas. Borrarlo dejaría pagos declarados apuntando a una cuenta que la app
+// ya no sabe cuál era.
+// ---------------------------------------------------------------------------
+export type MedioDePago = {
+  id: string;
+  kind: 'transfer';
+  holder: string;
+  alias: string | null;
+  cbu: string | null;
+  bank: string | null;
+  note: string | null;
+  status: 'active' | 'archived';
+};
+
+export type DatosMedioDePago = {
+  holder: string;
+  alias: string | null;
+  cbu: string | null;
+  bank: string | null;
+  note: string | null;
+};
+
+const COLUMNAS_MEDIO = 'id, kind, holder, alias, cbu, bank, note, status';
+
+export async function traerMediosDePago(espacioId: string): Promise<MedioDePago[]> {
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .select(COLUMNAS_MEDIO)
+    .eq('tenant_id', espacioId)
+    .eq('status', 'active')
+    .order('created_at');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as MedioDePago[];
+}
+
+export async function crearMedioDePago(
+  espacioId: string,
+  datos: DatosMedioDePago,
+): Promise<void> {
+  const { error } = await supabase
+    .from('payment_methods')
+    .insert({ tenant_id: espacioId, kind: 'transfer', ...datos });
+  if (error) throw new Error(error.message);
+}
+
+export async function editarMedioDePago(id: string, datos: DatosMedioDePago): Promise<void> {
+  const { error } = await supabase.from('payment_methods').update(datos).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+export async function archivarMedioDePago(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('payment_methods')
+    .update({ status: 'archived' })
+    .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+
+// ---------------------------------------------------------------------------
 // EL PERÍODO DE UNA FORMACIÓN
 //
 // Una formación es un programa con principio y fin —dos meses, ocho clases— y

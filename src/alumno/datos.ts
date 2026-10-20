@@ -306,3 +306,31 @@ export function fotoDeGoogle(usuario: { user_metadata?: Record<string, unknown> 
   const url = (m.avatar_url ?? m.picture) as string | undefined;
   return url && url.startsWith('https://') ? url : null;
 }
+
+
+// ---------------------------------------------------------------------------
+// DÓNDE LE TRANSFIERO A MI PROFE  (migración 0024)
+//
+// Solo lectura, y la política de RLS solo deja ver los medios activos de las
+// escuelas donde esta persona tiene ficha. Si algún día esta consulta se
+// escribiera mal, lo peor que puede devolver es nada: no hay forma de que
+// traiga el CBU de otro profesor.
+// ---------------------------------------------------------------------------
+export type DondeTransferir = {
+  id: string;
+  holder: string;
+  alias: string | null;
+  cbu: string | null;
+  bank: string | null;
+  note: string | null;
+};
+
+export async function misMediosDePago(tenantId: string): Promise<DondeTransferir[]> {
+  const { data, error } = await supabase
+    .from('payment_methods')
+    .select('id, holder, alias, cbu, bank, note')
+    .eq('tenant_id', tenantId)
+    .order('created_at');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as DondeTransferir[];
+}

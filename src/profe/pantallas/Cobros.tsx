@@ -16,20 +16,30 @@
 // Las acciones primero y el archivo después. Una pantalla que arranca con el
 // resumen del mes te hace bajar para encontrar lo que tenés que hacer.
 // ============================================================================
-import { traerCobros } from '../datos';
+import { traerCobros, traerMediosDePago } from '../datos';
 import type { Espacio } from '../datos';
 import { Marco, Aviso, Titulo, useCarga } from '../../comun/ui';
 import ParaConfirmar from './Pagos';
 import QuienDebe from './Deudas';
 import Cobrado from './Cobrado';
+import ComoMePagan from './ComoMePagan';
 
 export default function Cobros({ espacio }: { espacio: Espacio }) {
   const cobros = useCarga(() => traerCobros(espacio.id), [espacio.id]);
+  const medios = useCarga(() => traerMediosDePago(espacio.id), [espacio.id]);
+  // Sin medio de pago cargado, el alumno no sabe adónde transferir: eso es
+  // urgente y va arriba. Una vez cargado deja de serlo y se va al final, con
+  // el resto de lo que se consulta y no se hace.
+  const sinMedio = medios.datos !== null && medios.datos.length === 0;
 
   return (
     <Marco conBarra>
       <Titulo>Cobros</Titulo>
       <p className="mb-2 text-sm text-tenue">{espacio.name}</p>
+
+      {sinMedio && (
+        <ComoMePagan espacio={espacio} medios={[]} destacado alCambiar={medios.recargar} />
+      )}
 
       <ParaConfirmar espacio={espacio} />
       <QuienDebe espacio={espacio} />
@@ -38,6 +48,11 @@ export default function Cobros({ espacio }: { espacio: Espacio }) {
         {cobros.error && <Aviso>{cobros.error}</Aviso>}
         {cobros.datos && <Cobrado cobros={cobros.datos} />}
       </div>
+
+      {medios.error && <Aviso>{medios.error}</Aviso>}
+      {medios.datos && medios.datos.length > 0 && (
+        <ComoMePagan espacio={espacio} medios={medios.datos} alCambiar={medios.recargar} />
+      )}
     </Marco>
   );
 }

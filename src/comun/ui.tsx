@@ -705,6 +705,50 @@ export function Fila({
 
 
 // ----------------------------------------------------------------------------
+// UN DATO PARA COPIAR
+//
+// Un alias o un CBU no se leen: se copian. Mostrarlos como texto suelto deja
+// al alumno tipeando veintidós dígitos en la app del banco, que es justo donde
+// un error cuesta plata.
+//
+// El botón confirma por dos segundos y vuelve solo. Sin esa confirmación, en
+// el celular no hay forma de saber si el toque entró, y la gente copia tres
+// veces por las dudas.
+// ----------------------------------------------------------------------------
+export function CopiarDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(valor);
+      setCopiado(true);
+      setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // Sin permiso de portapapeles —pasa en páginas sin https— no se puede
+      // hacer nada por el usuario salvo dejarle el dato a mano para que lo
+      // seleccione. Que no sea un error en la cara.
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-linea px-3 py-2">
+      <div className="min-w-0">
+        <p className="text-xs text-tenue">{etiqueta}</p>
+        <p className="truncate font-mono text-sm text-tinta">{valor}</p>
+      </div>
+      <button
+        type="button"
+        onClick={copiar}
+        className="shrink-0 rounded-lg border border-linea px-3 py-1.5 text-sm text-tenue transition hover:border-acento/40 active:scale-[0.98]"
+      >
+        {copiado ? 'Copiado' : 'Copiar'}
+      </button>
+    </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
 // EL CORTE POR MES
 //
 // Una lista larga de clases son cuarenta renglones iguales donde el ojo no
