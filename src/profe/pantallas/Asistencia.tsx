@@ -21,7 +21,7 @@ import type {
 } from '../datos';
 
 type Cuenta = { saldo: number; pendiente: number };
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton } from '../../comun/ui';
+import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton, Avatar } from '../../comun/ui';
 
 const ESTADOS: EstadoAsistencia[] = ['present', 'absent', 'excused'];
 
@@ -127,7 +127,13 @@ export default function Asistencia({
             <li key={alumno.id}>
               <Tarjeta>
                 <div className="mb-2 flex items-start justify-between gap-3">
-                  <p className="text-tinta">{alumno.full_name}</p>
+                  {/* La cara y no solo el nombre: tomando asistencia estás
+                      mirando a la sala, no leyendo una planilla. Reconocer es
+                      más rápido que leer. */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar nombre={alumno.full_name} foto={alumno.avatar_url} />
+                    <p className="truncate text-tinta">{alumno.full_name}</p>
+                  </div>
                   <div className="shrink-0 text-right">
                     {debe ? (
                       <p className="text-alerta">debe {plata(cuenta.saldo)}</p>

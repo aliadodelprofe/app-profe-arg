@@ -339,7 +339,15 @@ export type Cuenta = {
   a_favor: number;
 };
 
-export type Alumno = { id: string; full_name: string; status: string };
+// avatar_url viaja con el nombre en todos lados: desde que el alumno puede
+// subirse una foto (migración 0027), una lista de alumnos sin caras es una
+// lista peor. Es una columna más en consultas que ya se hacían.
+export type Alumno = {
+  id: string;
+  full_name: string;
+  avatar_url: string | null;
+  status: string;
+};
 
 export type PagoPendiente = {
   id: string;
@@ -358,7 +366,7 @@ const num = (v: unknown): number => Number(v ?? 0);
 export async function traerAlumnos(espacioId: string): Promise<Alumno[]> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, status')
+    .select('id, full_name, avatar_url, status')
     .eq('tenant_id', espacioId)
     .order('full_name');
   if (error) throw new Error(error.message);
@@ -438,7 +446,11 @@ export async function traerDeudas(espacioId: string): Promise<FilaDeuda[]> {
 // ---------------------------------------------------------------------------
 // CONFIRMAR UN PAGO — el corazón de la conciliación
 // ---------------------------------------------------------------------------
-export type PagoPorConfirmar = PagoPendiente & { alumno: string; enlace: string | null };
+export type PagoPorConfirmar = PagoPendiente & {
+  alumno: string;
+  foto: string | null;
+  enlace: string | null;
+};
 
 export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPorConfirmar[]> {
   const [pagos, alumnos] = await Promise.all([
@@ -446,6 +458,7 @@ export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPor
     traerAlumnos(espacioId),
   ]);
   const nombre = new Map(alumnos.map((a) => [a.id, a.full_name]));
+  const foto = new Map(alumnos.map((a) => [a.id, a.avatar_url]));
 
   // Los enlaces a los comprobantes se resuelven acá, al traer la lista, y no
   // al tocar "ver": si se pidieran al hacer clic, el navegador bloquearía la
@@ -454,6 +467,7 @@ export async function traerPagosPorConfirmar(espacioId: string): Promise<PagoPor
     pagos.map(async (p) => ({
       ...p,
       alumno: nombre.get(p.student_id) ?? 'Alumno',
+      foto: foto.get(p.student_id) ?? null,
       enlace: p.receipt_url ? await enlaceComprobante(p.receipt_url).catch(() => null) : null,
     })),
   );
@@ -524,7 +538,7 @@ export async function crearAlumno(
   const { data, error } = await supabase
     .from('students')
     .insert({ tenant_id: espacioId, ...datos })
-    .select('id, full_name, status')
+    .select('id, full_name, avatar_url, status')
     .single();
   if (error) throw new Error(error.message);
   return data as Alumno;
@@ -1056,6 +1070,7 @@ export type Cobro = {
   id: string;
   student_id: string;
   alumno: string;
+  foto: string | null;
   amount: number;
   fecha: string;                  // cuándo entró la plata, YYYY-MM-DD
   note: string | null;
@@ -1082,6 +1097,7 @@ export async function traerCobros(espacioId: string): Promise<Cobro[]> {
   if (respuesta.error) throw new Error(respuesta.error.message);
 
   const nombre = new Map(alumnos.map((a) => [a.id, a.full_name]));
+  const foto = new Map(alumnos.map((a) => [a.id, a.avatar_url]));
 
   return (respuesta.data ?? []).map((p) => {
     const r = p as Record<string, unknown>;
@@ -1089,6 +1105,7 @@ export async function traerCobros(espacioId: string): Promise<Cobro[]> {
       id: String(r.id),
       student_id: String(r.student_id),
       alumno: nombre.get(String(r.student_id)) ?? 'Alumno',
+      foto: foto.get(String(r.student_id)) ?? null,
       amount: num(r.amount),
       fecha: (r.paid_on as string) ?? String(r.confirmed_at).slice(0, 10),
       note: (r.note as string) ?? null,

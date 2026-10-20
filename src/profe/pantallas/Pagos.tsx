@@ -88,6 +88,7 @@ export default function ParaConfirmar({
             <Fila
               key={p.id}
               avatar={p.alumno}
+              foto={p.foto}
               titulo={p.alumno}
               detalle={
                 `declaró el ${fecha(p.declared_at.slice(0, 10))}` +

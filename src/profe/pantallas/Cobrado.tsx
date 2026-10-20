@@ -12,8 +12,8 @@
 // ============================================================================
 import { useState } from 'react';
 import type { Cobro } from '../datos';
-import { plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
-import { Vacio, Dato, Lista, Fila, ChipFecha } from '../../comun/ui';
+import { fecha, plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
+import { Vacio, Dato, Lista, Fila } from '../../comun/ui';
 
 export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
   const [mes, setMes] = useState(mesDe(hoyISO()));
@@ -80,9 +80,13 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
           {delMes.map((c) => (
             <Fila
               key={c.id}
-              principal={<ChipFecha iso={c.fecha} />}
+              // La cara y no el chip de fecha: esta lista contesta "¿este me
+              // pagó?", y esa pregunta se hace sobre una persona. La fecha
+              // baja a la segunda línea, que es donde importa menos.
+              avatar={c.alumno}
+              foto={c.foto}
               titulo={c.alumno}
-              detalle={c.note}
+              detalle={[fecha(c.fecha), c.note].filter(Boolean).join(' · ')}
               valor={plata(c.amount)}
             >
               {/* Que el comprobante no esté no es lo mismo que no haberlo

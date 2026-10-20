@@ -62,6 +62,7 @@ export default function QuienDebe({
                 <Fila
                   key={f.alumno.id}
                   avatar={f.alumno.full_name}
+                  foto={f.alumno.avatar_url}
                   titulo={f.alumno.full_name}
                   detalle={
                     f.pendiente > 0
@@ -92,6 +93,7 @@ export default function QuienDebe({
                 <Fila
                   key={f.alumno.id}
                   avatar={f.alumno.full_name}
+                  foto={f.alumno.avatar_url}
                   titulo={f.alumno.full_name}
                   valor={<span className="text-acento">{plata(f.aFavor)}</span>}
                 />
