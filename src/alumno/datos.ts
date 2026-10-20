@@ -291,9 +291,11 @@ export async function guardarMiPerfil(
   nombre: string,
   avatarUrl?: string | null,
 ): Promise<number> {
+  // Cadena vacía quiere decir "sacala"; nulo querría decir "no la toques", y
+  // con eso el botón de sacar la foto no hacía nada (migración 0029).
   const { data, error } = await supabase.rpc('actualizar_mi_ficha', {
     p_nombre: nombre,
-    p_avatar_url: avatarUrl ?? null,
+    p_avatar_url: avatarUrl ?? '',
   });
   if (error) throw new Error(error.message);
   return Number(data ?? 0);

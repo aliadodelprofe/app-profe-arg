@@ -79,6 +79,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0026_la_escuela_tiene_cara.sql` | `tenants.avatar_url` y el depósito público `logos`. El logo lo sube solo el dueño, en la carpeta de su espacio | Aplicada |
 | `0027_la_foto_del_alumno.sql` | Depósito público `avatares`, con la carpeta por usuario: la ficha es por escuela, la cara es de la persona | Aplicada |
 | `0028_el_dueno_ve_sus_imagenes.sql` | Reglas de `select` en `logos` y `avatares`: sin ellas un `update` no encuentra la fila y devuelve cero sin error | Aplicada |
+| `0029_sacar_la_foto.sql` | `actualizar_mi_ficha` distingue "no la toques" (nulo) de "sacala" (vacío). Antes no había forma de borrar la foto | Sin aplicar |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 

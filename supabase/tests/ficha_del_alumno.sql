@@ -65,6 +65,22 @@ begin
          else 'FALLA - le cambio el correo de '
               || coalesce(v_antes.email,'nulo') || ' a ' || coalesce(v_despues.email,'nulo') end, false);
 
+  -- -------------------------------------------------------------------- 2bis
+  -- Y puede SACARSE la foto, que no es lo mismo que no mandarla. Con nulo la
+  -- función no toca la foto; con cadena vacía la borra (migración 0029). Sin
+  -- esa diferencia, el botón "Sacar la foto" guardaba sin error y la foto
+  -- seguía ahí — que es la peor forma de fallar.
+  perform public.actualizar_mi_ficha('Nombre Elegido Por El Alumno', '');
+  select * into v_despues from public.students where id = v_alumno;
+
+  perform set_config('prueba.v7',
+    case when v_despues.avatar_url is null then 'PASA'
+         else 'FALLA - no pudo sacarse la foto, quedo ' || v_despues.avatar_url end, false);
+
+  -- Se la vuelve a poner, para que lo que sigue mire una ficha normal.
+  perform public.actualizar_mi_ficha('Nombre Elegido Por El Alumno', 'https://ejemplo/f.jpg');
+  select * into v_despues from public.students where id = v_alumno;
+
   -- ---------------------------------------------------------------------- 3
   -- Y no puede mudarse a la escuela de otro profesor por su cuenta. Es lo que
   -- haría posible una política de update sobre la fila entera.
@@ -166,6 +182,7 @@ reset role;
 select * from (values
   ('El alumno cambia su nombre y su foto',          current_setting('prueba.v1', true)),
   ('La funcion NO le toca el correo',               current_setting('prueba.v2', true)),
+  ('El alumno puede SACARSE la foto',               current_setting('prueba.v7', true)),
   ('El alumno NO puede mudarse de escuela',         current_setting('prueba.v3', true)),
   ('Un nombre vacio no se guarda',                  current_setting('prueba.v4', true)),
   ('El profe corrige una ficha sin reclamar',       current_setting('prueba.v5', true)),

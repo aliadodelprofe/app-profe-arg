@@ -599,20 +599,30 @@ export function Avatar({
   tam?: 'nav' | 'chico' | 'normal';
 }) {
   const h = tonoDe(nombre);
+  // Si la dirección de la foto no carga, se cae a las iniciales. Se reinicia
+  // cuando cambia la foto: una dirección nueva merece un intento nuevo.
+  const [roto, setRoto] = useState(false);
+  useEffect(() => { setRoto(false); }, [foto]);
+
   const medida =
     tam === 'nav' ? 'h-5 w-5 sm:h-4 sm:w-4' : tam === 'chico' ? 'h-8 w-8' : 'h-10 w-10';
 
   // Con foto, la foto. Las iniciales son el plan B, no el plan.
-  if (foto) {
+  //
+  // El plan B tiene que DIBUJARSE, no limitarse a esconder la imagen rota. La
+  // versión anterior le ponía display:none al <img> cuando fallaba, y eso deja
+  // un hueco: ni foto ni iniciales, un círculo vacío donde va una cara. Ahora
+  // el fallo cambia el estado y abajo se dibujan las letras, que es lo que
+  // había antes de que existiera la foto.
+  if (foto && !roto) {
     return (
       <img
         src={foto}
         alt=""
         className={`${medida} shrink-0 rounded-full object-cover`}
         // Una dirección de Google puede dejar de funcionar si la persona
-        // cambia su foto. Si pasa, la imagen desaparece y quedan las
-        // iniciales, que es exactamente lo que había antes.
-        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+        // cambia su foto allá. Lo mismo si el archivo se borró del depósito.
+        onError={() => setRoto(true)}
       />
     );
   }

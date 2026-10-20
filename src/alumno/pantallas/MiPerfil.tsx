@@ -37,15 +37,21 @@ export default function MiPerfil({
   // del recortador; lo que vuelve de ahí ya es un cuadrado de 512.
   const [aRecortar, setARecortar] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  // El error de la foto va aparte del error de guardar, y se muestra al lado
+  // del botón que lo provocó. Un cartel a doscientos píxeles de distancia de
+  // lo que acabás de tocar se lee como si fuera de otra cosa, o no se lee.
+  const [errorFoto, setErrorFoto] = useState<string | null>(null);
 
   async function subir(recortada: Blob) {
     setARecortar(null);
     setSubiendo(true);
-    setError(null);
+    setErrorFoto(null);
     try {
-      setFoto(await subirMiFoto(recortada));
+      const url = await subirMiFoto(recortada);
+      if (!url) throw new Error('La foto se subió pero el servidor no devolvió su dirección.');
+      setFoto(url);
     } catch (err) {
-      setError((err as Error).message);
+      setErrorFoto((err as Error).message);
     }
     setSubiendo(false);
   }
@@ -101,13 +107,14 @@ export default function MiPerfil({
             </BotonSecundario>
           )}
           {foto && (
-            <BotonSecundario type="button" onClick={() => setFoto(null)}>
+            <BotonSecundario type="button" onClick={() => { setFoto(null); setErrorFoto(null); }}>
               Sacar la foto
             </BotonSecundario>
           )}
-          {!foto && (
+          {!foto && !errorFoto && (
             <p className="text-sm text-tenue">Sin foto se usan tus iniciales.</p>
           )}
+          {errorFoto && <Aviso>{errorFoto}</Aviso>}
         </div>
       </div>
 
