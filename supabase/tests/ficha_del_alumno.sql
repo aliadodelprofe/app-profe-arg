@@ -114,11 +114,21 @@ declare
   v_reclamada  uuid;
   v_n          int;
 begin
-  -- Una ficha sin dueño, creada acá mismo.
-  insert into public.students (tenant_id, full_name, email)
-  select id, 'PRUEBA Sin Duenio', 'prueba-sin-duenio@ejemplo.com'
-    from public.tenants where name = 'Escuela de Prueba 2'
-  returning id into v_sin_duenio;
+  -- Una ficha sin dueño: la de una corrida anterior, o una nueva.
+  select s.id into v_sin_duenio
+    from public.students s
+   where s.email = 'prueba-sin-duenio@ejemplo.com'
+     and s.user_id is null
+     and s.tenant_id in (select public.my_tenant_ids())
+   limit 1;
+
+  if v_sin_duenio is null then
+    insert into public.students (tenant_id, full_name, email)
+    select id, 'PRUEBA Sin Duenio', 'prueba-sin-duenio@ejemplo.com'
+      from public.tenants where name = 'Escuela de Prueba 2'
+     limit 1
+    returning id into v_sin_duenio;
+  end if;
 
   update public.students set full_name = 'PRUEBA Corregido' where id = v_sin_duenio;
   get diagnostics v_n = row_count;
