@@ -13,8 +13,8 @@ import type { FormEvent } from 'react';
 import { crearEspacio, soyAlumnoDeAlguien } from '../datos';
 import type { Espacio } from '../datos';
 import {
-  Marco, Encabezado, Aviso, Vacio, Tarjeta, useCarga,
-  Campo, Texto, Boton, BotonSecundario,
+  Marco, Encabezado, Aviso, Vacio, useCarga,
+  Campo, Texto, Boton, BotonSecundario, Lista, Fila,
 } from '../../comun/ui';
 import Salir from './Salir';
 
@@ -90,18 +90,20 @@ export default function Espacios({
     <Marco>
       <Encabezado titulo="Mis espacios" bajada={email} derecha={<Salir />} />
 
-      <ul className="mb-4 flex flex-col gap-2">
+      <Lista>
         {espacios.map((e) => (
-          <li key={e.id}>
-            <Tarjeta alTocar={() => alElegir(e)}>
-              <p className="text-tinta">{e.name}</p>
-              <p className="text-sm text-tenue">
-                {e.discipline ?? 'sin disciplina'} · plan {e.plan}
-              </p>
-            </Tarjeta>
-          </li>
+          <Fila
+            key={e.id}
+            avatar={e.name}
+            foto={e.avatar_url}
+            titulo={e.name}
+            detalle={`${e.discipline ?? 'sin disciplina'} · plan ${e.plan}`}
+            alTocar={() => alElegir(e)}
+          />
         ))}
-      </ul>
+      </Lista>
+
+      <div className="mt-4" />
 
       {creando ? (
         <FormularioEspacio

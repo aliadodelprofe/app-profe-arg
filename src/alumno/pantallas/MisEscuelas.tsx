@@ -42,6 +42,7 @@ export default function MisEscuelas({
             <Fila
               key={r.ficha.id}
               avatar={r.ficha.escuela?.name ?? 'Escuela'}
+              foto={r.ficha.escuela?.avatar_url}
               titulo={r.ficha.escuela?.name ?? 'Escuela'}
               detalle={
                 r.proxima

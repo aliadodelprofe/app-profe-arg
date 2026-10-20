@@ -13,11 +13,11 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien } from '../datos';
+import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_MAX_MB } from '../datos';
 import type { Espacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
-  Esqueleto, useCarga,
+  Esqueleto, useCarga, Avatar,
 } from '../../comun/ui';
 import ComoMePagan from './ComoMePagan';
 import Salir from './Salir';
@@ -151,6 +151,8 @@ function Datos({
 
   return (
     <form onSubmit={guardar} className="flex flex-col gap-4">
+      <Logo espacio={espacio} alCambiar={alRenombrar} />
+
       <Campo
         etiqueta="Nombre"
         ayuda="Es lo que ven tus alumnos arriba de todo cuando abren su app."
@@ -180,5 +182,96 @@ function Datos({
         {guardado && <span className="text-sm text-acento">Guardado.</span>}
       </div>
     </form>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// El logo.
+//
+// Sin imagen, la app dibuja las iniciales sobre un color sacado del nombre —el
+// mismo mecanismo que usa para las personas— así que una escuela sin logo ya
+// se distingue de otra. El logo es para que además se reconozca sin leer.
+//
+// Se guarda en el acto, sin botón de guardar: subir una imagen ya es la
+// confirmación. Pedir un segundo paso después de elegir un archivo es pedir
+// dos veces lo mismo.
+// ----------------------------------------------------------------------------
+function Logo({
+  espacio,
+  alCambiar,
+}: {
+  espacio: Espacio;
+  alCambiar: (nuevo: Espacio) => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
+
+  async function elegir(archivo: File) {
+    if (archivo.size > LOGO_MAX_MB * 1024 * 1024) {
+      setError(`La imagen pesa más de ${LOGO_MAX_MB} MB. Probá con una más chica.`);
+      return;
+    }
+    setSubiendo(true);
+    setError(null);
+    try {
+      const url = await subirLogo(espacio.id, archivo);
+      alCambiar(await editarEspacio(espacio.id, { avatar_url: url }));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setSubiendo(false);
+  }
+
+  async function quitar() {
+    setSubiendo(true);
+    setError(null);
+    try {
+      alCambiar(await editarEspacio(espacio.id, { avatar_url: null }));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setSubiendo(false);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center gap-4">
+        <div className="scale-150 pl-3">
+          <Avatar nombre={espacio.name} foto={espacio.avatar_url} />
+        </div>
+        <div className="flex flex-col gap-2 pl-3">
+          {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
+              sus hijos en un <label>, y un input de archivo adentro de su
+              propio label recibe dos clics y se cierra solo. */}
+          <label className="cursor-pointer rounded-xl border border-linea px-4 py-2.5 text-sm text-tenue transition hover:border-acento/40">
+            {subiendo ? 'Subiendo…' : espacio.avatar_url ? 'Cambiar el logo' : 'Subir un logo'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={subiendo}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = '';
+                if (f) void elegir(f);
+              }}
+            />
+          </label>
+          {espacio.avatar_url && (
+            <BotonSecundario type="button" onClick={quitar} disabled={subiendo}>
+              Quitar
+            </BotonSecundario>
+          )}
+        </div>
+      </div>
+
+      <p className="text-xs text-tenue">
+        Lo ven tus alumnos arriba de todo. Sin logo se usan las iniciales. Hasta{' '}
+        {LOGO_MAX_MB} MB.
+      </p>
+
+      {error && <Aviso>{error}</Aviso>}
+    </div>
   );
 }

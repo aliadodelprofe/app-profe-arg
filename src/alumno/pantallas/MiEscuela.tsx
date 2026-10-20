@@ -56,6 +56,7 @@ export default function MiEscuela({
   // Si además da clases, se le ofrece el otro lado de la app. Es la misma
   // cuenta: nadie debería necesitar dos correos para tomar y dar clases.
   const doyClases = useCarga(tambienDoyClases, []);
+  const escuela = ficha.escuela?.name ?? 'Mis clases';
 
   // La foto que Google ya tiene, para poder ofrecerla con un toque.
   useEffect(() => {
@@ -75,19 +76,43 @@ export default function MiEscuela({
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
       <Marco conBarra>
-      {/* La foto es el atajo al perfil. Es dónde la busca cualquiera que haya
-          usado una app en los últimos diez años; la pestaña está igual, para
-          quien no lo intuya. */}
-      <div className="mb-4 flex items-center justify-between gap-4">
+      {/* A la izquierda la escuela, a la derecha vos. Antes estaban las dos
+          caras del mismo lado: al lado del nombre de la escuela iba la foto
+          DEL ALUMNO, y abajo la misma foto otra vez en el perfil.
+
+          Y como la escuela está a la izquierda, tocarla es cambiar de
+          escuela. Es donde lo busca cualquiera que haya usado una app con
+          varias cuentas: se toca el lugar que dice dónde estás parado. */}
+      <div className="mb-4 flex items-center justify-between gap-3">
+        {alCambiarEscuela ? (
+          <button
+            onClick={alCambiarEscuela}
+            className="flex min-w-0 items-center gap-3 rounded-xl text-left transition active:opacity-70"
+          >
+            <Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />
+            <div className="min-w-0">
+              <Titulo>{escuela}</Titulo>
+              <p className="truncate text-xs text-tenue">tocá para cambiar de escuela</p>
+            </div>
+          </button>
+        ) : (
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />
+            <div className="min-w-0">
+              <Titulo>{escuela}</Titulo>
+              {ficha.escuela?.discipline && (
+                <p className="truncate text-sm text-tenue">{ficha.escuela.discipline}</p>
+              )}
+            </div>
+          </div>
+        )}
+
         <button
           onClick={() => setTab('perfil')}
-          className="flex min-w-0 items-center gap-3 rounded-xl text-left transition active:opacity-70"
+          aria-label="Mi perfil"
+          className="shrink-0 rounded-full transition active:opacity-70"
         >
-          <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} />
-          <div className="min-w-0">
-            <Titulo>{ficha.escuela?.name ?? 'Mis clases'}</Titulo>
-            <p className="truncate text-sm text-tenue">{ficha.full_name}</p>
-          </div>
+          <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} chico />
         </button>
       </div>
 
@@ -103,7 +128,6 @@ export default function MiEscuela({
           ficha={ficha}
           fotoGoogle={fotoGoogle}
           doyClases={doyClases.datos === true}
-          alCambiarEscuela={alCambiarEscuela}
           alGuardar={() => alCambiarPerfil?.()}
         />
       )}
@@ -303,33 +327,20 @@ function Perfil({
   ficha,
   fotoGoogle,
   doyClases,
-  alCambiarEscuela,
   alGuardar,
 }: {
   ficha: MiFicha;
   fotoGoogle: string | null;
   doyClases: boolean;
-  alCambiarEscuela?: () => void;
   alGuardar: () => void;
 }) {
   return (
     <>
+      {/* Acá NO va el nombre de la escuela. Esta pestaña sos vos: tu nombre y
+          tu foto son los mismos en todas las escuelas donde cursás, y
+          nombrar una sola hacía pensar que se estaba editando esa. Dónde
+          estás parado lo dice el encabezado, que es donde se cambia. */}
       <MiPerfil ficha={ficha} fotoSugerida={fotoGoogle} alGuardar={alGuardar} />
-
-      {/* Tu nombre y tu foto son tuyos y los ven todos tus profesores: la
-          ficha es por escuela, pero vos sos una sola persona. */}
-      {alCambiarEscuela && (
-        <>
-          <Seccion>Mis escuelas</Seccion>
-          <p className="mb-3 text-sm text-tenue">
-            Estás viendo <span className="text-tinta">{ficha.escuela?.name ?? 'tu escuela'}</span>.
-            Tu nombre y tu foto son los mismos en todas.
-          </p>
-          <BotonSecundario type="button" onClick={alCambiarEscuela}>
-            Cambiar de escuela
-          </BotonSecundario>
-        </>
-      )}
 
       {/* El mismo usuario de los dos lados. Casi todos los profesores siguen
           tomando clases con otros: sin esto, esa persona se crea un segundo

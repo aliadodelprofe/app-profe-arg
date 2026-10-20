@@ -14,7 +14,7 @@ export type MiFicha = {
   full_name: string;
   avatar_url: string | null;
   tenant_id: string;
-  escuela: { name: string; discipline: string | null } | null;
+  escuela: { name: string; discipline: string | null; avatar_url: string | null } | null;
 };
 
 export type MiClase = {
@@ -98,7 +98,7 @@ export async function rechazarInvitacion(studentId: string): Promise<void> {
 export async function misFichas(): Promise<MiFicha[]> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, avatar_url, tenant_id, escuela:tenants(name, discipline)');
+    .select('id, full_name, avatar_url, tenant_id, escuela:tenants(name, discipline, avatar_url)');
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiFicha[];
 }

@@ -22,6 +22,7 @@ export type Espacio = {
   id: string;
   name: string;
   discipline: string | null;
+  avatar_url: string | null;
   plan: string;
 };
 
@@ -122,7 +123,7 @@ export type Clase = {
 export async function traerEspacios(): Promise<Espacio[]> {
   const { data, error } = await supabase
     .from('tenant_members')
-    .select('espacio:tenants(id, name, discipline, plan)');
+    .select('espacio:tenants(id, name, discipline, avatar_url, plan)');
   if (error) throw new Error(error.message);
   const filas = (data ?? []) as unknown as { espacio: Espacio | null }[];
   return filas
@@ -1159,16 +1160,41 @@ export async function traerClasesDelEspacio(
 // ---------------------------------------------------------------------------
 export async function editarEspacio(
   espacioId: string,
-  datos: { name: string; discipline: string | null },
+  datos: { name?: string; discipline?: string | null; avatar_url?: string | null },
 ): Promise<Espacio> {
   const { data, error } = await supabase
     .from('tenants')
     .update(datos)
     .eq('id', espacioId)
-    .select('id, name, discipline, plan')
+    .select('id, name, discipline, avatar_url, plan')
     .single();
   if (error) throw new Error(error.message);
   return data as Espacio;
+}
+
+// ---------------------------------------------------------------------------
+// EL LOGO DE LA ESCUELA  (migración 0026)
+//
+// El depósito es PÚBLICO, al revés que el de comprobantes: un logo existe para
+// que lo vean, y firmarle un enlace temporal a una imagen que va a estar en
+// todas las pantallas sería trabajo inútil. Lo que está cerrado es quién
+// escribe: solo el dueño, y solo en la carpeta de su espacio.
+//
+// Cada archivo lleva un nombre nuevo en vez de pisar el anterior. Reemplazar
+// una imagen por otra con el mismo nombre deja a los navegadores mostrando la
+// vieja durante horas; un nombre nuevo se ve al instante.
+// ---------------------------------------------------------------------------
+export const LOGO_MAX_MB = 2;
+
+export async function subirLogo(espacioId: string, archivo: File): Promise<string> {
+  const extension = (archivo.name.split('.').pop() ?? 'png').toLowerCase().slice(0, 5);
+  const ruta = `${espacioId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage
+    .from('logos')
+    .upload(ruta, archivo, { contentType: archivo.type || undefined });
+  if (error) throw new Error(error.message);
+  const { data } = supabase.storage.from('logos').getPublicUrl(ruta);
+  return data.publicUrl;
 }
 
 
