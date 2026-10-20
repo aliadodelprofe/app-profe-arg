@@ -5,13 +5,33 @@
 // que el alumno necesita para decidir y que hoy, sin la app, solo tiene el
 // profesor. Mostrarla no es generosidad: un alumno que sabe que la cuota le
 // conviene se compromete al mes, que es lo que el profesor quiere.
+//
+// Pero mostrarla SIEMPRE ABIERTA era otra cosa. Cada grupo ocupaba una tarjeta
+// con dos precios, un párrafo de comparación, un botón grande y su letra
+// chica: con dos grupos, media pantalla de "Mi cuenta" era una decisión que se
+// toma una vez cada varios meses. Ahora cada grupo es un renglón que dice cómo
+// pagás y cuánto; el detalle y el cambio viven en una hoja, a un toque.
 // ============================================================================
 import { useState } from 'react';
 import { cambiarFormaDePago } from '../datos';
 import type { MiArreglo } from '../datos';
 import { fecha, plata, hoyISO } from '../formato';
-import { Aviso, Tarjeta, Boton, Confirmacion } from '../../comun/ui';
+import { Aviso, Boton, Confirmacion, Seccion, Lista, Fila, Hoja } from '../../comun/ui';
 import { compararFormas } from '../../comun/precios';
+
+const nombre = (m: string) => (m === 'per_session' ? 'por clase' : 'por mes');
+
+// El arreglo que rige hoy y el que espera, de la lista de tramos de un grupo.
+// Es la misma idea que porAlumno() del lado del profesor: en la base un mismo
+// grupo puede tener dos arreglos encadenados, y acá hay que decir cuál manda.
+function tramos(arreglos: MiArreglo[], hoy: string) {
+  return {
+    vigente: arreglos.find(
+      (a) => (!a.start_date || a.start_date <= hoy) && (!a.end_date || a.end_date >= hoy),
+    ),
+    futuro: arreglos.find((a) => a.start_date && a.start_date > hoy),
+  };
+}
 
 export default function ComoPago({
   arreglos,
@@ -27,25 +47,59 @@ export default function ComoPago({
     porGrupo.set(a.grupo.id, [...(porGrupo.get(a.grupo.id) ?? []), a]);
   });
 
+  const [abierto, setAbierto] = useState<MiArreglo[] | null>(null);
+
   if (porGrupo.size === 0) return null;
 
+  const hoy = hoyISO();
+
   return (
-    <div className="mb-8">
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
-        Cómo pago
-      </h2>
-      <ul className="flex flex-col gap-2">
-        {[...porGrupo.values()].map((lista) => (
-          <li key={lista[0].grupo!.id}>
-            <Grupo arreglos={lista} alCambiar={alCambiar} />
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      <Seccion>Cómo pago</Seccion>
+      <Lista>
+        {[...porGrupo.values()].map((lista) => {
+          const grupo = lista[0].grupo!;
+          const { vigente, futuro } = tramos(lista, hoy);
+          const modo = vigente?.billing_mode ?? futuro?.billing_mode;
+          const precio =
+            modo === 'per_session' ? grupo.price_per_session
+            : modo === 'per_period' ? grupo.price_per_period
+            : null;
+
+          return (
+            <Fila
+              key={grupo.id}
+              titulo={grupo.name}
+              detalle={
+                futuro && futuro.start_date
+                  ? `pasás a ${nombre(futuro.billing_mode)} el ${fecha(futuro.start_date)}`
+                  : 'tocá para ver o cambiar'
+              }
+              valor={plata(precio)}
+              bajoValor={modo ? nombre(modo) : undefined}
+              alTocar={() => setAbierto(lista)}
+            />
+          );
+        })}
+      </Lista>
+
+      {abierto && (
+        <Hoja titulo={abierto[0].grupo!.name} alCerrar={() => setAbierto(null)}>
+          <Arreglo
+            arreglos={abierto}
+            alCambiar={() => { setAbierto(null); alCambiar(); }}
+          />
+        </Hoja>
+      )}
+    </>
   );
 }
 
-function Grupo({
+// ----------------------------------------------------------------------------
+// El detalle de un grupo: cómo pagás hoy, qué pasa el mes que viene, cuánto te
+// saldría de la otra forma, y el botón para cambiarlo.
+// ----------------------------------------------------------------------------
+function Arreglo({
   arreglos,
   alCambiar,
 }: {
@@ -58,28 +112,27 @@ function Grupo({
   const grupo = arreglos[0].grupo!;
   const hoy = hoyISO();
 
-  const vigente = arreglos.find(
-    (a) => (!a.start_date || a.start_date <= hoy) && (!a.end_date || a.end_date >= hoy),
-  );
-  const futuro = arreglos.find((a) => a.start_date && a.start_date > hoy);
+  const { vigente, futuro } = tramos(arreglos, hoy);
 
   // Lo que va a regir el mes que viene, que es lo único que todavía se puede
   // cambiar.
   const modoQueViene = futuro?.billing_mode ?? vigente?.billing_mode;
-  if (!modoQueViene || modoQueViene === 'one_time') return null;
 
-  const otro = modoQueViene === 'per_session' ? 'per_period' : 'per_session';
-  const precioOtro = otro === 'per_period' ? grupo.price_per_period : grupo.price_per_session;
   const porClase = grupo.price_per_session;
   const porMes = grupo.price_per_period;
-
-  const nombre = (m: string) => (m === 'per_session' ? 'por clase' : 'por mes');
   const precioDe = (m: string) => (m === 'per_session' ? porClase : porMes);
 
   // La cuenta que decide. Se mide por año y no por mes a propósito: un mes no
   // tiene cuatro clases, tiene 4,33, y comparar contra cuatro le miente al
   // alumno un descuento más chico del que realmente le están dando.
   const comparacion = compararFormas(porClase, porMes);
+
+  if (!modoQueViene || modoQueViene === 'one_time') {
+    return <p className="text-tenue">Este grupo se paga una sola vez.</p>;
+  }
+
+  const otro = modoQueViene === 'per_session' ? 'per_period' : 'per_session';
+  const precioOtro = otro === 'per_period' ? grupo.price_per_period : grupo.price_per_session;
 
   // El día 1 del mes que viene, que es lo que el cartel le promete. La
   // función en la base calcula el suyo por las suyas; si algún día dejan de
@@ -105,33 +158,33 @@ function Grupo({
   }
 
   return (
-    <Tarjeta>
-      <p className="text-tinta">{grupo.name}</p>
+    <div className="flex flex-col gap-4">
+      <div>
+        {vigente && (
+          <p className="text-tenue">
+            {futuro ? 'Este mes: ' : 'Pagás '}
+            <span className="text-acento">
+              {plata(precioDe(vigente.billing_mode))} {nombre(vigente.billing_mode)}
+            </span>
+            {vigente.end_date && futuro && ` hasta el ${fecha(vigente.end_date)}`}
+          </p>
+        )}
 
-      {vigente && (
-        <p className="text-sm text-tenue">
-          {futuro ? 'Este mes: ' : 'Pagás '}
-          <span className="text-acento">
-            {plata(precioDe(vigente.billing_mode))} {nombre(vigente.billing_mode)}
-          </span>
-          {vigente.end_date && futuro && ` hasta el ${fecha(vigente.end_date)}`}
-        </p>
-      )}
-
-      {futuro && futuro.start_date && (
-        <p className="text-sm text-tenue">
-          Desde el {fecha(futuro.start_date)}:{' '}
-          <span className="text-acento">
-            {plata(precioDe(futuro.billing_mode))} {nombre(futuro.billing_mode)}
-          </span>
-        </p>
-      )}
+        {futuro && futuro.start_date && (
+          <p className="text-tenue">
+            Desde el {fecha(futuro.start_date)}:{' '}
+            <span className="text-acento">
+              {plata(precioDe(futuro.billing_mode))} {nombre(futuro.billing_mode)}
+            </span>
+          </p>
+        )}
+      </div>
 
       {/* Los dos precios, siempre. Es la información que le permite elegir.
           Se muestra cuánto sale CADA CLASE con la cuota: es el único número que
           se puede comparar con el precio por clase sin tener que pensar. */}
       {comparacion?.conviene && modoQueViene === 'per_session' && (
-        <p className="mt-2 text-sm text-tenue">
+        <p className="rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
           Con la cuota cada clase te sale{' '}
           <span className="text-acento">{plata(comparacion.porClaseConCuota)}</span> en vez
           de {plata(porClase)}. En el año son {plata(comparacion.anualConCuota)} en vez de{' '}
@@ -140,16 +193,16 @@ function Grupo({
         </p>
       )}
       {comparacion?.conviene && modoQueViene === 'per_period' && (
-        <p className="mt-2 text-sm text-tenue">
+        <p className="rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
           Cada clase te sale {plata(comparacion.porClaseConCuota)}. Viniendo suelto serían{' '}
           {plata(porClase)}.
         </p>
       )}
 
-      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+      {error && <Aviso>{error}</Aviso>}
 
       {precioOtro !== null && (
-        <div className="mt-3">
+        <div>
           <Boton type="button" onClick={() => setPreguntando(true)} disabled={trabajando}>
             {trabajando ? 'Cambiando…' : `Pasarme a pagar ${nombre(otro)}`}
           </Boton>
@@ -180,6 +233,6 @@ function Grupo({
           </p>
         </Confirmacion>
       )}
-    </Tarjeta>
+    </div>
   );
 }

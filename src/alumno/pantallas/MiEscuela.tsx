@@ -12,13 +12,13 @@ import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
   subirComprobante, COMPROBANTE_MAX_MB, misArreglos,
 } from '../datos';
-import type { MiFicha, MiClase } from '../datos';
+import type { MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo } from '../datos';
 import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
-  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes,
+  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import MiPerfil from './MiPerfil';
@@ -40,7 +40,6 @@ export default function MiEscuela({
   const saldo = useCarga(() => miSaldo(ficha.tenant_id), [ficha.tenant_id]);
   const pagos = useCarga(() => misPagos(ficha.tenant_id), [ficha.tenant_id]);
   const arreglos = useCarga(() => misArreglos(ficha.tenant_id), [ficha.tenant_id]);
-  const [declarando, setDeclarando] = useState(false);
   // Dos pestañas y no cinco secciones apiladas. El alumno abre la app por una
   // de dos razones muy distintas —ver qué viene y repasar lo que vio, o mirar
   // cómo está de plata— y antes tenía que recorrer una página larga para
@@ -61,13 +60,6 @@ export default function MiEscuela({
     { id: 'clases', texto: 'Clases', icono: IconoClases },
     { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
   ];
-
-  const declarados = pagos.datos?.filter((p) => p.status === 'declared') ?? [];
-  // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
-  // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
-  const confirmados = (pagos.datos?.filter((p) => p.status === 'confirmed') ?? [])
-    .map((p) => ({ ...p, cuando: p.paid_on ?? p.confirmed_at?.slice(0, 10) ?? p.declared_at.slice(0, 10) }))
-    .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
   return (
     <>
@@ -109,130 +101,24 @@ export default function MiEscuela({
       )}
 
       {tab === 'cuenta' && (
-        <>
-
-      {/* --------------------------------------------------------- cómo pago */}
-      {arreglos.error && <Aviso>{arreglos.error}</Aviso>}
-      <ComoPago
-        arreglos={arreglos.datos ?? []}
-        alCambiar={() => {
-          arreglos.recargar();
-          cargos.recargar();
-          saldo.recargar();
-        }}
-      />
-
-      {/* -------------------------------------------------------- mi cuenta */}
-      <Seccion>Mi cuenta</Seccion>
-
-      {saldo.error && <Aviso>{saldo.error}</Aviso>}
-
-      {/* Tres estados, no dos. "Al día" y "debés $X" dejaban afuera al que pagó
-          por adelantado, que es el que más merece que la app lo reconozca. */}
-      <div className="mb-3 rounded-xl border border-linea bg-panel px-4 py-3">
-        <p className="text-2xl font-semibold text-tinta">
-          {saldo.datos === null
-            ? '…'
-            : saldo.datos.debe > 0
-              ? plata(saldo.datos.debe)
-              : saldo.datos.aFavor > 0
-                ? plata(saldo.datos.aFavor)
-                : 'Al día'}
-        </p>
-        <p className="text-sm text-tenue">
-          {saldo.datos === null
-            ? ''
-            : saldo.datos.debe > 0
-              ? 'es lo que debés'
-              : saldo.datos.aFavor > 0
-                ? 'tenés a favor: se va a descontar de lo que venga'
-                : 'no debés nada'}
-        </p>
-        {declarados.length > 0 && (
-          <p className="mt-1 text-sm text-acento">
-            Avisaste {plata(declarados.reduce((s, p) => s + p.amount, 0))}. Tu profe lo tiene
-            que confirmar.
-          </p>
-        )}
-      </div>
-
-      {cargos.datos && cargos.datos.length > 0 && (
-        <ul className="mb-3 flex flex-col gap-2">
-          {cargos.datos.map((c) => {
-            const saldado = c.pagado >= c.amount;
-            const aMedias = c.pagado > 0 && !saldado;
-            return (
-              <li key={c.id}>
-                <Tarjeta>
-                  <div className={saldado ? 'opacity-60' : undefined}>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-tinta">{c.concept}</p>
-                      <p className="shrink-0 text-sm text-acento">{plata(c.amount)}</p>
-                    </div>
-
-                    {/* Lo primero que se dice de un cargo es si está saldado.
-                        El vencimiento solo importa mientras siga debiéndose. */}
-                    {saldado ? (
-                      <p className="text-sm text-acento">Pagada</p>
-                    ) : aMedias ? (
-                      <p className="text-sm text-tenue">
-                        Pagaste {plata(c.pagado)} · falta {plata(c.amount - c.pagado)}
-                        {c.due_date && ` · vence el ${fecha(c.due_date)}`}
-                      </p>
-                    ) : c.due_date ? (
-                      <p className="text-sm text-tenue">vence el {fecha(c.due_date)}</p>
-                    ) : null}
-                  </div>
-                </Tarjeta>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
-
-      {declarando && (
-        <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>
-          <FormularioAviso
-            ficha={ficha}
-            sugerido={saldo.datos?.debe ?? 0}
-            alCerrar={() => setDeclarando(false)}
-            alAvisar={() => {
-              setDeclarando(false);
-              pagos.recargar();
-              saldo.recargar();
-            }}
-          />
-        </Hoja>
-      )}
-
-      {/* ------------------------------------------------------- lo que pagué
-          Va al final y no arriba: el alumno abre la app para ver sus clases
-          y sus recaps. Lo que ya pagó es una consulta puntual, no algo con
-          lo que quiera que lo reciban. */}
-      {confirmados.length > 0 && (
-        <div className="mb-8 mt-6">
-          <Seccion>Lo que pagué</Seccion>
-          <ul className="flex flex-col gap-2">
-            {confirmados.map((p) => (
-              <li key={p.id}>
-                <Tarjeta>
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-tinta">{plata(p.amount)}</p>
-                      <p className="text-sm text-tenue">{fecha(p.cuando)}</p>
-                      {p.note && <p className="text-sm text-tenue">{p.note}</p>}
-                    </div>
-                    <p className="shrink-0 text-sm text-acento">confirmado</p>
-                  </div>
-                </Tarjeta>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-        </>
+        <MiCuenta
+          ficha={ficha}
+          saldo={saldo.datos}
+          errorSaldo={saldo.error}
+          cargos={cargos.datos}
+          pagos={pagos.datos}
+          arreglos={arreglos.datos ?? []}
+          errorArreglos={arreglos.error}
+          alCambiarArreglo={() => {
+            arreglos.recargar();
+            cargos.recargar();
+            saldo.recargar();
+          }}
+          alAvisar={() => {
+            pagos.recargar();
+            saldo.recargar();
+          }}
+        />
       )}
 
     </Marco>
@@ -367,6 +253,172 @@ function FormularioAviso({
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>
     </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// MI CUENTA
+//
+// Antes esto eran cinco bloques apilados, cada uno con su propia caja: la
+// tarjeta de "cómo pago" con los dos precios y un botón, el recuadro del
+// saldo, una tarjeta por cada cargo, el botón de avisar y una tarjeta por cada
+// pago. Todo cajas, todas del mismo peso: nada se destacaba y encontrar algo
+// era recorrer la página entera.
+//
+// Ahora hay UNA caja y tres listas, en el orden de las preguntas que trae al
+// alumno acá:
+//
+//   1. ¿Cuánto debo? — el número grande, con el botón de avisar adentro.
+//      Pregunta y acción en el mismo bloque: si debe, lo que sigue es avisar
+//      que transfirió.
+//   2. ¿Por qué? — los cargos pendientes, en una lista plana.
+//   3. ¿Qué pagué? — el historial, de a cinco.
+//   4. ¿Cómo pago? — abajo del todo, porque es una decisión que se toma una
+//      vez cada varios meses, no algo que se consulte. Cada grupo es un
+//      renglón; el detalle y el cambio se abren tocándolo.
+// ----------------------------------------------------------------------------
+const PAGOS_DE_A = 5;
+
+function MiCuenta({
+  ficha,
+  saldo,
+  errorSaldo,
+  cargos,
+  pagos,
+  arreglos,
+  errorArreglos,
+  alCambiarArreglo,
+  alAvisar,
+}: {
+  ficha: MiFicha;
+  saldo: MiSaldo | null;
+  errorSaldo: string | null;
+  cargos: MiCargo[] | null;
+  pagos: MiPago[] | null;
+  arreglos: MiArreglo[];
+  errorArreglos: string | null;
+  alCambiarArreglo: () => void;
+  alAvisar: () => void;
+}) {
+  const [declarando, setDeclarando] = useState(false);
+  const [cuantosPagos, setCuantosPagos] = useState(PAGOS_DE_A);
+
+  const declarados = pagos?.filter((p) => p.status === 'declared') ?? [];
+  const totalDeclarado = declarados.reduce((s, p) => s + p.amount, 0);
+
+  // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
+  // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
+  const confirmados = (pagos?.filter((p) => p.status === 'confirmed') ?? [])
+    .map((p) => ({ ...p, cuando: p.paid_on ?? p.confirmed_at?.slice(0, 10) ?? p.declared_at.slice(0, 10) }))
+    .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
+
+  const pendientes = (cargos ?? []).filter((c) => c.pagado < c.amount);
+
+  return (
+    <>
+      {errorSaldo && <div className="mb-4"><Aviso>{errorSaldo}</Aviso></div>}
+
+      {/* ------------------------------------------------------ el número */}
+      <Dato
+        valor={
+          saldo === null
+            ? '…'
+            : saldo.debe > 0
+              ? plata(saldo.debe)
+              : saldo.aFavor > 0
+                ? plata(saldo.aFavor)
+                : 'Al día'
+        }
+        al={
+          saldo === null
+            ? ''
+            : saldo.debe > 0
+              ? 'es lo que debés'
+              : saldo.aFavor > 0
+                ? 'tenés a favor: se va a descontar de lo que venga'
+                : 'no debés nada'
+        }
+        tono={saldo === null ? 'normal' : saldo.debe > 0 ? 'alerta' : 'ok'}
+      >
+        {declarados.length > 0 && (
+          <p className="mt-2 text-sm text-acento">
+            Avisaste {plata(totalDeclarado)}. Tu profe lo tiene que confirmar.
+          </p>
+        )}
+        <div className="mt-4">
+          <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
+        </div>
+      </Dato>
+
+      {declarando && (
+        <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>
+          <FormularioAviso
+            ficha={ficha}
+            sugerido={saldo?.debe ?? 0}
+            alCerrar={() => setDeclarando(false)}
+            alAvisar={() => { setDeclarando(false); alAvisar(); }}
+          />
+        </Hoja>
+      )}
+
+      {/* --------------------------------------------------- qué falta pagar */}
+      {pendientes.length > 0 && (
+        <>
+          <Seccion acotacion={`${pendientes.length} ${pendientes.length === 1 ? 'cargo' : 'cargos'}`}>
+            Qué te falta pagar
+          </Seccion>
+          <Lista>
+            {pendientes.map((c) => (
+              <Fila
+                key={c.id}
+                titulo={c.concept}
+                detalle={
+                  c.pagado > 0
+                    ? `pagaste ${plata(c.pagado)} · falta ${plata(c.amount - c.pagado)}` +
+                      (c.due_date ? ` · vence el ${fecha(c.due_date)}` : '')
+                    : c.due_date
+                      ? `vence el ${fecha(c.due_date)}`
+                      : null
+                }
+                valor={plata(c.amount - c.pagado)}
+              />
+            ))}
+          </Lista>
+        </>
+      )}
+
+      {/* ------------------------------------------------------ lo que pagué */}
+      {confirmados.length > 0 && (
+        <>
+          <Seccion>Lo que pagaste</Seccion>
+          <Lista>
+            {confirmados.slice(0, cuantosPagos).map((p) => (
+              <Fila
+                key={p.id}
+                principal={<ChipFecha iso={p.cuando} />}
+                titulo={plata(p.amount)}
+                detalle={p.note}
+                bajoValor="confirmado"
+              />
+            ))}
+          </Lista>
+          {confirmados.length > cuantosPagos && (
+            <div className="mt-3 flex justify-center">
+              <BotonSecundario
+                type="button"
+                onClick={() => setCuantosPagos((n) => n + PAGOS_DE_A)}
+              >
+                Ver {Math.min(PAGOS_DE_A, confirmados.length - cuantosPagos)} más
+              </BotonSecundario>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* --------------------------------------------------------- cómo pago */}
+      {errorArreglos && <div className="mt-6"><Aviso>{errorArreglos}</Aviso></div>}
+      <ComoPago arreglos={arreglos} alCambiar={alCambiarArreglo} />
+    </>
   );
 }
 
