@@ -12,8 +12,8 @@
 // ============================================================================
 import { useState } from 'react';
 import type { Cobro } from '../datos';
-import { fecha, plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
-import { Vacio, Tarjeta, Seccion, Dato } from '../../comun/ui';
+import { plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
+import { Vacio, Dato, Lista, Fila, ChipFecha } from '../../comun/ui';
 
 export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
   const [mes, setMes] = useState(mesDe(hoyISO()));
@@ -39,8 +39,6 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
 
   return (
     <>
-      <Seccion>Cobrado</Seccion>
-
       {meses.length > 1 && (
         <select
           value={mes}
@@ -78,29 +76,25 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
             : 'No hubo cobros en ese mes.'}
         </Vacio>
       ) : (
-        <ul className="flex flex-col gap-2">
+        <Lista>
           {delMes.map((c) => (
-            <li key={c.id}>
-              <Tarjeta>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-tinta">{c.alumno}</p>
-                    <p className="text-sm text-tenue">{fecha(c.fecha)}</p>
-                    {c.note && <p className="text-sm text-tenue">{c.note}</p>}
-                    {/* Que el comprobante no esté no es lo mismo que no haberlo
-                        mandado. A los 6 meses se borra solo. */}
-                    {c.comprobante_borrado && (
-                      <p className="text-xs text-tenue/70">
-                        El comprobante se borró por antigüedad.
-                      </p>
-                    )}
-                  </div>
-                  <p className="shrink-0 text-lg text-tinta">{plata(c.amount)}</p>
-                </div>
-              </Tarjeta>
-            </li>
+            <Fila
+              key={c.id}
+              principal={<ChipFecha iso={c.fecha} />}
+              titulo={c.alumno}
+              detalle={c.note}
+              valor={plata(c.amount)}
+            >
+              {/* Que el comprobante no esté no es lo mismo que no haberlo
+                  mandado. A los 6 meses se borra solo. */}
+              {c.comprobante_borrado && (
+                <p className="text-xs text-tenue/70">
+                  El comprobante se borró por antigüedad.
+                </p>
+              )}
+            </Fila>
           ))}
-        </ul>
+        </Lista>
       )}
     </>
   );

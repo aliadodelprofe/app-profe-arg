@@ -8,12 +8,17 @@
 // caso la deuda no es real, es tuya la tarea de confirmarlo. Por eso se
 // muestran las dos cosas juntas y no una sola.
 // ============================================================================
-import { traerDeudas, plata } from '../datos';
-import type { Espacio } from '../datos';
-import { Aviso, Vacio, Tarjeta, Seccion, Dato, useCarga } from '../../comun/ui';
+import { plata } from '../datos';
+import type { FilaDeuda } from '../datos';
+import { Aviso, Vacio, Seccion, Dato, Lista, Fila, Esqueleto } from '../../comun/ui';
 
-export default function QuienDebe({ espacio }: { espacio: Espacio }) {
-  const { datos, error } = useCarga(() => traerDeudas(espacio.id), [espacio.id]);
+export default function QuienDebe({
+  deudas: datos,
+  error,
+}: {
+  deudas: FilaDeuda[] | null;
+  error: string | null;
+}) {
 
   const deudores = datos?.filter((f) => f.saldo > 0) ?? [];
   const alDia = datos?.filter((f) => f.saldo <= 0).length ?? 0;
@@ -27,20 +32,16 @@ export default function QuienDebe({ espacio }: { espacio: Espacio }) {
 
   return (
     <>
-      <Seccion acotacion={deudores.length > 0 ? `${deudores.length}` : undefined}>
-        Quién te debe
-      </Seccion>
-
       {error && <Aviso>{error}</Aviso>}
-      {!datos && !error && <Vacio>Buscando…</Vacio>}
+      {!datos && !error && <Esqueleto />}
 
       {datos && deudores.length === 0 && (
-        <Vacio>No te debe nadie. {alDia > 0 && `${alDia} alumnos al día.`}</Vacio>
+        <Vacio>No te debe nadie.{alDia > 0 && ` ${alDia} alumnos al día.`}</Vacio>
       )}
 
       {deudores.length > 0 && (
         <>
-          <div className="mb-3">
+          <div className="mb-4">
             <Dato
               valor={plata(total)}
               al={`${deudores.length} ${deudores.length === 1 ? 'alumno debe' : 'alumnos deben'}${alDia > 0 ? ` · ${alDia} al día` : ''}`}
@@ -54,25 +55,23 @@ export default function QuienDebe({ espacio }: { espacio: Espacio }) {
             </Dato>
           </div>
 
-          <ul className="flex flex-col gap-2">
+          <Lista>
             {[...deudores]
               .sort((a, b) => b.saldo - a.saldo)
               .map((f) => (
-                <li key={f.alumno.id}>
-                  <Tarjeta>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-tinta">{f.alumno.full_name}</p>
-                      <p className="shrink-0 text-alerta">{plata(f.saldo)}</p>
-                    </div>
-                    {f.pendiente > 0 && (
-                      <p className="text-sm text-acento">
-                        declaró {plata(f.pendiente)} · falta que lo confirmes
-                      </p>
-                    )}
-                  </Tarjeta>
-                </li>
+                <Fila
+                  key={f.alumno.id}
+                  avatar={f.alumno.full_name}
+                  titulo={f.alumno.full_name}
+                  detalle={
+                    f.pendiente > 0
+                      ? `declaró ${plata(f.pendiente)} · falta que lo confirmes`
+                      : null
+                  }
+                  valor={<span className="text-alerta">{plata(f.saldo)}</span>}
+                />
               ))}
-          </ul>
+          </Lista>
         </>
       )}
 
@@ -81,28 +80,24 @@ export default function QuienDebe({ espacio }: { espacio: Espacio }) {
           hacer con esta plata, se aplica sola a lo que vaya venciendo. Está
           para que no le reclames a alguien que está adelantado. */}
       {conCredito.length > 0 && (
-        <div>
-          <Seccion>Pagaron por adelantado</Seccion>
+        <>
+          <Seccion acotacion={plata(totalCredito)}>Pagaron por adelantado</Seccion>
           <p className="mb-3 text-sm text-tenue">
-            {plata(totalCredito)} a favor de {conCredito.length}{' '}
-            {conCredito.length === 1 ? 'alumno' : 'alumnos'}. Se descuenta solo de lo que
-            les vaya venciendo.
+            Se descuenta solo de lo que les vaya venciendo.
           </p>
-          <ul className="flex flex-col gap-2">
+          <Lista>
             {[...conCredito]
               .sort((a, b) => b.aFavor - a.aFavor)
               .map((f) => (
-                <li key={f.alumno.id}>
-                  <Tarjeta>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-tinta">{f.alumno.full_name}</p>
-                      <p className="shrink-0 text-acento">{plata(f.aFavor)}</p>
-                    </div>
-                  </Tarjeta>
-                </li>
+                <Fila
+                  key={f.alumno.id}
+                  avatar={f.alumno.full_name}
+                  titulo={f.alumno.full_name}
+                  valor={<span className="text-acento">{plata(f.aFavor)}</span>}
+                />
               ))}
-          </ul>
-        </div>
+          </Lista>
+        </>
       )}
     </>
   );

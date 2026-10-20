@@ -190,23 +190,25 @@ function FormularioAviso({
       onSubmit={enviar}
       className="flex flex-col gap-3"
     >
-      {/* Los datos para transferir van ACÁ ARRIBA y no solo en la pantalla de
-          atrás. Este es el momento exacto en que el alumno los necesita: abre
-          esta hoja para avisar que pagó, y si todavía no pagó, acá tiene el
-          alias para hacerlo sin cerrar nada. */}
-      {destinos.length > 0 && (
-        <div className="flex flex-col gap-2 rounded-xl border border-linea bg-campo/50 p-3">
+      {/* Los datos para transferir viven ACÁ y en ningún otro lado. Estuvieron
+          un rato también como sección suelta en "Mi cuenta", y era ruido: un
+          alias no se consulta, se usa en un único momento. Ese momento es
+          este — el alumno abre esta hoja para avisar que pagó y, si todavía no
+          pagó, acá tiene el alias para hacerlo sin cerrar nada. */}
+      {destinos.map((d) => (
+        <div
+          key={d.id}
+          className="flex flex-col gap-2 rounded-xl border border-linea bg-campo/50 p-3"
+        >
           <p className="text-sm text-tenue">
-            Transferile a {destinos[0].holder}
-            {destinos[0].bank ? ` · ${destinos[0].bank}` : ''}
+            Transferile a <span className="text-tinta">{d.holder}</span>
+            {d.bank ? ` · ${d.bank}` : ''}
           </p>
-          {destinos[0].alias && <CopiarDato etiqueta="Alias" valor={destinos[0].alias} />}
-          {destinos[0].cbu && <CopiarDato etiqueta="CBU / CVU" valor={destinos[0].cbu} />}
-          {destinos[0].note && (
-            <p className="text-sm text-tenue">{destinos[0].note}</p>
-          )}
+          {d.alias && <CopiarDato etiqueta="Alias" valor={d.alias} />}
+          {d.cbu && <CopiarDato etiqueta="CBU / CVU" valor={d.cbu} />}
+          {d.note && <p className="text-sm text-tenue">{d.note}</p>}
         </div>
-      )}
+      ))}
 
       <Campo etiqueta="Cuánto">
         <Texto
@@ -442,48 +444,9 @@ function MiCuenta({
         </>
       )}
 
-      {/* ------------------------------------------------- dónde transferir */}
-      <DondeTransferir destinos={destinos} />
-
       {/* --------------------------------------------------------- cómo pago */}
       {errorArreglos && <div className="mt-6"><Aviso>{errorArreglos}</Aviso></div>}
       <ComoPago arreglos={arreglos} alCambiar={alCambiarArreglo} />
-    </>
-  );
-}
-
-// ----------------------------------------------------------------------------
-// DÓNDE TRANSFERIR
-//
-// Lo que el profesor cargó una vez (migración 0024). Si no cargó nada, esto no
-// se dibuja: un cartel que dice "tu profe todavía no puso sus datos" le pasa
-// al alumno un problema que no puede resolver.
-//
-// Los datos van en botones de copiar y no como texto suelto. Un CBU son
-// veintidós dígitos: pedirle a alguien que los tipee en la app del banco es
-// pedirle que se equivoque.
-// ----------------------------------------------------------------------------
-function DondeTransferir({ destinos }: { destinos: TipoDestino[] }) {
-  if (destinos.length === 0) return null;
-
-  return (
-    <>
-      <Seccion>Dónde transferir</Seccion>
-      <Lista>
-        {destinos.map((d) => (
-          <Fila
-            key={d.id}
-            titulo={d.holder}
-            detalle={d.bank}
-          >
-            <div className="flex flex-col gap-2">
-              {d.alias && <CopiarDato etiqueta="Alias" valor={d.alias} />}
-              {d.cbu && <CopiarDato etiqueta="CBU / CVU" valor={d.cbu} />}
-              {d.note && <p className="text-sm text-tenue">{d.note}</p>}
-            </div>
-          </Fila>
-        ))}
-      </Lista>
     </>
   );
 }

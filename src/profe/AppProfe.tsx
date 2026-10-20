@@ -130,6 +130,13 @@ function Adentro({ sesion }: { sesion: Session }) {
           <Hoy
             espacio={espacio}
             alVerCobros={() => irA('cobros')}
+            // Renombrar la escuela cambia el objeto que viaja en la vista: si
+            // no se reemplaza acá, la pantalla sigue mostrando el nombre viejo
+            // hasta que se recargue la página.
+            alRenombrar={(nuevo) => {
+              setVista({ pantalla: 'tab', espacio: nuevo, tab });
+              espacios.recargar();
+            }}
             alTomarAsistencia={(clase) => {
               // La clase trae su grupo entero adentro (ver ClaseDelEspacio en
               // datos.ts). Acá antes se armaba uno falso con id y nombre, y el

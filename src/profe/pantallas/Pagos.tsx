@@ -17,12 +17,19 @@
 // solo "Confirmar" es lo que evita el toque distraído.
 // ============================================================================
 import { useState } from 'react';
-import { traerPagosPorConfirmar, confirmarPago, rechazarPago, fecha, plata } from '../datos';
-import type { Espacio, PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
-import { Aviso, Vacio, Tarjeta, Seccion, useCarga } from '../../comun/ui';
+import { confirmarPago, rechazarPago, fecha, plata } from '../datos';
+import type { PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
+import { Aviso, Vacio, Lista, Fila, Esqueleto, Boton, BotonSecundario } from '../../comun/ui';
 
-export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
-  const { datos, error } = useCarga(() => traerPagosPorConfirmar(espacio.id), [espacio.id]);
+export default function ParaConfirmar({
+  pagos: datos,
+  error,
+  alResolver,
+}: {
+  pagos: PagoPorConfirmar[] | null;
+  error: string | null;
+  alResolver: () => void;
+}) {
 
   // Lo que ya se resolvió en esta pantalla, para sacarlo de la lista sin
   // tener que volver a preguntarle a la base.
@@ -36,6 +43,7 @@ export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
     try {
       const r: ResultadoConfirmacion = await confirmarPago(p.id);
       setResueltos((m) => ({ ...m, [p.id]: mensaje(r) }));
+      alResolver();
     } catch (e) {
       setErrorAccion((e as Error).message);
     }
@@ -48,6 +56,7 @@ export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
     try {
       await rechazarPago(p.id);
       setResueltos((m) => ({ ...m, [p.id]: 'Rechazado.' }));
+      alResolver();
     } catch (e) {
       setErrorAccion((e as Error).message);
     }
@@ -58,13 +67,9 @@ export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
 
   return (
     <>
-      <Seccion acotacion={pendientes.length > 0 ? `${pendientes.length}` : undefined}>
-        Para confirmar
-      </Seccion>
-
       {error && <Aviso>{error}</Aviso>}
       {errorAccion && <div className="mb-4"><Aviso>{errorAccion}</Aviso></div>}
-      {!datos && !error && <Vacio>Buscando…</Vacio>}
+      {!datos && !error && <Esqueleto />}
 
       {/* Lo que se acaba de resolver, para que quede constancia en pantalla */}
       {Object.entries(resueltos).map(([id, texto]) => (
@@ -74,60 +79,62 @@ export default function ParaConfirmar({ espacio }: { espacio: Espacio }) {
       ))}
 
       {datos && pendientes.length === 0 && (
-        <Vacio>No hay pagos esperando. Todo al día.</Vacio>
+        <Vacio>No hay transferencias esperando. Todo al día.</Vacio>
       )}
 
-      <ul className="flex flex-col gap-2">
-        {pendientes.map((p) => (
-          <li key={p.id}>
-            <Tarjeta>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-tinta">{p.alumno}</p>
-                  <p className="text-sm text-tenue">
-                    declarado {fecha(p.declared_at.slice(0, 10))}
-                    {p.paid_on && ` · transferido ${fecha(p.paid_on)}`}
-                  </p>
-                  {p.note && <p className="text-sm text-tenue">{p.note}</p>}
-                  {p.enlace ? (
-                    <a
-                      href={p.enlace} target="_blank" rel="noreferrer"
-                      className="text-sm text-acento underline"
-                    >
-                      ver comprobante
-                    </a>
-                  ) : p.receipt_url ? (
-                    <p className="text-sm text-tenue">
-                      Mandó comprobante, pero no se pudo abrir. Recargá la página.
-                    </p>
-                  ) : (
-                    <p className="text-sm text-tenue">Sin comprobante.</p>
-                  )}
-                </div>
-                <p className="shrink-0 text-lg text-tinta">{plata(p.amount)}</p>
-              </div>
+      {pendientes.length > 0 && (
+        <Lista>
+          {pendientes.map((p) => (
+            <Fila
+              key={p.id}
+              avatar={p.alumno}
+              titulo={p.alumno}
+              detalle={
+                `declaró el ${fecha(p.declared_at.slice(0, 10))}` +
+                (p.paid_on ? ` · transfirió el ${fecha(p.paid_on)}` : '')
+              }
+              valor={plata(p.amount)}
+            >
+              {p.note && <p className="mb-2 text-sm text-tenue">{p.note}</p>}
 
-              <div className="mt-3 flex gap-2">
-                <button
+              {p.enlace ? (
+                <a
+                  href={p.enlace} target="_blank" rel="noreferrer"
+                  className="text-sm text-acento underline"
+                >
+                  ver comprobante
+                </a>
+              ) : p.receipt_url ? (
+                <p className="text-sm text-tenue">
+                  Mandó comprobante, pero no se pudo abrir. Recargá la página.
+                </p>
+              ) : (
+                <p className="text-sm text-tenue">Sin comprobante.</p>
+              )}
+
+              {/* El monto va escrito en el botón. Es plata: que diga
+                  "Confirmar $8.000" y no solo "Confirmar" es lo que evita el
+                  toque distraído. */}
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Boton
+                  type="button"
                   onClick={() => confirmar(p)}
                   disabled={trabajando === p.id}
-                  className="rounded-lg bg-acento px-3 py-1.5 text-sm font-medium text-sobre-acento disabled:opacity-50"
                 >
                   {trabajando === p.id ? 'Confirmando…' : `Confirmar ${plata(p.amount)}`}
-                </button>
-                <button
+                </Boton>
+                <BotonSecundario
+                  type="button"
                   onClick={() => rechazar(p)}
                   disabled={trabajando === p.id}
-                  className="rounded-lg border border-linea px-3 py-1.5 text-sm text-tenue disabled:opacity-50"
                 >
                   Rechazar
-                </button>
+                </BotonSecundario>
               </div>
-            </Tarjeta>
-          </li>
-        ))}
-      </ul>
-
+            </Fila>
+          ))}
+        </Lista>
+      )}
     </>
   );
 }

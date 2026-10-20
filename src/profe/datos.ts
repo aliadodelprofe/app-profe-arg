@@ -1146,6 +1146,33 @@ export async function traerClasesDelEspacio(
 }
 
 // ---------------------------------------------------------------------------
+// RENOMBRAR EL ESPACIO
+//
+// El nombre del espacio no es decorativo: es lo que el alumno ve arriba de
+// todo al abrir su app, y lo que dice de quién son las clases que está
+// mirando. Hasta ahora se escribía una vez al crear la cuenta y no había
+// forma de corregirlo ni de un error de tipeo.
+//
+// La regla que permite esto ya existía desde la 0002 y es solo para el DUEÑO
+// del espacio, no para cualquier miembro del equipo: un profesor invitado
+// puede dar clases, no renombrar la escuela de otro.
+// ---------------------------------------------------------------------------
+export async function editarEspacio(
+  espacioId: string,
+  datos: { name: string; discipline: string | null },
+): Promise<Espacio> {
+  const { data, error } = await supabase
+    .from('tenants')
+    .update(datos)
+    .eq('id', espacioId)
+    .select('id, name, discipline, plan')
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Espacio;
+}
+
+
+// ---------------------------------------------------------------------------
 // DÓNDE LE TRANSFIEREN AL PROFE  (migración 0024)
 //
 // Lo cargan acá y lo leen los alumnos de ese espacio. El alumno nunca escribe

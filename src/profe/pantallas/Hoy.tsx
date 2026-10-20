@@ -21,18 +21,23 @@ import {
   fecha, plata, hoyISO, sumarDias,
 } from '../datos';
 import type { Espacio, ClaseDelEspacio } from '../datos';
-import { Marco, Aviso, Vacio, Tarjeta, Titulo, Seccion, Dato, useCarga } from '../../comun/ui';
+import { useState } from 'react';
+import { Marco, Aviso, Vacio, Tarjeta, Titulo, Seccion, Dato, Hoja, useCarga } from '../../comun/ui';
+import MiEscuelaProfe from './MiEscuelaProfe';
 
 export default function Hoy({
   espacio,
   alVerCobros,
   alTomarAsistencia,
+  alRenombrar,
 }: {
   espacio: Espacio;
   alVerCobros: () => void;
   alTomarAsistencia: (clase: ClaseDelEspacio) => void;
+  alRenombrar: (nuevo: Espacio) => void;
 }) {
   const hoy = hoyISO();
+  const [editando, setEditando] = useState(false);
 
   // Dos semanas alcanzan: lo que pasa más allá no es "hoy", y para eso está
   // la pantalla del grupo.
@@ -58,7 +63,28 @@ export default function Hoy({
   return (
     <Marco conBarra>
       <Titulo>Hoy</Titulo>
-      <p className="mb-2 text-sm text-tenue">{espacio.name}</p>
+      {/* El nombre de la escuela es el botón para cambiarlo. No hay pantalla
+          de ajustes y no hace falta: se toca una vez y se corrige donde se
+          lee. */}
+      <button
+        onClick={() => setEditando(true)}
+        className="-ml-1 mb-2 flex items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm text-tenue transition hover:text-acento"
+      >
+        {espacio.name}
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+          <path d="M4 20h4L19 9l-4-4L4 16v4z" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+
+      {editando && (
+        <Hoja titulo="Mi escuela" alCerrar={() => setEditando(false)}>
+          <MiEscuelaProfe
+            espacio={espacio}
+            alCerrar={() => setEditando(false)}
+            alGuardar={(nuevo) => { setEditando(false); alRenombrar(nuevo); }}
+          />
+        </Hoja>
+      )}
 
       {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
       {cargando && !error && <div className="mt-4"><Vacio>Buscando…</Vacio></div>}
