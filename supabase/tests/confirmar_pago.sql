@@ -25,14 +25,34 @@ begin;
 -- ----------------------------------------------------------------------------
 -- 1. Profe 2 registra que su alumno declaró una transferencia de $8.000
 --
--- El alumno tiene un cargo de $5.000. Se declaran $8.000 a propósito, para
--- ver también qué hace la función con lo que sobra.
+-- El cargo de $5.000 LO CREA ESTA PRUEBA.
+--
+-- Antes daba por hecho que el alumno ya tenía uno abierto, porque lo había
+-- dejado otra prueba. Dejó de ser cierto: desde la 0021, asegurar_imputaciones
+-- corre todas las noches y va cubriendo los cargos con la plata que haya a
+-- favor. Cuando esta prueba corría, el alumno ya no debía nada, así que la
+-- función imputaba 0 y la prueba decía FALLA sin que nada estuviera roto.
+--
+-- Una prueba no se apoya en el estado que dejó otra: se arma el suyo. Si no,
+-- lo que verifica depende de qué corrió antes y de cuánto hace que no corre
+-- la tarea de la noche.
+--
+-- Se declaran $8.000 contra un cargo de $5.000 a propósito, para ver también
+-- qué hace la función con lo que sobra.
 -- ----------------------------------------------------------------------------
 select set_config('request.jwt.claims',
   json_build_object(
     'sub', (select id from auth.users where email = 'profe2@prueba.com'),
     'role','authenticated')::text, true);
 set local role authenticated;
+
+insert into public.charges (tenant_id, student_id, concept, amount, due_date)
+select s.tenant_id, s.id, 'PRUEBA confirmar_pago', 5000, current_date
+  from public.students s
+  join public.tenants t on t.id = s.tenant_id
+ where t.name = 'Escuela de Prueba 2'
+   and s.full_name = 'Alumno Portal'
+ limit 1;
 
 with nuevo as (
   insert into public.payments (tenant_id, student_id, amount, status, note)
@@ -41,6 +61,7 @@ with nuevo as (
     join public.tenants t on t.id = s.tenant_id
    where t.name = 'Escuela de Prueba 2'
      and s.full_name = 'Alumno Portal'
+   limit 1
   returning id
 )
 select set_config('prueba.pago_id', (select id::text from nuevo), false);
@@ -122,13 +143,30 @@ declare
   v_imp numeric;
   v_sin numeric;
   v_saldo numeric;
+  v_cubierto numeric;
 begin
   begin
     select imputado, sin_imputar into v_imp, v_sin from public.confirmar_pago(v_id);
+
+    -- Cuánto de ese pago fue a parar al cargo que creó ESTA prueba.
+    --
+    -- Se mira el cargo propio y no el total imputado, porque la función
+    -- reparte del cargo más viejo al más nuevo: si el alumno tenía otras
+    -- deudas anteriores, parte de los $8.000 se va a ellas y el total deja de
+    -- ser predecible. Lo que sí tiene que pasar siempre es que el cargo de
+    -- $5.000 quede cubierto, y que la plata no se evapore: lo imputado más lo
+    -- que sobra tiene que dar los $8.000 declarados.
+    select coalesce(sum(a.amount), 0) into v_cubierto
+      from public.payment_allocations a
+      join public.charges c on c.id = a.charge_id
+     where a.payment_id = v_id
+       and c.concept = 'PRUEBA confirmar_pago';
+
     perform set_config('prueba.v3',
-      case when v_imp = 5000 and v_sin = 3000 then 'PASA'
-           else 'FALLA - imputo ' || v_imp || ' y dejo ' || v_sin
-                || ' (se esperaba 5000 y 3000)' end, false);
+      case when v_cubierto = 5000 and (v_imp + v_sin) = 8000 then 'PASA'
+           else 'FALLA - al cargo de la prueba le imputo ' || v_cubierto
+                || ' (se esperaban 5000), y el pago repartio ' || v_imp
+                || ' + ' || v_sin || ' de 8000' end, false);
   exception
     when others then
       perform set_config('prueba.v3', 'FALLA - ' || sqlerrm, false);
@@ -165,7 +203,7 @@ union all
 select 'Y la funcion le avisa con un error',
        coalesce(current_setting('prueba.v2b', true), 'NO SE EJECUTO')
 union all
-select 'Profe 2 SI confirma: imputa 5000 y deja 3000 a favor',
+select 'Profe 2 SI confirma: cubre el cargo de 5000 y no pierde plata',
        coalesce(current_setting('prueba.v3', true), 'NO SE EJECUTO')
 union all
 select 'Confirmar dos veces no imputa dos veces',

@@ -137,16 +137,21 @@ begin;
   where note = 'Pago de prueba'
 
   union all
-  select 'Profe 1 NO ve imputaciones de Profe 2',
+  -- Antes: `from public.payment_allocations` SIN filtro, esperando cero. Eso
+  -- cuenta también las imputaciones PROPIAS de Profe 1, que hoy son trece
+  -- porque la app se usa. Gritaba fuga por ver lo suyo.
+  select 'Profe 1 NO ve ninguna imputacion de otro espacio',
          case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
          count(*)
-  from public.payment_allocations
+  from public.payment_allocations a
+  where a.tenant_id not in (select public.my_tenant_ids())
 
   union all
-  select 'Profe 1 NO ve el estado de cuenta de Profe 2',
+  select 'Profe 1 NO ve el estado de cuenta de otro espacio',
          case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
          count(*)
-  from public.student_account
+  from public.student_account sa
+  where sa.tenant_id not in (select public.my_tenant_ids())
 
   union all
   select 'Profe 1 NO puede crear un cargo en el espacio de Profe 2',

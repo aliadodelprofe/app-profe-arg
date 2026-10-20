@@ -20,7 +20,12 @@ begin;
 -- El espacio del otro profesor se anota antes de ponerse el rol: después RLS
 -- lo esconde y la última fila no tendría con qué probar.
 select set_config('prueba.espacio_ajeno',
-  (select id::text from public.tenants where name = 'Escuela de Prueba 1'), false);
+  -- `limit 1` no es decorativo: en la base de desarrollo hay más de un espacio
+  -- llamado "Escuela de Prueba 1", y sin esto la subconsulta devuelve dos
+  -- filas y el archivo entero muere con "more than one row returned by a
+  -- subquery used as an expression". Una prueba no puede asumir que un nombre
+  -- es único si nadie lo hace único.
+  (select id::text from public.tenants where name = 'Escuela de Prueba 1' limit 1), false);
 
 select set_config('request.jwt.claims',
   json_build_object(
@@ -33,7 +38,8 @@ set local role authenticated;
 -- O sea, $15.000 a favor.
 -- ----------------------------------------------------------------------------
 insert into public.students (tenant_id, full_name)
-select id, 'PRUEBA Saldo A Favor' from public.tenants where name = 'Escuela de Prueba 2';
+select id, 'PRUEBA Saldo A Favor' from public.tenants
+ where name = 'Escuela de Prueba 2' limit 1;
 
 insert into public.charges (tenant_id, student_id, concept, amount, due_date)
 select s.tenant_id, s.id, 'PRUEBA cargo viejo', 10000, current_date - 10
@@ -115,7 +121,7 @@ begin
    where p.student_id = v_alumno;
 
   select amount into v_pago
-    from public.payments where student_id = v_alumno;
+    from public.payments where student_id = v_alumno limit 1;
 
   perform set_config('prueba.v5',
     case when v_total <= v_pago then 'PASA'

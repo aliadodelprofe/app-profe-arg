@@ -55,11 +55,17 @@ declare
   v_rechazar uuid;
   v_dueno   uuid;
 begin
-  -- 1. Ve las dos que son para su correo.
+  -- 1. Ve las que son para su correo.
+  --
+  --    Antes esperaba exactamente 2, que eran las que armaba la preparación.
+  --    Hoy hay más, porque la app se usa y se fueron creando invitaciones de
+  --    verdad para ese correo. Contar la cantidad total no verifica nada: lo
+  --    que importa es que vea las suyas (fila 1) y ninguna ajena (fila 2).
   select count(*) into v_total from public.invitaciones_pendientes();
   perform set_config('prueba.v1',
-    case when v_total = 2 then 'PASA'
-         else 'FALLA - ve ' || v_total || ' y deberian ser 2' end, false);
+    case when v_total >= 2 then 'PASA'
+         else 'FALLA - ve ' || v_total || ' y deberia ver al menos las 2 de la prueba' end,
+    false);
 
   -- 2. Y ninguna que sea de otro correo.
   select count(*) into v_ajenas
@@ -99,10 +105,15 @@ begin
   perform public.rechazar_invitacion(v_rechazar);
   perform set_config('prueba.ficha_rechazada', v_rechazar::text, false);
 
-  select count(*) into v_total from public.invitaciones_pendientes();
+  -- Lo que se verifica es que ESA invitación desapareció, no que la lista
+  -- quedó vacía: puede haber otras legítimas esperando.
+  select count(*) into v_total
+    from public.invitaciones_pendientes() i
+   where i.student_id = v_rechazar;
+
   perform set_config('prueba.v5',
     case when v_total = 0 then 'PASA'
-         else 'FALLA - quedan ' || v_total || ' invitaciones despues de rechazar' end,
+         else 'FALLA - la invitacion rechazada sigue en la lista' end,
     false);
 
   -- 6. Y una vez rechazada, ya no se puede aceptar.

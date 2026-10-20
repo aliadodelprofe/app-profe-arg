@@ -17,7 +17,7 @@ begin;
 
 -- Anotado antes de cambiar de rol: después RLS esconde el otro espacio.
 select set_config('prueba.espacio_ajeno',
-  (select id::text from public.tenants where name = 'Escuela de Prueba 1'), false);
+  (select id::text from public.tenants where name = 'Escuela de Prueba 1' limit 1), false);
 select set_config('prueba.alumno_id',
   (select s.id::text from public.students s
      join auth.users u on u.id = s.user_id

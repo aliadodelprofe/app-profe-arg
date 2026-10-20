@@ -46,17 +46,41 @@ begin;
       'role','authenticated')::text, true);
   set local role authenticated;
 
+  -- ==========================================================================
+  -- VERIFICADO POR PROPIEDAD, NO POR CANTIDAD (10/10/2026)
+  --
+  -- Antes estas filas preguntaban `count(*) = 1`: un espacio, una membresía.
+  -- Era cierto el día que se escribieron. Dejó de serlo porque la base de
+  -- desarrollo se usa: hoy hay dos espacios llamados "Escuela de Prueba 1",
+  -- así que Profe 1 ve dos — y la prueba gritaba FUGA DE DATOS por ver DOS
+  -- COSAS PROPIAS.
+  --
+  -- Contar no verifica aislamiento. Lo único que importa es que no haya NI UNA
+  -- fila visible que no sea suya, y eso es cierto con un espacio y con diez.
+  -- ==========================================================================
   select
-    'Profe 1 ve sus espacios' as prueba,
-    case when count(*) = 1 then 'PASA' else 'FALLA' end as resultado,
-    count(*) as ve_espacios,
+    'SI ve al menos un espacio suyo' as prueba,
+    case when count(*) >= 1 then 'PASA' else 'FALLA - no ve lo suyo' end as resultado,
+    count(*) as filas,
     coalesce(string_agg(name, ', '), '(ninguno)') as cuales
   from public.tenants
 
   union all
 
   select
-    'Profe 1 NO ve el espacio de Profe 2',
+    'NO ve ningun espacio donde no sea miembro',
+    case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
+    count(*),
+    coalesce(string_agg(t.name, ', '), '(ninguno, correcto)')
+  from public.tenants t
+  where t.id not in (
+    select m.tenant_id from public.tenant_members m where m.user_id = auth.uid()
+  )
+
+  union all
+
+  select
+    'NO ve el espacio de Profe 2',
     case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
     count(*),
     coalesce(string_agg(name, ', '), '(ninguno, correcto)')
@@ -66,9 +90,10 @@ begin;
   union all
 
   select
-    'Profe 1 NO ve miembros de otros espacios',
-    case when count(*) = 1 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
+    'NO ve ninguna membresia de otra persona',
+    case when count(*) = 0 then 'PASA' else 'FALLA - FUGA DE DATOS' end,
     count(*),
-    'deberia ver solo su propia membresia'
-  from public.tenant_members;
+    'cada fila visible tiene que ser suya'
+  from public.tenant_members m
+  where m.user_id is distinct from auth.uid();
 commit;

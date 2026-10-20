@@ -1112,6 +1112,46 @@ grupo y con cuarenta, y no se degrada con el uso.
 **La regla general:** una prueba de aislamiento se escribe contra una propiedad, nunca
 contra una foto de los datos. La foto envejece; la propiedad no.
 
+### La tanda completa de pruebas: seis rotas, cero fugas (10/10/2026)
+
+La primera vez que se aplicó la regla nueva —correr **todas** las repetibles— seis de diez
+archivos fallaron. **Ninguna era una fuga.** Cuatro filas decían literalmente "FUGA DE
+DATOS" y en las cuatro el aislamiento estaba intacto.
+
+| Archivo | Qué pasaba |
+|---|---|
+| `aislamiento.sql` | `count(*) = 1` sobre espacios y membresías. Hay **dos espacios llamados "Escuela de Prueba 1"**, así que Profe 1 ve dos cosas **propias** y la prueba gritaba fuga |
+| `aislamiento_cargos.sql` | `from payment_allocations` y `from student_account` **sin filtro**, esperando cero. Contaban las imputaciones propias de Profe 1, que hoy son trece |
+| `confirmar_pago.sql` | Daba por hecho un cargo abierto de $5.000 que había dejado otra prueba. Desde la 0021, `asegurar_imputaciones` corre todas las noches y lo había cubierto: la función imputaba 0 porque no había nada que imputar |
+| `invitaciones.sql` | `= 2` y `= 0` sobre la lista de invitaciones. Hoy hay cuatro, porque se usaron de verdad |
+| `saldo_a_favor.sql` | Moría entera: `more than one row returned by a subquery`, por los dos espacios con el mismo nombre |
+
+**El patrón es uno solo, y es el mismo de `aislamiento_alumno.sql`:** estas pruebas se
+escribieron como **una foto de una base fija**, y esa base dejó de ser fija. Se usa todos
+los días, y desde la 0019 hay dos tareas que le escriben **todas las noches**.
+
+Qué se cambió, en todas:
+
+- **Verificar por propiedad, no por cantidad.** `where a.tenant_id not in (select my_tenant_ids())`
+  en vez de `count(*) = 0`. Cierto con trece imputaciones y con mil.
+- **Cada prueba se arma su propio estado.** `confirmar_pago.sql` ahora crea el cargo que va
+  a verificar. Una prueba que se apoya en lo que dejó otra verifica cosas distintas según
+  qué corrió antes y cuánto hace que no pasa la tarea de la noche.
+- **Verificar el efecto sobre lo propio, no sobre el total.** `confirmar_pago` reparte del
+  cargo más viejo al más nuevo: si el alumno tenía deudas anteriores, el total imputado deja
+  de ser predecible. Se verifica que **el cargo de la prueba** quede cubierto y que lo
+  imputado más lo que sobra sume lo declarado — o sea, que la plata no se evapore.
+- **`limit 1` donde se busca por nombre.** Ningún nombre de espacio es único, porque nada
+  lo hace único.
+
+**Lo más valioso que dejó esta tanda no es ninguno de los arreglos.** Es que cuatro carteles
+de "FUGA DE DATOS" resultaron falsos. Una prueba de seguridad que da falsa alarma enseña a
+ignorarla, y el día que avise de verdad va a parecer lo mismo que las otras cuatro veces.
+
+**Pendiente, decisión de Tomás:** hay dos espacios llamados "Escuela de Prueba 1" en
+`aliado-dev`. Las pruebas ya lo toleran. Borrar uno arrastra en cascada sus grupos, alumnos
+y cargos, así que no se toca sin decidirlo a propósito.
+
 ---
 
 ## Errores encontrados y qué enseñaron
