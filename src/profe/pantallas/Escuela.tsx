@@ -13,7 +13,7 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { editarEspacio, traerMediosDePago } from '../datos';
+import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien } from '../datos';
 import type { Espacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
@@ -25,16 +25,22 @@ import Salir from './Salir';
 export default function Escuela({
   espacio,
   email,
+  userId,
   alRenombrar,
   alCambiarEspacio,
 }: {
   espacio: Espacio;
   email: string;
+  userId: string;
   alRenombrar: (nuevo: Espacio) => void;
   // Solo viene cuando el profesor tiene más de un espacio.
   alCambiarEspacio?: () => void;
 }) {
   const medios = useCarga(() => traerMediosDePago(espacio.id), [espacio.id]);
+  // Casi todos los profesores siguen tomando clases con otros. Si esta persona
+  // además tiene ficha de alumna en algún lado, acá está la puerta — con la
+  // misma cuenta, sin un segundo correo.
+  const alumno = useCarga(() => soyAlumnoDeAlguien(userId), [userId]);
 
   return (
     <Marco conBarra>
@@ -55,7 +61,28 @@ export default function Escuela({
       )}
 
       <Seccion>Tu cuenta</Seccion>
+
+      {alumno.datos === true ? (
+        <p className="mb-3 text-sm text-tenue">
+          También tomás clases en otro lado. Es la misma cuenta de los dos lados.
+        </p>
+      ) : alumno.datos === false ? (
+        <p className="mb-3 text-sm text-tenue">
+          ¿Vos también tomás clases con otro profe? Pedile que te anote con{' '}
+          <span className="text-tinta">{email}</span> y vas a ver tus clases desde esta
+          misma cuenta, sin otro correo.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2">
+        {alumno.datos === true && (
+          <BotonSecundario
+            type="button"
+            onClick={() => { window.location.href = '/alumno'; }}
+          >
+            Ir a mi app de alumno
+          </BotonSecundario>
+        )}
         {alCambiarEspacio && (
           <BotonSecundario type="button" onClick={alCambiarEspacio}>
             Cambiar de espacio

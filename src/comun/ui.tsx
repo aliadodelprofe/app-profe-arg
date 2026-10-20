@@ -540,6 +540,13 @@ export const IconoEscuela = (
   </svg>
 );
 
+export const IconoPerfil = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <circle cx="12" cy="8" r="3.5" />
+    <path d="M5 20c0-3.3 3.1-6 7-6s7 2.7 7 6" strokeLinecap="round" />
+  </svg>
+);
+
 export const IconoClases = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
     <rect x="3" y="5" width="18" height="16" rx="2" />

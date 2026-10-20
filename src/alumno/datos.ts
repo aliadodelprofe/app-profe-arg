@@ -380,3 +380,26 @@ export async function resumenDeMisEscuelas(fichas: MiFicha[]): Promise<ResumenEs
     }),
   );
 }
+
+
+// ---------------------------------------------------------------------------
+// ¿ESTA PERSONA TAMBIÉN DA CLASES?
+//
+// Es más común de lo que parece: casi todos los profesores siguen tomando
+// clases con otros. Sin esto, esa persona termina creándose un segundo usuario
+// con otro correo, y a partir de ahí tiene dos vidas que no se hablan.
+//
+// La pregunta se contesta sola con RLS: la política de tenant_members solo
+// deja ver las membresías de los espacios propios, así que si devuelve algo,
+// esta persona es profesora en alguno.
+//
+// No tira error a propósito: esto decide si se muestra un botón, no si la app
+// funciona. Si falla, no se muestra y listo.
+// ---------------------------------------------------------------------------
+export async function tambienDoyClases(): Promise<boolean> {
+  const { count, error } = await supabase
+    .from('tenant_members')
+    .select('tenant_id', { count: 'exact', head: true });
+  if (error) return false;
+  return (count ?? 0) > 0;
+}

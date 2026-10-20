@@ -51,8 +51,9 @@ export default function Espacios({
           <>
             <Vacio>
               Esta es la app del profesor y no tenés ningún espacio a tu nombre.
-              Si venís a ver tus clases y tu estado de cuenta como alumno, esa
-              parte todavía está en construcción.
+              Si venís a ver tus clases y tu estado de cuenta como alumno,{' '}
+              <a href="/alumno" className="text-acento underline">entrá por acá</a> — es
+              la misma cuenta.
             </Vacio>
             <button
               onClick={() => setCreando(true)}

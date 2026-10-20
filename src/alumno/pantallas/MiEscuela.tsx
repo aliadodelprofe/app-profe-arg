@@ -10,7 +10,7 @@ import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
-  subirComprobante, COMPROBANTE_MAX_MB, misArreglos, misMediosDePago,
+  subirComprobante, COMPROBANTE_MAX_MB, misArreglos, misMediosDePago, tambienDoyClases,
 } from '../datos';
 import type {
   MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo, DondeTransferir as TipoDestino,
@@ -19,7 +19,7 @@ import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
-  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, IconoPerfil, Hoja, Esqueleto, Avatar,
   Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
@@ -50,10 +50,12 @@ export default function MiEscuela({
   // de dos razones muy distintas —ver qué viene y repasar lo que vio, o mirar
   // cómo está de plata— y antes tenía que recorrer una página larga para
   // llegar a cualquiera de las dos.
-  type Tab = 'clases' | 'cuenta';
+  type Tab = 'clases' | 'cuenta' | 'perfil';
   const [tab, setTab] = useState<Tab>('clases');
-  const [perfil, setPerfil] = useState(false);
   const [fotoGoogle, setFotoGoogle] = useState<string | null>(null);
+  // Si además da clases, se le ofrece el otro lado de la app. Es la misma
+  // cuenta: nadie debería necesitar dos correos para tomar y dar clases.
+  const doyClases = useCarga(tambienDoyClases, []);
 
   // La foto que Google ya tiene, para poder ofrecerla con un toque.
   useEffect(() => {
@@ -65,6 +67,7 @@ export default function MiEscuela({
   const pestanas: Pestana<Tab>[] = [
     { id: 'clases', texto: 'Clases', icono: IconoClases },
     { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
+    { id: 'perfil', texto: 'Perfil', icono: IconoPerfil },
   ];
 
   return (
@@ -72,11 +75,12 @@ export default function MiEscuela({
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
       <Marco conBarra>
-      {/* La foto es el botón del perfil. Es dónde la busca cualquiera que
-          haya usado una app en los últimos diez años. */}
+      {/* La foto es el atajo al perfil. Es dónde la busca cualquiera que haya
+          usado una app en los últimos diez años; la pestaña está igual, para
+          quien no lo intuya. */}
       <div className="mb-4 flex items-center justify-between gap-4">
         <button
-          onClick={() => setPerfil(true)}
+          onClick={() => setTab('perfil')}
           className="flex min-w-0 items-center gap-3 rounded-xl text-left transition active:opacity-70"
         >
           <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} />
@@ -85,25 +89,22 @@ export default function MiEscuela({
             <p className="truncate text-sm text-tenue">{ficha.full_name}</p>
           </div>
         </button>
-        <Salir />
       </div>
-
-      {perfil && (
-        <Hoja titulo="Mi perfil" alCerrar={() => setPerfil(false)}>
-          <MiPerfil
-            ficha={ficha}
-            fotoSugerida={fotoGoogle}
-            alCambiarEscuela={alCambiarEscuela}
-            alCerrar={() => setPerfil(false)}
-            alGuardar={() => { setPerfil(false); alCambiarPerfil?.(); }}
-          />
-        </Hoja>
-      )}
 
       {tab === 'clases' && (
         <MisClases
           clases={clases.datos}
           error={clases.error}
+        />
+      )}
+
+      {tab === 'perfil' && (
+        <Perfil
+          ficha={ficha}
+          fotoGoogle={fotoGoogle}
+          doyClases={doyClases.datos === true}
+          alCambiarEscuela={alCambiarEscuela}
+          alGuardar={() => alCambiarPerfil?.()}
         />
       )}
 
@@ -283,6 +284,81 @@ function FormularioAviso({
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>
     </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// PERFIL
+//
+// La tercera pestaña: vos. Antes esto era una hoja que se abría tocando la
+// foto, y ahí adentro estaba escondido lo único que no se podía hacer de
+// ninguna otra forma — cambiar de escuela. Una acción que nadie encuentra es
+// una acción que no existe.
+//
+// Junta las tres cosas que son tuyas y no de ninguna escuela en particular:
+// cómo te llamás y qué cara tenés, en cuál de tus escuelas estás parado, y
+// las dos salidas.
+// ----------------------------------------------------------------------------
+function Perfil({
+  ficha,
+  fotoGoogle,
+  doyClases,
+  alCambiarEscuela,
+  alGuardar,
+}: {
+  ficha: MiFicha;
+  fotoGoogle: string | null;
+  doyClases: boolean;
+  alCambiarEscuela?: () => void;
+  alGuardar: () => void;
+}) {
+  return (
+    <>
+      <MiPerfil ficha={ficha} fotoSugerida={fotoGoogle} alGuardar={alGuardar} />
+
+      {/* Tu nombre y tu foto son tuyos y los ven todos tus profesores: la
+          ficha es por escuela, pero vos sos una sola persona. */}
+      {alCambiarEscuela && (
+        <>
+          <Seccion>Mis escuelas</Seccion>
+          <p className="mb-3 text-sm text-tenue">
+            Estás viendo <span className="text-tinta">{ficha.escuela?.name ?? 'tu escuela'}</span>.
+            Tu nombre y tu foto son los mismos en todas.
+          </p>
+          <BotonSecundario type="button" onClick={alCambiarEscuela}>
+            Cambiar de escuela
+          </BotonSecundario>
+        </>
+      )}
+
+      {/* El mismo usuario de los dos lados. Casi todos los profesores siguen
+          tomando clases con otros: sin esto, esa persona se crea un segundo
+          correo y queda con dos vidas que no se hablan. */}
+      <Seccion>Mi cuenta</Seccion>
+      {doyClases ? (
+        <>
+          <p className="mb-3 text-sm text-tenue">
+            También das clases. Es la misma cuenta de los dos lados.
+          </p>
+          <div className="mb-4">
+            <BotonSecundario
+              type="button"
+              onClick={() => { window.location.href = '/profe'; }}
+            >
+              Ir a mi app de profesor
+            </BotonSecundario>
+          </div>
+        </>
+      ) : (
+        <p className="mb-3 text-sm text-tenue">
+          ¿Vos también das clases? Podés usar{' '}
+          <a href="/profe" className="text-acento underline">esta misma cuenta</a> para
+          llevar tus grupos y tus cobros. No hace falta otro correo.
+        </p>
+      )}
+
+      <Salir />
+    </>
   );
 }
 

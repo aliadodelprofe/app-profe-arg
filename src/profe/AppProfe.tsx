@@ -160,6 +160,7 @@ function Adentro({ sesion }: { sesion: Session }) {
           <Escuela
             espacio={espacio}
             email={email}
+            userId={sesion.user.id}
             // Renombrar cambia el objeto que viaja en la vista: si no se
             // reemplaza acá, el resto de la app sigue mostrando el nombre
             // viejo hasta que se recargue la página.

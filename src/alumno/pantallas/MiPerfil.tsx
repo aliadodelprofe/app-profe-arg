@@ -18,15 +18,14 @@ import { Aviso, Campo, Texto, Boton, BotonSecundario, Avatar } from '../../comun
 export default function MiPerfil({
   ficha,
   fotoSugerida,
-  alCambiarEscuela,
   alCerrar,
   alGuardar,
 }: {
   ficha: MiFicha;
   fotoSugerida: string | null;
-  // Solo viene cuando la persona cursa en más de una escuela.
-  alCambiarEscuela?: () => void;
-  alCerrar: () => void;
+  // Solo cuando el formulario vive en una hoja. Como pestaña no hay nada que
+  // cancelar: te vas tocando otra pestaña.
+  alCerrar?: () => void;
   alGuardar: () => void;
 }) {
   const [nombre, setNombre] = useState(ficha.full_name);
@@ -90,23 +89,10 @@ export default function MiPerfil({
         <Boton type="submit" disabled={guardando}>
           {guardando ? 'Guardando…' : 'Guardar'}
         </Boton>
-        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+        {alCerrar && (
+          <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+        )}
       </div>
-
-      {/* Tu nombre y tu foto son tuyos y los ven todos tus profesores: la
-          ficha es por escuela, pero vos sos una sola persona. Por eso cambiar
-          de escuela vive acá abajo y no arriba, al lado del título: es la
-          misma persona mirando otra cosa. */}
-      {alCambiarEscuela && (
-        <div className="border-t border-linea pt-4">
-          <p className="mb-2 text-sm text-tenue">
-            Cursás en más de una escuela. Tu nombre y tu foto son los mismos en todas.
-          </p>
-          <BotonSecundario type="button" onClick={alCambiarEscuela}>
-            Cambiar de escuela
-          </BotonSecundario>
-        </div>
-      )}
     </form>
   );
 }
