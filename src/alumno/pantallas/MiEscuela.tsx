@@ -12,12 +12,13 @@ import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
   subirComprobante, COMPROBANTE_MAX_MB, misArreglos,
 } from '../datos';
-import type { MiFicha } from '../datos';
+import type { MiFicha, MiClase } from '../datos';
 import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
+  Lista, Fila, Segmentos, ChipFecha, Etiqueta,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import MiPerfil from './MiPerfil';
@@ -61,9 +62,6 @@ export default function MiEscuela({
     { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
   ];
 
-  const hoy = hoyISO();
-  const proximas = clases.datos?.filter((c) => c.date >= hoy).reverse() ?? [];
-  const pasadas = clases.datos?.filter((c) => c.date < hoy).slice(0, 8) ?? [];
   const declarados = pagos.datos?.filter((p) => p.status === 'declared') ?? [];
   // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
   // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
@@ -104,75 +102,10 @@ export default function MiEscuela({
       )}
 
       {tab === 'clases' && (
-        <>
-      <Seccion>Próximas clases</Seccion>
-      {clases.error && <Aviso>{clases.error}</Aviso>}
-      {!clases.datos && !clases.error && <Esqueleto />}
-      {clases.datos && proximas.length === 0 && <Vacio>No hay clases cargadas todavía.</Vacio>}
-
-      <ul className="mb-8 flex flex-col gap-2">
-        {proximas.map((c) => {
-          const venue = c.venue ?? c.grupo?.venue ?? null;
-          const address = c.address ?? c.grupo?.address ?? null;
-          const cancelada = c.status === 'cancelled';
-          return (
-            <li key={c.id}>
-              <Tarjeta>
-                <div className={cancelada ? 'opacity-50' : undefined}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-tinta">
-                        {c.grupo?.name ?? 'Clase'}
-                        {cancelada && (
-                          <span className="ml-2 rounded-full border border-linea px-2 py-0.5 text-xs text-tenue">
-                            cancelada
-                          </span>
-                        )}
-                      </p>
-                      {venue && <p className="text-sm text-tenue">{venue}</p>}
-                      {address && (
-                        <a
-                          href={linkMapaDe(address)} target="_blank" rel="noreferrer"
-                          className="text-sm text-acento underline"
-                        >
-                          cómo llegar
-                        </a>
-                      )}
-                    </div>
-                    <p className="shrink-0 text-sm text-tenue">
-                      {fecha(c.date)}
-                      {c.start_time ? ` · ${c.start_time.slice(0, 5)}` : ''}
-                    </p>
-                  </div>
-                </div>
-              </Tarjeta>
-            </li>
-          );
-        })}
-      </ul>
-
-      {/* ------------------------------------------------------------- recaps */}
-      {pasadas.length > 0 && (
-        <>
-          <Seccion>Lo que vimos</Seccion>
-          <ul className="mb-8 flex flex-col gap-2">
-            {pasadas.map((c) => (
-              <li key={c.id}>
-                <Tarjeta>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-tinta">{c.title ?? c.grupo?.name ?? 'Clase'}</p>
-                    <p className="shrink-0 text-sm text-tenue">{fecha(c.date)}</p>
-                  </div>
-                  {c.recap
-                    ? <p className="mt-1 text-sm text-tenue">{c.recap}</p>
-                    : <p className="mt-1 text-sm text-tenue/60">Sin resumen todavía.</p>}
-                </Tarjeta>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-        </>
+        <MisClases
+          clases={clases.datos}
+          error={clases.error}
+        />
       )}
 
       {tab === 'cuenta' && (
@@ -434,5 +367,212 @@ function FormularioAviso({
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
       </div>
     </form>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// LAS CLASES DEL ALUMNO
+//
+// Antes esto eran dos listas infinitas, una abajo de la otra: todas las clases
+// que vienen y todas las que pasaron. Con un grupo semanal eso son cuarenta
+// renglones iguales en los que no hay dónde apoyar la vista, y lo que el
+// alumno realmente venía a buscar —cuándo es la próxima, qué vimos la última
+// vez— quedaba enterrado.
+//
+// Ahora hay tres cosas, en el orden en que se necesitan:
+//
+//   1. La próxima clase, sola y grande. Es la pregunta que trae al alumno a
+//      la app. Si la contesta de un vistazo, no hace falta que lea nada más.
+//   2. Dos solapas, no dos listas apiladas: "Próximas" y "Ya vimos".
+//   3. Filas cortas con el chip de fecha adelante, de a ocho. El detalle
+//      completo —la dirección, el mapa, el resumen de lo que se vio— se abre
+//      tocando la fila, en una hoja. Una lista se recorre; un detalle se mira.
+// ----------------------------------------------------------------------------
+const DE_A = 8;
+
+function MisClases({
+  clases,
+  error,
+}: {
+  clases: MiClase[] | null;
+  error: string | null;
+}) {
+  type Cual = 'proximas' | 'vimos';
+  const [cual, setCual] = useState<Cual>('proximas');
+  const [limite, setLimite] = useState(DE_A);
+  const [abierta, setAbierta] = useState<MiClase | null>(null);
+
+  const hoy = hoyISO();
+  // La base las trae de la más nueva a la más vieja. Las que vienen hay que
+  // darlas vuelta: lo primero que se busca es lo más cercano.
+  const proximas = (clases ?? []).filter((c) => c.date >= hoy).reverse();
+  const vimos = (clases ?? []).filter((c) => c.date < hoy);
+  const lista = cual === 'proximas' ? proximas : vimos;
+
+  // La próxima de verdad: una clase cancelada no es la próxima clase.
+  const proxima = proximas.find((c) => c.status !== 'cancelled') ?? null;
+
+  function elegir(c: Cual) {
+    setCual(c);
+    setLimite(DE_A);
+  }
+
+  if (error) return <Aviso>{error}</Aviso>;
+  if (!clases) return <Esqueleto />;
+  if (clases.length === 0) return <Vacio>No hay clases cargadas todavía.</Vacio>;
+
+  return (
+    <>
+      {proxima && (
+        <button
+          onClick={() => setAbierta(proxima)}
+          className="anim-aparecer mb-5 w-full rounded-2xl border border-acento/30 bg-acento/5 px-5 py-4 text-left transition active:scale-[0.99]"
+        >
+          <p className="text-xs uppercase tracking-wide text-acento">Tu próxima clase</p>
+          <p className="mt-1 text-xl font-semibold tracking-tight text-tinta">
+            {diaLargo(proxima.date)}
+            {proxima.start_time ? ` · ${proxima.start_time.slice(0, 5)}` : ''}
+          </p>
+          <p className="mt-0.5 truncate text-sm text-tenue">
+            {proxima.grupo?.name ?? 'Clase'}
+            {lugarDe(proxima) ? ` · ${lugarDe(proxima)}` : ''}
+          </p>
+        </button>
+      )}
+
+      <Segmentos<Cual>
+        valor={cual}
+        alElegir={elegir}
+        opciones={[
+          { id: 'proximas', texto: 'Próximas', cuantos: proximas.length },
+          { id: 'vimos', texto: 'Ya vimos', cuantos: vimos.length },
+        ]}
+      />
+
+      {lista.length === 0 && (
+        <Vacio>
+          {cual === 'proximas'
+            ? 'No hay clases cargadas para adelante.'
+            : 'Todavía no pasó ninguna clase.'}
+        </Vacio>
+      )}
+
+      {lista.length > 0 && (
+        <Lista>
+          {lista.slice(0, limite).map((c) => {
+            const cancelada = c.status === 'cancelled';
+            return (
+              <Fila
+                key={c.id}
+                principal={<ChipFecha iso={c.date} apagado={cancelada} />}
+                titulo={
+                  <span className={cancelada ? 'line-through opacity-60' : undefined}>
+                    {cual === 'vimos' ? (c.title ?? c.grupo?.name ?? 'Clase') : (c.grupo?.name ?? 'Clase')}
+                  </span>
+                }
+                detalle={
+                  cancelada
+                    ? 'cancelada'
+                    : cual === 'vimos'
+                      ? (c.recap ?? 'sin resumen todavía')
+                      : lugarDe(c)
+                }
+                valor={c.start_time ? c.start_time.slice(0, 5) : undefined}
+                alTocar={() => setAbierta(c)}
+              />
+            );
+          })}
+        </Lista>
+      )}
+
+      {lista.length > limite && (
+        <div className="mt-3 flex justify-center">
+          <BotonSecundario type="button" onClick={() => setLimite((n) => n + DE_A)}>
+            Ver {Math.min(DE_A, lista.length - limite)} más
+          </BotonSecundario>
+        </div>
+      )}
+
+      {abierta && (
+        <Hoja titulo={abierta.grupo?.name ?? 'Clase'} alCerrar={() => setAbierta(null)}>
+          <DetalleClase clase={abierta} />
+        </Hoja>
+      )}
+    </>
+  );
+}
+
+// El lugar de una clase: el suyo si lo tiene, si no el del grupo.
+function lugarDe(c: MiClase): string | null {
+  return c.venue ?? c.grupo?.venue ?? null;
+}
+
+function direccionDe(c: MiClase): string | null {
+  return c.address ?? c.grupo?.address ?? null;
+}
+
+// 'jueves 23 de octubre'. En la tarjeta de la próxima clase la fecha se lee,
+// no se compara: ahí el día de la semana vale más que el número.
+const DIA_LARGO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+const MES_LARGO = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+function diaLargo(iso: string): string {
+  const [a, m, d] = iso.split('-').map(Number);
+  const dow = new Date(Date.UTC(a, m - 1, d)).getUTCDay();
+  return `${DIA_LARGO[dow]} ${d} de ${MES_LARGO[m - 1]}`;
+}
+
+// ----------------------------------------------------------------------------
+// El detalle de una clase. Lo que antes estaba desparramado en cada renglón de
+// la lista —el lugar, el mapa, el resumen— vive acá, donde hay lugar para
+// mostrarlo entero sin que la lista deje de ser una lista.
+// ----------------------------------------------------------------------------
+function DetalleClase({ clase }: { clase: MiClase }) {
+  const venue = lugarDe(clase);
+  const address = direccionDe(clase);
+  const cancelada = clase.status === 'cancelled';
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-lg font-semibold tracking-tight text-tinta">
+            {diaLargo(clase.date)}
+          </p>
+          {cancelada && <Etiqueta>cancelada</Etiqueta>}
+        </div>
+        <p className="mt-0.5 text-sm text-tenue">
+          {fecha(clase.date)}
+          {clase.start_time ? ` · ${clase.start_time.slice(0, 5)}` : ''}
+        </p>
+      </div>
+
+      {(venue || address) && (
+        <div>
+          <p className="text-sm text-tenue">Dónde</p>
+          {venue && <p className="text-tinta">{venue}</p>}
+          {address && (
+            <a
+              href={linkMapaDe(address)}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-sm text-acento underline"
+            >
+              cómo llegar
+            </a>
+          )}
+        </div>
+      )}
+
+      <div>
+        <p className="text-sm text-tenue">Lo que vimos</p>
+        {clase.recap
+          ? <p className="whitespace-pre-wrap text-tinta">{clase.recap}</p>
+          : <p className="text-tenue/60">Todavía no hay resumen de esta clase.</p>}
+      </div>
+    </div>
   );
 }

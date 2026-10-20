@@ -10,11 +10,12 @@ import {
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   inscribirConArranqueDiferido, mesSiguiente,
   nombreFormato, nombreCobro, fecha, plata,
-  periodoDe,
+  periodoDe, porAlumno,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
 import type {
   Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro, DatosFicha,
+  AlumnoDelGrupo,
 } from '../datos';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Area, Opciones,
@@ -90,7 +91,9 @@ export default function DetalleGrupo({
   const [vista, setVista] = useState<Vista>('alumnos');
   const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase' | 'serie'>(null);
 
-  const activos = inscripciones.datos?.filter((i) => i.status === 'active') ?? [];
+  // Una fila por persona, no por inscripción: ver porAlumno() en datos.ts.
+  const gente = porAlumno(inscripciones.datos ?? [], hoyISO());
+  const activos = gente.filter((g) => g.activo);
 
   // Las cuatro novedades son lo mismo: lo que la app hizo sola al abrir el
   // grupo. Antes eran cuatro cajas apiladas que empujaban el contenido real
@@ -167,18 +170,18 @@ export default function DetalleGrupo({
 
           {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
           {!inscripciones.datos && !inscripciones.error && <Esqueleto />}
-          {inscripciones.datos?.length === 0 && (
+          {inscripciones.datos && gente.length === 0 && (
             <Vacio>Todavía no hay nadie inscripto en este grupo.</Vacio>
           )}
 
-          {inscripciones.datos && inscripciones.datos.length > 0 && (
+          {gente.length > 0 && (
             <Lista>
-              {inscripciones.datos.map((i) => (
+              {gente.map((g) => (
                 <FilaAlumno
-                  key={i.id}
+                  key={g.alumno.id}
                   espacio={espacio}
                   grupo={grupo}
-                  inscripcion={i}
+                  persona={g}
                   alCambiar={inscripciones.recargar}
                 />
               ))}
@@ -1001,14 +1004,19 @@ function FormularioSerie({
 function FilaAlumno({
   espacio,
   grupo,
-  inscripcion,
+  persona,
   alCambiar,
 }: {
   espacio: Espacio;
   grupo: Grupo;
-  inscripcion: Inscripcion;
+  persona: AlumnoDelGrupo;
   alCambiar: () => void;
 }) {
+  // Una persona puede tener varios arreglos encadenados. "inscripcion" es el
+  // que manda hoy: es el que fija el precio que se muestra y al que se le
+  // cuelga un cargo manual. Los otros entran en juego al dar de baja o quitar,
+  // que tienen que llevarse todos.
+  const inscripcion = persona.vigente;
   const [error, setError] = useState<string | null>(null);
   const [trabajando, setTrabajando] = useState(false);
   const [confirmando, setConfirmando] = useState(false);
@@ -1016,7 +1024,7 @@ function FilaAlumno({
   const [cobrando, setCobrando] = useState(false);
   const [editandoFicha, setEditandoFicha] = useState(false);
 
-  const activa = inscripcion.status === 'active';
+  const activa = persona.activo;
 
   async function hacer(accion: () => Promise<void>) {
     setTrabajando(true);
@@ -1031,34 +1039,36 @@ function FilaAlumno({
     }
   }
 
-  const nombre = inscripcion.alumno?.full_name ?? 'Alumno sin ficha';
+  const nombre = persona.alumno.full_name;
 
-  // El estado del enganche al portal, en una línea. La consecuencia de no
-  // cargarle el correo se ve acá, en el momento, y no tres semanas después
-  // cuando el alumno pregunta por qué no puede entrar.
-  const estadoPortal = !activa
-    ? (inscripcion.end_date ? `ya no cursa · hasta el ${fecha(inscripcion.end_date)}` : 'ya no cursa')
-    : !inscripcion.alumno?.email
-      ? 'sin correo: no va a poder entrar a la app'
-      : inscripcion.alumno.invite_rejected_at && !inscripcion.alumno.user_id
-        ? null
-        : !inscripcion.alumno.user_id
-          ? `invitado a ${inscripcion.alumno.email} · todavía no aceptó`
-          : nombreCobro[inscripcion.billing_mode];
+  // La línea de abajo del nombre. Dice, en este orden de urgencia: si ya no
+  // cursa, si no va a poder entrar a la app, y si su forma de pago cambia el
+  // mes que viene. Ya NO repite la forma de pago actual: esa está dos
+  // centímetros a la derecha, debajo del precio.
+  const detalles = [
+    !activa && (inscripcion.end_date ? `ya no cursa · hasta el ${fecha(inscripcion.end_date)}` : 'ya no cursa'),
+    activa && !persona.alumno.email && 'sin correo: no va a poder entrar a la app',
+    activa && persona.alumno.email && !persona.alumno.user_id && !persona.alumno.invite_rejected_at &&
+      `invitado a ${persona.alumno.email} · todavía no aceptó`,
+    // El segundo arreglo, dicho como lo que es: un cambio anunciado, no otro
+    // alumno. Es lo que antes aparecía como una fila duplicada.
+    activa && persona.futuro && persona.futuro.start_date &&
+      `pasa a ${nombreCobro[persona.futuro.billing_mode]} desde ${mesEnPalabras(mesDe(persona.futuro.start_date))}`,
+  ].filter(Boolean) as string[];
 
   return (
     <Fila
       avatar={nombre}
-      foto={inscripcion.alumno?.avatar_url}
+      foto={persona.alumno.avatar_url}
       titulo={nombre}
-      detalle={estadoPortal}
+      detalle={detalles.length > 0 ? detalles.join(' · ') : null}
       valor={plata(precioDe(grupo, inscripcion))}
       bajoValor={nombreCobro[inscripcion.billing_mode]}
     >
       <div className={activa ? undefined : 'opacity-60'}>
-        {activa && inscripcion.alumno?.invite_rejected_at && !inscripcion.alumno.user_id && (
+        {activa && persona.alumno.invite_rejected_at && !persona.alumno.user_id && (
           <p className="mb-2 text-sm text-alerta">
-            Alguien entró con {inscripcion.alumno.email} y dijo que no es esta persona.
+            Alguien entró con {persona.alumno.email} y dijo que no es esta persona.
             Revisá el correo en "Editar ficha".
           </p>
         )}
@@ -1072,10 +1082,10 @@ function FilaAlumno({
         </p>
       )}
 
-      {editandoFicha && inscripcion.alumno && (
+      {editandoFicha && (
         <Hoja titulo="Corregir la ficha" alCerrar={() => setEditandoFicha(false)}>
           <FormularioFicha
-            alumnoId={inscripcion.alumno.id}
+            alumnoId={persona.alumno.id}
             alCerrar={() => setEditandoFicha(false)}
             alGuardar={() => { setEditandoFicha(false); alCambiar(); }}
           />
@@ -1103,7 +1113,7 @@ function FilaAlumno({
           <div className="flex flex-wrap gap-2">
             <BotonSecundario
               type="button" disabled={trabajando}
-              onClick={() => hacer(() => quitarInscripcion(inscripcion.id))}
+              onClick={() => hacer(() => quitarInscripcion(persona.tramos))}
             >
               Sí, quitar
             </BotonSecundario>
@@ -1119,7 +1129,7 @@ function FilaAlumno({
               cambio igual: esconder el botón es para no ofrecer algo que no se
               puede hacer. El período sirve para corregir un correo mal
               tipeado, que es lo único que impide que el alumno entre. */}
-          {!editandoFicha && !inscripcion.alumno?.user_id && (
+          {!editandoFicha && !persona.alumno.user_id && (
             <BotonSecundario type="button" onClick={() => setEditandoFicha(true)}>
               Corregir la ficha
             </BotonSecundario>
@@ -1132,14 +1142,14 @@ function FilaAlumno({
           {activa ? (
             <BotonSecundario
               type="button" disabled={trabajando}
-              onClick={() => hacer(() => darDeBaja(inscripcion.id, hoyISO()))}
+              onClick={() => hacer(() => darDeBaja(persona.tramos, hoyISO()))}
             >
               Dar de baja
             </BotonSecundario>
           ) : (
             <BotonSecundario
               type="button" disabled={trabajando}
-              onClick={() => hacer(() => volverAAnotar(inscripcion.id))}
+              onClick={() => hacer(() => volverAAnotar(persona.tramos))}
             >
               Volver a anotar
             </BotonSecundario>

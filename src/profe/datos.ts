@@ -74,6 +74,11 @@ export type Inscripcion = {
   id: string;
   billing_mode: ModoCobro;
   status: string;
+  // Las dos fechas del arreglo. Son imprescindibles: un mismo alumno puede
+  // tener DOS inscripciones en el mismo grupo, una atrás de la otra, porque
+  // cambiar de forma de pago es cerrar la de ahora y abrir otra el día 1
+  // (migración 0017). Sin start_date no hay forma de saber cuál manda hoy.
+  start_date: string | null;
   end_date: string | null;
   // email, user_id e invite_rejected_at vienen para poder decirle al profe, en
   // la misma fila, en qué estado está ese alumno respecto del portal: sin
@@ -148,12 +153,84 @@ export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]
   const { data, error } = await supabase
     .from('enrollments')
     .select(
-      'id, billing_mode, status, end_date, ' +
+      'id, billing_mode, status, start_date, end_date, ' +
       'alumno:students(id, full_name, avatar_url, email, user_id, invite_rejected_at)',
     )
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as Inscripcion[];
+}
+
+
+// ---------------------------------------------------------------------------
+// UN ALUMNO, UNA FILA
+//
+// En la base un alumno puede tener VARIAS inscripciones en el mismo grupo, una
+// atrás de la otra: cambiar de forma de pago es cerrar el arreglo de ahora a
+// fin de mes y abrir otro el día 1 (migración 0017), y lo mismo pasa con quien
+// se suma a mitad de mes. Eso está bien donde está —son dos arreglos de plata
+// distintos y cada cargo tiene que saber de cuál viene— pero el profesor no ve
+// arreglos: ve personas. Dos filas con el mismo nombre le hacen creer que
+// anotó dos veces al mismo.
+//
+// Acá se traduce una cosa en la otra: se agrupa por alumno, se dice cuál es el
+// arreglo que manda en la fecha pedida, y si hay otro esperando con una forma
+// de pago distinta se devuelve aparte, para poder anunciar el cambio en vez de
+// mostrarlo como un alumno duplicado.
+// ---------------------------------------------------------------------------
+export type AlumnoDelGrupo = {
+  alumno: NonNullable<Inscripcion['alumno']>;
+  tramos: Inscripcion[];
+  vigente: Inscripcion;
+  futuro: Inscripcion | null;
+  activo: boolean;
+};
+
+export function porAlumno(inscripciones: Inscripcion[], enFecha: string): AlumnoDelGrupo[] {
+  const porId = new Map<string, Inscripcion[]>();
+  for (const i of inscripciones) {
+    if (!i.alumno) continue;
+    const previas = porId.get(i.alumno.id);
+    if (previas) previas.push(i);
+    else porId.set(i.alumno.id, [i]);
+  }
+
+  const gente: AlumnoDelGrupo[] = [];
+  for (const tramos of porId.values()) {
+    tramos.sort((a, b) => (a.start_date ?? '').localeCompare(b.start_date ?? ''));
+
+    const corriendo = (t: Inscripcion) =>
+      (t.start_date === null || t.start_date <= enFecha) &&
+      (t.end_date === null || t.end_date >= enFecha);
+
+    // El que manda. Si ninguno corre en esa fecha —porque el alumno se anotó
+    // recién para el mes que viene— manda el primero que venga, que es lo que
+    // efectivamente va a pasar con esa persona.
+    const vigente =
+      [...tramos].reverse().find((t) => t.status === 'active' && corriendo(t)) ??
+      tramos.find((t) => t.status === 'active') ??
+      tramos[tramos.length - 1];
+
+    const futuro =
+      tramos.find(
+        (t) =>
+          t.status === 'active' &&
+          t.id !== vigente.id &&
+          t.start_date !== null &&
+          t.start_date > enFecha &&
+          t.billing_mode !== vigente.billing_mode,
+      ) ?? null;
+
+    gente.push({
+      alumno: vigente.alumno as NonNullable<Inscripcion['alumno']>,
+      tramos,
+      vigente,
+      futuro,
+      activo: tramos.some((t) => t.status === 'active'),
+    });
+  }
+
+  return gente.sort((a, b) => a.alumno.full_name.localeCompare(b.alumno.full_name));
 }
 
 export async function traerClases(grupoId: string): Promise<Clase[]> {
@@ -653,19 +730,49 @@ export function horarioDe(g: Grupo): string | null {
 // inscripción cuelga aunque sea un cargo, no se borra. Borrarla dejaría cargos
 // sin de dónde venir y el estado de cuenta sin explicación.
 // ---------------------------------------------------------------------------
-export async function darDeBaja(inscripcionId: string, hasta: string): Promise<void> {
-  const { error } = await supabase
-    .from('enrollments')
-    .update({ status: 'ended', end_date: hasta })
-    .eq('id', inscripcionId);
-  if (error) throw new Error(error.message);
+// Las tres trabajan sobre TODOS los tramos del alumno en ese grupo, no sobre
+// uno. Dar de baja a alguien que tenía la cuota arrancando el 1 y cerrarle
+// solo el tramo de este mes lo haría reaparecer en noviembre como si nada.
+export async function darDeBaja(tramos: Inscripcion[], hasta: string): Promise<void> {
+  for (const t of tramos) {
+    if (t.status !== 'active') continue;
+
+    // Un arreglo que todavía no arrancó no se "termina": nunca pasó. Si no
+    // dejó ningún cargo se borra. Si dejó alguno, se le pone fin antes del
+    // comienzo, que es como la base dice "esto no corre": asegurar_cargos
+    // ignora toda inscripción con end_date anterior a hoy.
+    if (t.start_date !== null && t.start_date > hasta) {
+      const cargos = await cargosDeLaInscripcion(t.id);
+      if (cargos === 0) {
+        const { error } = await supabase.from('enrollments').delete().eq('id', t.id);
+        if (error) throw new Error(error.message);
+        continue;
+      }
+    }
+
+    const { error } = await supabase
+      .from('enrollments')
+      .update({ status: 'ended', end_date: hasta })
+      .eq('id', t.id);
+    if (error) throw new Error(error.message);
+  }
 }
 
-export async function volverAAnotar(inscripcionId: string): Promise<void> {
+// Se reabre UNO solo: el último. Dar de baja borró o cerró los tramos que
+// venían después y no guardamos qué fecha de fin tenía cada uno antes, así que
+// revivirlos a todos dejaría dos arreglos abiertos a la vez sobre el mismo
+// alumno. Vuelve con la forma de pago del último tramo que tuvo; si quería
+// otra, la elige de nuevo desde su app.
+export async function volverAAnotar(tramos: Inscripcion[]): Promise<void> {
+  const ordenados = [...tramos].sort((a, b) =>
+    (a.start_date ?? '').localeCompare(b.start_date ?? ''),
+  );
+  const ultimo = ordenados[ordenados.length - 1];
+  if (!ultimo) return;
   const { error } = await supabase
     .from('enrollments')
     .update({ status: 'active', end_date: null })
-    .eq('id', inscripcionId);
+    .eq('id', ultimo.id);
   if (error) throw new Error(error.message);
 }
 
@@ -678,15 +785,19 @@ export async function cargosDeLaInscripcion(inscripcionId: string): Promise<numb
   return count ?? 0;
 }
 
-export async function quitarInscripcion(inscripcionId: string): Promise<void> {
-  const cargos = await cargosDeLaInscripcion(inscripcionId);
+export async function quitarInscripcion(tramos: Inscripcion[]): Promise<void> {
+  let cargos = 0;
+  for (const t of tramos) cargos += await cargosDeLaInscripcion(t.id);
   if (cargos > 0) {
     throw new Error(
-      `Esta inscripción ya tiene ${cargos} ${cargos === 1 ? 'cargo' : 'cargos'}. ` +
+      `Este alumno ya tiene ${cargos} ${cargos === 1 ? 'cargo' : 'cargos'} en este grupo. ` +
       'No se puede borrar sin dejar esos cargos sin explicación: dale de baja.',
     );
   }
-  const { error } = await supabase.from('enrollments').delete().eq('id', inscripcionId);
+  const { error } = await supabase
+    .from('enrollments')
+    .delete()
+    .in('id', tramos.map((t) => t.id));
   if (error) throw new Error(error.message);
 }
 

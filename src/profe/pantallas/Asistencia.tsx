@@ -13,10 +13,10 @@
 import { useEffect, useState } from 'react';
 import {
   traerInscripciones, traerAsistencias, marcarAsistencia, traerDeudas, guardarRecap,
-  nombreAsistencia, fecha, plata,
+  nombreAsistencia, fecha, plata, porAlumno,
 } from '../datos';
 import type {
-  Espacio, Grupo, Clase, Inscripcion, FilaDeuda,
+  Espacio, Grupo, Clase, Inscripcion, FilaDeuda, AlumnoDelGrupo,
   Asistencia as TipoAsistencia, EstadoAsistencia,
 } from '../datos';
 
@@ -36,7 +36,7 @@ export default function Asistencia({
   clase: Clase;
   alVolver: () => void;
 }) {
-  const [inscriptos, setInscriptos] = useState<Inscripcion[] | null>(null);
+  const [inscriptos, setInscriptos] = useState<AlumnoDelGrupo[] | null>(null);
   // Lo marcado hasta ahora, por alumno. Se actualiza apenas tocás, sin
   // esperar a la base: si la base rechaza, se vuelve atrás y se avisa.
   const [marcas, setMarcas] = useState<Record<string, EstadoAsistencia>>({});
@@ -53,7 +53,12 @@ export default function Asistencia({
     ])
       .then(([ins, asis, deudas]: [Inscripcion[], TipoAsistencia[], FilaDeuda[]]) => {
         if (!vivo) return;
-        setInscriptos(ins.filter((i) => i.status === 'active'));
+        // Por persona y no por inscripción: un alumno que cambió de forma de
+        // pago tiene dos arreglos encadenados y no por eso viene dos veces a
+        // la clase. Y se mira la fecha DE LA CLASE, no la de hoy: quien se dio
+        // de baja ayer igual tiene que poder figurar en la asistencia de una
+        // clase de la semana pasada.
+        setInscriptos(porAlumno(ins, clase.date).filter((g) => g.activo));
         const previas: Record<string, EstadoAsistencia> = {};
         asis.forEach((a) => { previas[a.student_id] = a.status; });
         setMarcas(previas);
@@ -114,13 +119,12 @@ export default function Asistencia({
 
       <ul className="flex flex-col gap-2">
         {inscriptos?.map((i) => {
-          if (!i.alumno) return null;
           const alumno = i.alumno;
           const actual = marcas[alumno.id];
           const cuenta = cuentas[alumno.id];
           const debe = (cuenta?.saldo ?? 0) > 0;
           return (
-            <li key={i.id}>
+            <li key={alumno.id}>
               <Tarjeta>
                 <div className="mb-2 flex items-start justify-between gap-3">
                   <p className="text-tinta">{alumno.full_name}</p>
