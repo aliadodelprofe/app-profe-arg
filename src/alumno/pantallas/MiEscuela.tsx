@@ -30,12 +30,15 @@ import Salir from './Salir';
 
 export default function MiEscuela({
   ficha,
-  derecha,
   alCambiarPerfil,
+  alCambiarEscuela,
 }: {
   ficha: MiFicha;
-  derecha?: React.ReactNode;
   alCambiarPerfil?: () => void;
+  // Solo viene cuando la persona cursa en más de una escuela. Vive en el menú
+  // del perfil, que es donde ya está su foto: cambiar de escuela es cambiar de
+  // contexto, no una acción de esta pantalla.
+  alCambiarEscuela?: () => void;
 }) {
   const clases = useCarga(() => misClases(ficha.tenant_id), [ficha.tenant_id]);
   const cargos = useCarga(() => misCargos(ficha.tenant_id), [ficha.tenant_id]);
@@ -82,7 +85,7 @@ export default function MiEscuela({
             <p className="truncate text-sm text-tenue">{ficha.full_name}</p>
           </div>
         </button>
-        {derecha ?? <Salir />}
+        <Salir />
       </div>
 
       {perfil && (
@@ -90,6 +93,7 @@ export default function MiEscuela({
           <MiPerfil
             ficha={ficha}
             fotoSugerida={fotoGoogle}
+            alCambiarEscuela={alCambiarEscuela}
             alCerrar={() => setPerfil(false)}
             alGuardar={() => { setPerfil(false); alCambiarPerfil?.(); }}
           />

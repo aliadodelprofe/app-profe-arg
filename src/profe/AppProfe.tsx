@@ -19,7 +19,7 @@ import { traerEspacios } from './datos';
 import type { Espacio, Grupo, Clase } from './datos';
 import {
   Marco, Vacio, Aviso, useCarga,
-  Navegacion, IconoHoy, IconoGrupos, IconoCobros,
+  Navegacion, IconoHoy, IconoGrupos, IconoCobros, IconoEscuela,
 } from '../comun/ui';
 import Ingreso from './pantallas/Ingreso';
 import Espacios from './pantallas/Espacios';
@@ -28,6 +28,7 @@ import DetalleGrupo from './pantallas/DetalleGrupo';
 import Asistencia from './pantallas/Asistencia';
 import Hoy from './pantallas/Hoy';
 import Cobros from './pantallas/Cobros';
+import Escuela from './pantallas/Escuela';
 
 export default function AppProfe() {
   const [sesion, setSesion] = useState<Session | null>(null);
@@ -63,7 +64,7 @@ export default function AppProfe() {
 // se quedan sin barra, porque mientras tomás asistencia no querés irte a otro
 // lado de un toque sin querer.
 // ============================================================================
-type Tab = 'hoy' | 'grupos' | 'cobros';
+type Tab = 'hoy' | 'grupos' | 'cobros' | 'escuela';
 
 type Vista =
   | { pantalla: 'espacios' }
@@ -124,19 +125,13 @@ function Adentro({ sesion }: { sesion: Session }) {
             { id: 'hoy', texto: 'Hoy', icono: IconoHoy },
             { id: 'grupos', texto: 'Grupos', icono: IconoGrupos },
             { id: 'cobros', texto: 'Cobros', icono: IconoCobros },
+            { id: 'escuela', texto: 'Escuela', icono: IconoEscuela },
           ]}
         />
         {tab === 'hoy' && (
           <Hoy
             espacio={espacio}
             alVerCobros={() => irA('cobros')}
-            // Renombrar la escuela cambia el objeto que viaja en la vista: si
-            // no se reemplaza acá, la pantalla sigue mostrando el nombre viejo
-            // hasta que se recargue la página.
-            alRenombrar={(nuevo) => {
-              setVista({ pantalla: 'tab', espacio: nuevo, tab });
-              espacios.recargar();
-            }}
             alTomarAsistencia={(clase) => {
               // La clase trae su grupo entero adentro (ver ClaseDelEspacio en
               // datos.ts). Acá antes se armaba uno falso con id y nombre, y el
@@ -160,7 +155,21 @@ function Adentro({ sesion }: { sesion: Session }) {
             alElegir={(grupo) => setVista({ pantalla: 'grupo', espacio, grupo })}
           />
         )}
-        {tab === 'cobros' && <Cobros espacio={espacio} />}
+        {tab === 'cobros' && <Cobros espacio={espacio} alVerEscuela={() => irA('escuela')} />}
+        {tab === 'escuela' && (
+          <Escuela
+            espacio={espacio}
+            email={email}
+            // Renombrar cambia el objeto que viaja en la vista: si no se
+            // reemplaza acá, el resto de la app sigue mostrando el nombre
+            // viejo hasta que se recargue la página.
+            alRenombrar={(nuevo) => {
+              setVista({ pantalla: 'tab', espacio: nuevo, tab });
+              espacios.recargar();
+            }}
+            alCambiarEspacio={volverAEspacios}
+          />
+        )}
 
       </>
     );

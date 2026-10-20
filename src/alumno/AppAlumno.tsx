@@ -12,11 +12,12 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { invitacionesPendientes, misFichas } from './datos';
-import type { MiFicha, Invitacion } from './datos';
-import { Marco, Encabezado, Vacio, Aviso, Tarjeta } from '../comun/ui';
+import { invitacionesPendientes, misFichas, resumenDeMisEscuelas } from './datos';
+import type { MiFicha, Invitacion, ResumenEscuela } from './datos';
+import { Marco, Encabezado, Vacio, Aviso } from '../comun/ui';
 import Entrar from './pantallas/Entrar';
 import MiEscuela from './pantallas/MiEscuela';
+import MisEscuelas from './pantallas/MisEscuelas';
 import Invitaciones from './pantallas/Invitaciones';
 import Salir from './pantallas/Salir';
 
@@ -44,6 +45,10 @@ function Adentro({ sesion }: { sesion: Session }) {
   const [error, setError] = useState<string | null>(null);
   const [elegida, setElegida] = useState<string | null>(null);
   const [vuelta, setVuelta] = useState(0);
+  // El resumen de cada escuela: solo hace falta cuando hay más de una, así
+  // que no se pide antes de saber cuántas hay.
+  const [resumenes, setResumenes] = useState<ResumenEscuela[] | null>(null);
+  const [errorResumen, setErrorResumen] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -56,6 +61,16 @@ function Adentro({ sesion }: { sesion: Session }) {
       .catch((e: Error) => { if (vivo) setError(e.message); });
     return () => { vivo = false; };
   }, [vuelta]);
+
+  useEffect(() => {
+    if (!fichas || fichas.length < 2) return;
+    let vivo = true;
+    setResumenes(null);
+    resumenDeMisEscuelas(fichas)
+      .then((r) => { if (vivo) setResumenes(r); })
+      .catch((e: Error) => { if (vivo) setErrorResumen(e.message); });
+    return () => { vivo = false; };
+  }, [fichas]);
 
   const alResponder = () => setVuelta((v) => v + 1);
 
@@ -105,40 +120,27 @@ function Adentro({ sesion }: { sesion: Session }) {
     return <MiEscuela ficha={fichas[0]} alCambiarPerfil={alResponder} />;
   }
 
-  // Cursa con más de un profesor: elige de cuál quiere ver.
+  // Cursa con más de un profesor. El cambio de escuela vive en el menú del
+  // perfil y no en un botón del encabezado: ahí le peleaba el lugar al de
+  // salir, y con dos escuelas no había forma de cerrar sesión sin volver
+  // atrás primero.
   const actual = fichas.find((f) => f.id === elegida);
   if (actual) {
     return (
       <MiEscuela
         ficha={actual}
         alCambiarPerfil={alResponder}
-        derecha={
-          <button
-            onClick={() => setElegida(null)}
-            className="rounded-lg border border-linea px-3 py-1.5 text-sm text-acento"
-          >
-            Cambiar
-          </button>
-        }
+        alCambiarEscuela={() => setElegida(null)}
       />
     );
   }
 
   return (
-    <Marco>
-      <Encabezado titulo="Mis escuelas" bajada={correo} derecha={<Salir />} />
-      <ul className="flex flex-col gap-2">
-        {fichas.map((f) => (
-          <li key={f.id}>
-            <Tarjeta alTocar={() => setElegida(f.id)}>
-              <p className="text-tinta">{f.escuela?.name ?? 'Escuela'}</p>
-              <p className="text-sm text-tenue">
-                {f.escuela?.discipline ?? 'sin disciplina'}
-              </p>
-            </Tarjeta>
-          </li>
-        ))}
-      </ul>
-    </Marco>
+    <MisEscuelas
+      correo={correo}
+      resumenes={resumenes}
+      error={errorResumen}
+      alElegir={setElegida}
+    />
   );
 }

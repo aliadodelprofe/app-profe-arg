@@ -31,11 +31,17 @@ import { Marco, Aviso, Titulo, Segmentos, Esqueleto, useCarga } from '../../comu
 import ParaConfirmar from './Pagos';
 import QuienDebe from './Deudas';
 import Cobrado from './Cobrado';
-import ComoMePagan from './ComoMePagan';
+
 
 type Cual = 'confirmar' | 'deben' | 'cobrado';
 
-export default function Cobros({ espacio }: { espacio: Espacio }) {
+export default function Cobros({
+  espacio,
+  alVerEscuela,
+}: {
+  espacio: Espacio;
+  alVerEscuela: () => void;
+}) {
   const pagos = useCarga(() => traerPagosPorConfirmar(espacio.id), [espacio.id]);
   const deudas = useCarga(() => traerDeudas(espacio.id), [espacio.id]);
   const cobros = useCarga(() => traerCobros(espacio.id), [espacio.id]);
@@ -50,9 +56,10 @@ export default function Cobros({ espacio }: { espacio: Espacio }) {
   const sugerida: Cual = porConfirmar > 0 ? 'confirmar' : deudores > 0 ? 'deben' : 'cobrado';
   const cual = elegida ?? sugerida;
 
-  // Sin medio de pago cargado, el alumno no sabe adónde transferirte: eso es
-  // urgente y va arriba. Una vez cargado deja de serlo y se va al final, con
-  // lo que se consulta y no se hace.
+  // Cargar los datos para transferir se hace en la pestaña Escuela, que es
+  // donde vive todo lo que se configura una vez. Pero el agujero se NOTA acá:
+  // es en esta pantalla donde el profesor se pregunta por qué no le llega la
+  // plata. Así que acá va el aviso, no el formulario.
   const sinMedio = medios.datos !== null && medios.datos.length === 0;
 
   return (
@@ -61,7 +68,15 @@ export default function Cobros({ espacio }: { espacio: Espacio }) {
       <p className="mb-4 text-sm text-tenue">{espacio.name}</p>
 
       {sinMedio && (
-        <ComoMePagan espacio={espacio} medios={[]} destacado alCambiar={medios.recargar} />
+        <button
+          onClick={alVerEscuela}
+          className="mb-4 block w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left transition active:scale-[0.99]"
+        >
+          <p className="text-sm text-tinta">Tus alumnos no saben adónde transferirte.</p>
+          <p className="mt-0.5 text-sm text-acento">
+            Cargá tu alias o CBU en Mi escuela →
+          </p>
+        </button>
       )}
 
       <Segmentos<Cual>
@@ -95,10 +110,6 @@ export default function Cobros({ espacio }: { espacio: Espacio }) {
         </>
       )}
 
-      {medios.error && <Aviso>{medios.error}</Aviso>}
-      {medios.datos && medios.datos.length > 0 && (
-        <ComoMePagan espacio={espacio} medios={medios.datos} alCambiar={medios.recargar} />
-      )}
     </Marco>
   );
 }

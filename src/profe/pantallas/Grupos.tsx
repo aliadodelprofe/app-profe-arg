@@ -6,7 +6,6 @@ import {
   Lista, Fila, Hoja, Esqueleto,
 } from '../../comun/ui';
 import FormularioGrupo from './FormularioGrupo';
-import Salir from './Salir';
 
 export default function Grupos({
   espacio,
@@ -41,7 +40,6 @@ export default function Grupos({
             {alVolver ? espacio.name : `${espacio.name} · ${email}`}
           </p>
         </div>
-        <Salir />
       </div>
 
       <div className="mb-4">

@@ -532,6 +532,14 @@ export const IconoCobros = (
   </svg>
 );
 
+export const IconoEscuela = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
+    <path d="M3 10.5 12 4l9 6.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 10v9h14v-9" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10 19v-5h4v5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 export const IconoClases = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={svg}>
     <rect x="3" y="5" width="18" height="16" rx="2" />

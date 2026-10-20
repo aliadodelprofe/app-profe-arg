@@ -334,3 +334,49 @@ export async function misMediosDePago(tenantId: string): Promise<DondeTransferir
   if (error) throw new Error(error.message);
   return (data ?? []) as DondeTransferir[];
 }
+
+
+// ---------------------------------------------------------------------------
+// EL RESUMEN DE CADA ESCUELA
+//
+// Para la pantalla de quien cursa con más de un profesor. Antes esa pantalla
+// era una lista de nombres: había que entrar a cada escuela para enterarse de
+// si tenías clase hoy o de si debías plata, y la app te hacía elegir sin
+// decirte nada con qué elegir.
+//
+// Son dos consultas chicas por escuela, en paralelo. Alguien con cinco
+// profesores es un caso raro; alguien con dos es lo normal.
+// ---------------------------------------------------------------------------
+export type ResumenEscuela = {
+  ficha: MiFicha;
+  proxima: MiClase | null;
+  debe: number;
+  aFavor: number;
+};
+
+async function miProximaClase(tenantId: string): Promise<MiClase | null> {
+  const { data, error } = await supabase
+    .from('sessions')
+    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address)')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'scheduled')
+    .gte('date', new Date().toISOString().slice(0, 10))
+    .order('date')
+    .order('start_time', { nullsFirst: true })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  const filas = (data ?? []) as unknown as MiClase[];
+  return filas[0] ?? null;
+}
+
+export async function resumenDeMisEscuelas(fichas: MiFicha[]): Promise<ResumenEscuela[]> {
+  return Promise.all(
+    fichas.map(async (ficha) => {
+      const [proxima, saldo] = await Promise.all([
+        miProximaClase(ficha.tenant_id),
+        miSaldo(ficha.tenant_id),
+      ]);
+      return { ficha, proxima, debe: saldo.debe, aFavor: saldo.aFavor };
+    }),
+  );
+}
