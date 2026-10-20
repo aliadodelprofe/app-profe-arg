@@ -42,13 +42,29 @@ export default function Recorte({
 
   // Cargar el archivo. La URL temporal se revoca al salir: si no, el navegador
   // se queda con la imagen entera en memoria hasta que recargues la página.
+  //
+  // La bandera `vivo` no es precaución teórica: en desarrollo React monta cada
+  // componente DOS veces a propósito, para encontrar efectos mal limpiados. En
+  // la primera vuelta esto creaba la URL, empezaba a cargar, y la limpieza la
+  // revocaba de inmediato — con lo cual esa imagen fallaba y escribía el error.
+  // La segunda vuelta cargaba bien, pero el error ya estaba puesto y la
+  // pantalla mostraba "no se pudo abrir esa imagen" sobre una imagen que sí se
+  // había abierto. El efecto cancelado ahora no escribe nada.
   useEffect(() => {
+    let vivo = true;
     const url = URL.createObjectURL(archivo);
     const i = new Image();
-    i.onload = () => setImg(i);
-    i.onerror = () => setError('No se pudo abrir esa imagen. Probá con otra.');
+    i.onload = () => { if (vivo) { setError(null); setImg(i); } };
+    i.onerror = () => {
+      if (vivo) {
+        setError(
+          'No se pudo abrir esa imagen. Si la sacaste con un iPhone puede estar en ' +
+          'formato HEIC; probá con una captura de pantalla o guardala como JPG.',
+        );
+      }
+    };
     i.src = url;
-    return () => URL.revokeObjectURL(url);
+    return () => { vivo = false; URL.revokeObjectURL(url); };
   }, [archivo]);
 
   // Dibujar. Es la misma cuenta que usa recortar(), con otro tamaño: por eso
@@ -96,7 +112,9 @@ export default function Recorte({
     );
   }
 
-  if (error) {
+  // El error tapa todo solo si además NO hay imagen. Con una imagen cargada,
+  // un error de subida se muestra abajo sin sacarte del recorte que ya hiciste.
+  if (error && !img) {
     return (
       <div className="flex flex-col gap-3">
         <Aviso>{error}</Aviso>
@@ -158,6 +176,8 @@ export default function Recorte({
         }}
         className="w-full max-w-xs accent-[var(--color-acento)]"
       />
+
+      {error && <Aviso>{error}</Aviso>}
 
       <div className="flex gap-2">
         <Boton type="button" onClick={recortar} disabled={!img}>
