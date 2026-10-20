@@ -138,9 +138,11 @@ function Adentro({ sesion }: { sesion: Session }) {
   return (
     <MisEscuelas
       correo={correo}
+      fichas={fichas}
       resumenes={resumenes}
       error={errorResumen}
       alElegir={setElegida}
+      alCambiarPerfil={alResponder}
     />
   );
 }
