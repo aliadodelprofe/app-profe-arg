@@ -655,7 +655,11 @@ function ListaDeClases({
             <Fragment key={tramo.mes}>
               {/* Solo si hay más de un mes a la vista: un encabezado "octubre"
                   arriba de una lista que es toda de octubre no separa nada. */}
-              {tramos.length > 1 && <CorteDeMes>{mesDeCorte(tramo.mes, hoy)}</CorteDeMes>}
+              {tramos.length > 1 && (
+                <CorteDeMes cuantas={tramo.items.length}>
+                  {mesDeCorte(tramo.mes, hoy)}
+                </CorteDeMes>
+              )}
               {tramo.items.map((c) => (
                 <FilaClase
                   key={c.id}

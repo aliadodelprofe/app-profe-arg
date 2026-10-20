@@ -721,19 +721,32 @@ export function Fila({
 // ----------------------------------------------------------------------------
 export function CorteDeMes({
   children,
+  cuantas,
   bajoBarra = false,
 }: {
   children: ReactNode;
+  cuantas?: number;
   bajoBarra?: boolean;
 }) {
   return (
     <li
       className={
-        'sticky z-10 bg-panel/95 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-tenue backdrop-blur sm:px-4 ' +
+        // El fondo de la página, no el del panel: contra las filas, que son
+        // panel, el corte se lee como una franja y no como un renglón más.
+        // La primera versión era gris chiquito sobre el mismo color de las
+        // filas y, pegado arriba, directamente no se veía.
+        'sticky z-20 flex items-baseline justify-between gap-3 bg-fondo px-5 py-2 sm:px-4 sm:first:rounded-t-2xl ' +
         (bajoBarra ? 'top-0 sm:top-14' : 'top-0')
       }
     >
-      {children}
+      <span className="text-sm font-semibold uppercase tracking-wide text-tinta">
+        {children}
+      </span>
+      {cuantas !== undefined && (
+        <span className="shrink-0 text-xs tabular-nums text-tenue">
+          {cuantas} {cuantas === 1 ? 'clase' : 'clases'}
+        </span>
+      )}
     </li>
   );
 }

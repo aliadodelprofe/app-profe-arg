@@ -468,7 +468,9 @@ function MisClases({
                   encabezado "octubre" arriba de una lista que es toda de
                   octubre no separa nada: es un renglón más. */}
               {tramos.length > 1 && (
-                <CorteDeMes bajoBarra>{mesDeCorte(t.mes, hoy)}</CorteDeMes>
+                <CorteDeMes bajoBarra cuantas={t.items.length}>
+                  {mesDeCorte(t.mes, hoy)}
+                </CorteDeMes>
               )}
               {t.items.map((c) => {
                 const cancelada = c.status === 'cancelled';
