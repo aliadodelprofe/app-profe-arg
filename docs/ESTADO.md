@@ -76,7 +76,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0023_el_alumno_es_dueno_de_su_ficha.sql` | `avatar_url` y `actualizar_mi_ficha()`. El profesor crea la ficha y la corrige solo mientras nadie la reclamó | Aplicada |
 | `0024_donde_transferirle_al_profe.sql` | Tabla `payment_methods`: dónde le transfieren al profesor. El profesor la escribe, sus alumnos la leen y nadie más | Aplicada |
 | `0025_el_cbu_tiene_22_digitos.sql` | Un CBU o CVU cortado al copiar se guardaba igual. Ahora la base exige 22 dígitos | Aplicada |
-| `0026_la_escuela_tiene_cara.sql` | `tenants.avatar_url` y el depósito público `logos`. El logo lo sube solo el dueño, en la carpeta de su espacio | Sin aplicar |
+| `0026_la_escuela_tiene_cara.sql` | `tenants.avatar_url` y el depósito público `logos`. El logo lo sube solo el dueño, en la carpeta de su espacio | Aplicada |
+| `0027_la_foto_del_alumno.sql` | Depósito público `avatares`, con la carpeta por usuario: la ficha es por escuela, la cara es de la persona | Sin aplicar |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 

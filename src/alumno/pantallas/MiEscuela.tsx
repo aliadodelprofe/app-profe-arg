@@ -19,7 +19,7 @@ import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
-  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, IconoPerfil, Hoja, Esqueleto, Avatar,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
   Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
@@ -68,7 +68,14 @@ export default function MiEscuela({
   const pestanas: Pestana<Tab>[] = [
     { id: 'clases', texto: 'Clases', icono: IconoClases },
     { id: 'cuenta', texto: 'Mi cuenta', icono: IconoCobros },
-    { id: 'perfil', texto: 'Perfil', icono: IconoPerfil },
+    // En vez del muñequito genérico, su propia cara. Es la señal más clara
+    // de "acá estoy yo", y de paso saca del encabezado la foto que antes
+    // quedaba suelta al lado del nombre de la escuela.
+    {
+      id: 'perfil',
+      texto: 'Perfil',
+      icono: <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} tam="nav" />,
+    },
   ];
 
   return (
@@ -83,7 +90,7 @@ export default function MiEscuela({
           Y como la escuela está a la izquierda, tocarla es cambiar de
           escuela. Es donde lo busca cualquiera que haya usado una app con
           varias cuentas: se toca el lugar que dice dónde estás parado. */}
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center gap-3">
         {alCambiarEscuela ? (
           <button
             onClick={alCambiarEscuela}
@@ -106,14 +113,6 @@ export default function MiEscuela({
             </div>
           </div>
         )}
-
-        <button
-          onClick={() => setTab('perfil')}
-          aria-label="Mi perfil"
-          className="shrink-0 rounded-full transition active:opacity-70"
-        >
-          <Avatar nombre={ficha.full_name} foto={ficha.avatar_url} chico />
-        </button>
       </div>
 
       {tab === 'clases' && (

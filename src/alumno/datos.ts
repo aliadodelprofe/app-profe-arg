@@ -403,3 +403,29 @@ export async function tambienDoyClases(): Promise<boolean> {
   if (error) return false;
   return (count ?? 0) > 0;
 }
+
+
+// ---------------------------------------------------------------------------
+// MI FOTO  (migración 0027)
+//
+// La carpeta es el usuario y no la ficha: una ficha es por escuela, pero la
+// cara es de la persona. Quien cursa con dos profesores sube la foto una vez.
+//
+// El depósito es público, así que la dirección se arma sin firmar nada. Cada
+// archivo lleva un nombre nuevo en vez de pisar al anterior: reemplazar una
+// imagen por otra con el mismo nombre deja a los navegadores mostrando la
+// vieja durante horas.
+// ---------------------------------------------------------------------------
+export const FOTO_MAX_MB = 8;
+
+export async function subirMiFoto(archivo: Blob): Promise<string> {
+  const { data: usuario } = await supabase.auth.getUser();
+  const id = usuario.user?.id;
+  if (!id) throw new Error('Tu sesión venció. Entrá de nuevo.');
+  const ruta = `${id}/${crypto.randomUUID()}.jpg`;
+  const { error } = await supabase.storage
+    .from('avatares')
+    .upload(ruta, archivo, { contentType: 'image/jpeg' });
+  if (error) throw new Error(error.message);
+  return supabase.storage.from('avatares').getPublicUrl(ruta).data.publicUrl;
+}

@@ -17,9 +17,10 @@ import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_M
 import type { Espacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
-  Esqueleto, useCarga, Avatar,
+  Esqueleto, useCarga, Avatar, Hoja,
 } from '../../comun/ui';
 import ComoMePagan from './ComoMePagan';
+import Recorte from '../../comun/Recorte';
 import Salir from './Salir';
 
 export default function Escuela({
@@ -206,16 +207,17 @@ function Logo({
 }) {
   const [error, setError] = useState<string | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  // El archivo que se está por recortar. El logo se ve en un círculo en todas
+  // las pantallas, así que el recorte lo elige quien lo sube y no el navegador
+  // por el centro.
+  const [aRecortar, setARecortar] = useState<File | null>(null);
 
-  async function elegir(archivo: File) {
-    if (archivo.size > LOGO_MAX_MB * 1024 * 1024) {
-      setError(`La imagen pesa más de ${LOGO_MAX_MB} MB. Probá con una más chica.`);
-      return;
-    }
+  async function subir(recortada: Blob) {
+    setARecortar(null);
     setSubiendo(true);
     setError(null);
     try {
-      const url = await subirLogo(espacio.id, archivo);
+      const url = await subirLogo(espacio.id, recortada);
       alCambiar(await editarEspacio(espacio.id, { avatar_url: url }));
     } catch (err) {
       setError((err as Error).message);
@@ -254,7 +256,13 @@ function Logo({
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 e.target.value = '';
-                if (f) void elegir(f);
+                if (!f) return;
+                if (f.size > LOGO_MAX_MB * 1024 * 1024) {
+                  setError(`La imagen pesa más de ${LOGO_MAX_MB} MB. Probá con otra.`);
+                  return;
+                }
+                setError(null);
+                setARecortar(f);
               }}
             />
           </label>
@@ -272,6 +280,16 @@ function Logo({
       </p>
 
       {error && <Aviso>{error}</Aviso>}
+
+      {aRecortar && (
+        <Hoja titulo="Acomodá el logo" alCerrar={() => setARecortar(null)}>
+          <Recorte
+            archivo={aRecortar}
+            alCancelar={() => setARecortar(null)}
+            alRecortar={(b) => void subir(b)}
+          />
+        </Hoja>
+      )}
     </div>
   );
 }

@@ -1186,12 +1186,13 @@ export async function editarEspacio(
 // ---------------------------------------------------------------------------
 export const LOGO_MAX_MB = 2;
 
-export async function subirLogo(espacioId: string, archivo: File): Promise<string> {
-  const extension = (archivo.name.split('.').pop() ?? 'png').toLowerCase().slice(0, 5);
-  const ruta = `${espacioId}/${crypto.randomUUID()}.${extension}`;
+export async function subirLogo(espacioId: string, archivo: Blob): Promise<string> {
+  // Siempre .jpg: lo que llega acá ya pasó por el recortador, que devuelve un
+  // cuadrado de 512 en JPEG.
+  const ruta = `${espacioId}/${crypto.randomUUID()}.jpg`;
   const { error } = await supabase.storage
     .from('logos')
-    .upload(ruta, archivo, { contentType: archivo.type || undefined });
+    .upload(ruta, archivo, { contentType: 'image/jpeg' });
   if (error) throw new Error(error.message);
   const { data } = supabase.storage.from('logos').getPublicUrl(ruta);
   return data.publicUrl;

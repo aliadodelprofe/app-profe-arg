@@ -590,14 +590,17 @@ function inicialesDe(nombre: string): string {
 export function Avatar({
   nombre,
   foto,
-  chico = false,
+  tam = 'normal',
 }: {
   nombre: string;
   foto?: string | null;
-  chico?: boolean;
+  // 'nav' es el de la barra de secciones, donde reemplaza al ícono: la cara
+  // de uno es mejor señal de "acá estoy yo" que cualquier dibujo.
+  tam?: 'nav' | 'chico' | 'normal';
 }) {
   const h = tonoDe(nombre);
-  const tam = chico ? 'h-8 w-8' : 'h-10 w-10';
+  const medida =
+    tam === 'nav' ? 'h-5 w-5 sm:h-4 sm:w-4' : tam === 'chico' ? 'h-8 w-8' : 'h-10 w-10';
 
   // Con foto, la foto. Las iniciales son el plan B, no el plan.
   if (foto) {
@@ -605,7 +608,7 @@ export function Avatar({
       <img
         src={foto}
         alt=""
-        className={`${tam} shrink-0 rounded-full object-cover`}
+        className={`${medida} shrink-0 rounded-full object-cover`}
         // Una dirección de Google puede dejar de funcionar si la persona
         // cambia su foto. Si pasa, la imagen desaparece y quedan las
         // iniciales, que es exactamente lo que había antes.
@@ -623,7 +626,7 @@ export function Avatar({
       }}
       className={
         'flex shrink-0 items-center justify-center rounded-full font-semibold ' +
-        tam + (chico ? ' text-xs' : ' text-sm')
+        medida + (tam === 'normal' ? ' text-sm' : tam === 'chico' ? ' text-xs' : ' text-[8px]')
       }
     >
       {inicialesDe(nombre)}
