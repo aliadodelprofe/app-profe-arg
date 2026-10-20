@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
@@ -10,7 +10,7 @@ import {
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   inscribirConArranqueDiferido, mesSiguiente,
   nombreFormato, nombreCobro, fecha, plata,
-  periodoDe, porAlumno,
+  periodoDe, porAlumno, porMes, mesDeCorte,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
 import type {
@@ -20,7 +20,7 @@ import type {
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Area, Opciones,
   Boton, BotonSecundario,
-  Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto, ChipFecha,
+  Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto, ChipFecha, CorteDeMes,
 } from '../../comun/ui';
 
 export default function DetalleGrupo({
@@ -625,14 +625,10 @@ function ListaDeClases({
   const visibles = cual === 'proximas' ? proximas : pasadas.slice(0, cuantasPasadas);
 
   // Agrupadas por mes. Doce renglones corridos son una pared; con el mes
-  // arriba de cada tramo, la lista se recorre saltando.
-  const porMes: { mes: string; clases: Clase[] }[] = [];
-  visibles.forEach((c) => {
-    const mes = mesDe(c.date);
-    const ultimo = porMes[porMes.length - 1];
-    if (ultimo && ultimo.mes === mes) ultimo.clases.push(c);
-    else porMes.push({ mes, clases: [c] });
-  });
+  // arriba de cada tramo, la lista se recorre saltando. Van todas en UNA sola
+  // lista y no una por mes: así el corte se pega arriba mientras scrolleás y
+  // la pantalla siempre dice en qué mes estás parado.
+  const tramos = porMes(visibles, (c) => c.date);
 
   return (
     <>
@@ -653,28 +649,34 @@ function ListaDeClases({
         </Vacio>
       )}
 
-      {porMes.map((tramo) => (
-        <div key={tramo.mes} className="mb-5">
-          <p className="mb-2 text-sm font-medium text-tenue">{mesEnPalabras(tramo.mes)}</p>
-          <Lista>
-            {tramo.clases.map((c) => (
-              <FilaClase
-                key={c.id}
-                clase={c}
-                grupo={grupo}
-                pasada={cual === 'pasadas'}
-                alTomarAsistencia={() => alTomarAsistencia(c)}
-                alCambiar={alCambiar}
-              />
-            ))}
-          </Lista>
-        </div>
-      ))}
+      {tramos.length > 0 && (
+        <Lista>
+          {tramos.map((tramo) => (
+            <Fragment key={tramo.mes}>
+              {/* Solo si hay más de un mes a la vista: un encabezado "octubre"
+                  arriba de una lista que es toda de octubre no separa nada. */}
+              {tramos.length > 1 && <CorteDeMes>{mesDeCorte(tramo.mes, hoy)}</CorteDeMes>}
+              {tramo.items.map((c) => (
+                <FilaClase
+                  key={c.id}
+                  clase={c}
+                  grupo={grupo}
+                  pasada={cual === 'pasadas'}
+                  alTomarAsistencia={() => alTomarAsistencia(c)}
+                  alCambiar={alCambiar}
+                />
+              ))}
+            </Fragment>
+          ))}
+        </Lista>
+      )}
 
       {cual === 'pasadas' && pasadas.length > cuantasPasadas && (
-        <BotonSecundario onClick={() => setCuantasPasadas((n) => n + 10)}>
-          Ver {Math.min(10, pasadas.length - cuantasPasadas)} más
-        </BotonSecundario>
+        <div className="mt-3 flex justify-center">
+          <BotonSecundario onClick={() => setCuantasPasadas((n) => n + 10)}>
+            Ver {Math.min(10, pasadas.length - cuantasPasadas)} más
+          </BotonSecundario>
+        </div>
       )}
     </>
   );

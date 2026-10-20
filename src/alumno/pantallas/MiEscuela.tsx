@@ -6,7 +6,7 @@
 // es importante para el profesor, no para el alumno — ponerlo primero sería
 // recibirlo con una factura.
 // ============================================================================
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
@@ -14,11 +14,11 @@ import {
 } from '../datos';
 import type { MiFicha, MiClase } from '../datos';
 import type { Pestana } from '../../comun/ui';
-import { fecha, plata, hoyISO, linkMapaDe } from '../formato';
+import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
-  Lista, Fila, Segmentos, ChipFecha, Etiqueta,
+  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import MiPerfil from './MiPerfil';
@@ -412,6 +412,9 @@ function MisClases({
   // La próxima de verdad: una clase cancelada no es la próxima clase.
   const proxima = proximas.find((c) => c.status !== 'cancelled') ?? null;
 
+  // Lo que efectivamente se dibuja, ya cortado por mes.
+  const tramos = porMes(lista.slice(0, limite), (c) => c.date);
+
   function elegir(c: Cual) {
     setCual(c);
     setLimite(DE_A);
@@ -459,29 +462,39 @@ function MisClases({
 
       {lista.length > 0 && (
         <Lista>
-          {lista.slice(0, limite).map((c) => {
-            const cancelada = c.status === 'cancelled';
-            return (
-              <Fila
-                key={c.id}
-                principal={<ChipFecha iso={c.date} apagado={cancelada} />}
-                titulo={
-                  <span className={cancelada ? 'line-through opacity-60' : undefined}>
-                    {cual === 'vimos' ? (c.title ?? c.grupo?.name ?? 'Clase') : (c.grupo?.name ?? 'Clase')}
-                  </span>
-                }
-                detalle={
-                  cancelada
-                    ? 'cancelada'
-                    : cual === 'vimos'
-                      ? (c.recap ?? 'sin resumen todavía')
-                      : lugarDe(c)
-                }
-                valor={c.start_time ? c.start_time.slice(0, 5) : undefined}
-                alTocar={() => setAbierta(c)}
-              />
-            );
-          })}
+          {tramos.map((t) => (
+            <Fragment key={t.mes}>
+              {/* El corte aparece solo si hay más de un mes a la vista. Un
+                  encabezado "octubre" arriba de una lista que es toda de
+                  octubre no separa nada: es un renglón más. */}
+              {tramos.length > 1 && (
+                <CorteDeMes bajoBarra>{mesDeCorte(t.mes, hoy)}</CorteDeMes>
+              )}
+              {t.items.map((c) => {
+                const cancelada = c.status === 'cancelled';
+                return (
+                  <Fila
+                    key={c.id}
+                    principal={<ChipFecha iso={c.date} apagado={cancelada} />}
+                    titulo={
+                      <span className={cancelada ? 'line-through opacity-60' : undefined}>
+                        {cual === 'vimos' ? (c.title ?? c.grupo?.name ?? 'Clase') : (c.grupo?.name ?? 'Clase')}
+                      </span>
+                    }
+                    detalle={
+                      cancelada
+                        ? 'cancelada'
+                        : cual === 'vimos'
+                          ? (c.recap ?? 'sin resumen todavía')
+                          : lugarDe(c)
+                    }
+                    valor={c.start_time ? c.start_time.slice(0, 5) : undefined}
+                    alTocar={() => setAbierta(c)}
+                  />
+                );
+              })}
+            </Fragment>
+          ))}
         </Lista>
       )}
 

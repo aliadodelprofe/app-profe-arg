@@ -705,6 +705,41 @@ export function Fila({
 
 
 // ----------------------------------------------------------------------------
+// EL CORTE POR MES
+//
+// Una lista larga de clases son cuarenta renglones iguales donde el ojo no
+// tiene dónde apoyarse. La alternativa clásica es un selector de mes, pero un
+// filtro es un control que le cobra atención a todo el mundo en cada visita
+// para resolver un problema que aparece pocas veces. Un corte por mes no pide
+// nada: ubicás el mes de un vistazo mientras pasás el dedo, y aguanta dos años
+// de historia sin cambiar nada.
+//
+// Se pega arriba, así que mientras recorrés septiembre la pantalla sigue
+// diciendo septiembre. En las pantallas que tienen la barra de secciones
+// arriba —solo en computadora; en el celular la barra va abajo— hay que
+// correrlo para que la barra no lo tape.
+// ----------------------------------------------------------------------------
+export function CorteDeMes({
+  children,
+  bajoBarra = false,
+}: {
+  children: ReactNode;
+  bajoBarra?: boolean;
+}) {
+  return (
+    <li
+      className={
+        'sticky z-10 bg-panel/95 px-5 py-1.5 text-xs font-semibold uppercase tracking-wide text-tenue backdrop-blur sm:px-4 ' +
+        (bajoBarra ? 'top-0 sm:top-14' : 'top-0')
+      }
+    >
+      {children}
+    </li>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
 // HOJA — el formulario que sube desde abajo
 //
 // Antes los formularios se abrían ADENTRO de la página y empujaban todo lo de

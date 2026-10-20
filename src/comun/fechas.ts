@@ -83,6 +83,29 @@ export function inicioDelMes(period: string): string {
   return `${period}-01`;
 }
 
+// 'octubre' si es de este año, 'octubre 2025' si no. El año solo aparece
+// cuando agrega algo: en una lista de clases del año en curso, repetir 2026
+// doce veces no informa nada.
+export function mesDeCorte(period: string, hoy: string): string {
+  const [a, m] = period.split('-').map(Number);
+  return a === Number(hoy.slice(0, 4)) ? NOMBRE_MES[m - 1] : `${NOMBRE_MES[m - 1]} ${a}`;
+}
+
+// Parte una lista YA ORDENADA en tramos por mes, respetando ese orden. No
+// ordena ni agrupa por su cuenta: si la lista viene de la más nueva a la más
+// vieja, los tramos salen igual. Agrupar y reordenar al mismo tiempo es cómo
+// una lista termina mostrando noviembre arriba de diciembre.
+export function porMes<T>(items: T[], fechaDe: (x: T) => string): { mes: string; items: T[] }[] {
+  const tramos: { mes: string; items: T[] }[] = [];
+  for (const x of items) {
+    const mes = mesDe(fechaDe(x));
+    const ultimo = tramos[tramos.length - 1];
+    if (ultimo && ultimo.mes === mes) ultimo.items.push(x);
+    else tramos.push({ mes, items: [x] });
+  }
+  return tramos;
+}
+
 // '2026-09' -> '2026-10'
 export function mesSiguiente(period: string): string {
   const [a, m] = period.split('-').map(Number);
