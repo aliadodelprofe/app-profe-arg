@@ -82,6 +82,29 @@ begin
   exception when check_violation then
     perform set_config('prueba.v4', 'PASA - la base lo rechazo', false);
   end;
+
+  -- ------------------------------------------------------------------ 4bis
+  -- Un CBU cortado al copiar tampoco entra (migración 0025). Es el error que
+  -- manda la plata del alumno a la cuenta de otra persona.
+  begin
+    insert into public.payment_methods (tenant_id, holder, cbu)
+    values (v_mio, 'PRUEBA CBU Corto', '00000031000000000000');  -- 20 dígitos
+    perform set_config('prueba.v10',
+      'FALLA - guardo un CBU de 20 digitos', false);
+  exception when check_violation then
+    perform set_config('prueba.v10', 'PASA - la base lo rechazo', false);
+  end;
+
+  -- Y uno de 22 sí entra, porque si no esto no probaría nada: una regla que
+  -- rechaza todo también rechaza lo que está bien.
+  begin
+    insert into public.payment_methods (tenant_id, holder, cbu)
+    values (v_mio, 'PRUEBA CBU Bueno', '0000003100000000000000');  -- 22 dígitos
+    perform set_config('prueba.v11', 'PASA', false);
+  exception when others then
+    perform set_config('prueba.v11',
+      'FALLA - rechazo un CBU valido de 22 digitos (' || sqlstate || ')', false);
+  end;
 end $$;
 
 
@@ -199,7 +222,9 @@ select * from (values
   ('El alumno NO ve los de otras escuelas',          current_setting('prueba.v6', true)),
   ('El alumno NO le cambia el CBU a su profe',       current_setting('prueba.v7', true)),
   ('El alumno NO carga un medio de pago',            current_setting('prueba.v8', true)),
-  ('Lo archivado no le llega al alumno',             current_setting('prueba.v9', true))
+  ('Lo archivado no le llega al alumno',             current_setting('prueba.v9', true)),
+  ('Un CBU cortado no se guarda',                    current_setting('prueba.v10', true)),
+  ('Un CBU de 22 digitos SI se guarda',              current_setting('prueba.v11', true))
 ) as r(prueba, resultado);
 
 rollback;

@@ -74,7 +74,8 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0021_saldo_a_favor.sql` | La vista expone `a_favor` y `asegurar_imputaciones()` aplica esa plata a los cargos que aparezcan. La tarea nocturna la llama | Aplicada |
 | `0022_el_saldo_no_se_contradice.sql` | Corrige la 0021: `saldo` y `a_favor` son las dos caras de la misma resta, recortadas en cero. No pueden ser positivas a la vez | Aplicada |
 | `0023_el_alumno_es_dueno_de_su_ficha.sql` | `avatar_url` y `actualizar_mi_ficha()`. El profesor crea la ficha y la corrige solo mientras nadie la reclamó | Aplicada |
-| `0024_donde_transferirle_al_profe.sql` | Tabla `payment_methods`: dónde le transfieren al profesor. El profesor la escribe, sus alumnos la leen y nadie más | Sin aplicar |
+| `0024_donde_transferirle_al_profe.sql` | Tabla `payment_methods`: dónde le transfieren al profesor. El profesor la escribe, sus alumnos la leen y nadie más | Aplicada |
+| `0025_el_cbu_tiene_22_digitos.sql` | Un CBU o CVU cortado al copiar se guardaba igual. Ahora la base exige 22 dígitos | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 

@@ -112,6 +112,16 @@ function Formulario({
       setError('Poné al menos el alias o el CBU: es lo que el alumno va a copiar.');
       return;
     }
+    // La base también lo rechaza (migración 0025). Acá se avisa antes y se
+    // dice cuántos dígitos tiene, que es lo que el profe necesita para darse
+    // cuenta de que se le cortó al copiar.
+    if (cbu && cbu.length !== 22) {
+      setError(
+        `Un CBU o CVU tiene 22 dígitos y ese tiene ${cbu.length}. ` +
+        'Fijate si se te cortó al copiarlo.',
+      );
+      return;
+    }
     setGuardando(true);
     setError(null);
     const datos = {
@@ -171,10 +181,20 @@ function Formulario({
         />
       </Campo>
 
-      <Campo etiqueta="CBU o CVU" ayuda="Con el alias alcanza; el CBU es por si el alias falla.">
+      <Campo
+        etiqueta="CBU o CVU"
+        ayuda={
+          cbu
+            ? `${cbu.length} de 22 dígitos. El CVU es el de las billeteras, tipo Mercado Pago.`
+            : 'Opcional: con el alias alcanza. El CVU es el de las billeteras, tipo Mercado Pago.'
+        }
+      >
         <Texto
           value={cbu}
-          onChange={(e) => setCbu(e.target.value)}
+          /* Se le sacan los espacios y guiones al vuelo: los bancos lo
+             muestran separado para leerlo, y nadie debería tener que
+             limpiarlo a mano después de copiarlo. */
+          onChange={(e) => setCbu(e.target.value.replace(/[^0-9]/g, '').slice(0, 22))}
           inputMode="numeric"
           placeholder="0000003100000000000000"
         />
