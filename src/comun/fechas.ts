@@ -129,3 +129,20 @@ export function plata(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return '—';
   return '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 }
+
+// La duración se guarda en minutos porque es lo que necesita el cálculo, pero
+// nadie piensa una clase en minutos: piensa "hora y media". Esto traduce el
+// número a como se dice, para mostrarlo debajo del campo mientras se escribe.
+// Devuelve null cuando no hay nada que traducir —vacío, cero, basura— y ahí
+// la pantalla muestra su ayuda de siempre.
+export function duracionEnPalabras(min: number | null | undefined): string | null {
+  if (min === null || min === undefined || Number.isNaN(min) || min <= 0) return null;
+  const horas = Math.floor(min / 60);
+  const resto = min % 60;
+  const minutos = (n: number) => `${n} ${n === 1 ? 'minuto' : 'minutos'}`;
+  if (horas === 0) return minutos(resto);
+  const h = horas === 1 ? '1 hora' : `${horas} horas`;
+  if (resto === 0) return h;
+  if (resto === 30) return `${h} y media`;
+  return `${h} y ${minutos(resto)}`;
+}

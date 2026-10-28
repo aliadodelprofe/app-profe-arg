@@ -14,6 +14,7 @@ import {
 import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
 import { compararFormas, MESES_POR_ANIO } from '../../comun/precios';
+import { duracionEnPalabras } from '../../comun/fechas';
 
 export default function FormularioGrupo({
   espacio,
@@ -542,7 +543,16 @@ export default function FormularioGrupo({
               </Campo>
             </div>
 
-            <Campo etiqueta="Duración" ayuda="En minutos.">
+            {/* La ayuda traduce mientras escribís: "90" es un número, "1
+                hora y media" es la clase. Así el profe se da cuenta ahí mismo
+                si puso 90 queriendo decir 9 y media. */}
+            <Campo
+              etiqueta="Duración"
+              ayuda={(() => {
+                const p = duracionEnPalabras(Number(duracion));
+                return p ? `Son ${p}.` : 'En minutos.';
+              })()}
+            >
               <Texto
                 type="number" min="15" step="15" value={duracion}
                 placeholder="90"

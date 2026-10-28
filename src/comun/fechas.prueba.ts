@@ -10,7 +10,7 @@
 // ============================================================================
 import {
   sumarDias, diaSemana, mesDe, fechasSemanales,
-  mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente,
+  mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente, duracionEnPalabras,
 } from './fechas';
 import { compararFormas, porClaseDentroDeLaCuota } from './precios';
 
@@ -66,6 +66,19 @@ esperar('sin uno de los dos precios no hay comparación',
   compararFormas(5000, null), null);
 esperar('el techo: la cuota a la que el descuento es cero',
   Math.round(compararFormas(5000, 18000)!.cuotaSinDescuento), 21667);
+
+console.log('\nLa duracion dicha como se dice');
+esperar('media hora', duracionEnPalabras(30), '30 minutos');
+esperar('una clase de 45', duracionEnPalabras(45), '45 minutos');
+esperar('la hora redonda', duracionEnPalabras(60), '1 hora');
+esperar('hora y cuarto', duracionEnPalabras(75), '1 hora y 15 minutos');
+esperar('hora y media, que es lo mas comun', duracionEnPalabras(90), '1 hora y media');
+esperar('dos horas', duracionEnPalabras(120), '2 horas');
+esperar('dos y media', duracionEnPalabras(150), '2 horas y media');
+esperar('el singular del minuto suelto', duracionEnPalabras(61), '1 hora y 1 minuto');
+esperar('vacio no dice nada', duracionEnPalabras(null), null);
+esperar('cero tampoco', duracionEnPalabras(0), null);
+esperar('ni la basura', duracionEnPalabras(Number('abc')), null);
 
 console.log(fallos === 0 ? '\nTodo bien.\n' : `\n${fallos} fallaron.\n`);
 process.exit(fallos === 0 ? 0 : 1);

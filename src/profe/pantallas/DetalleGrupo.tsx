@@ -13,6 +13,7 @@ import {
   periodoDe, porAlumno, porMes, mesDeCorte,
 } from '../datos';
 import FormularioGrupo from './FormularioGrupo';
+import { duracionEnPalabras } from '../../comun/fechas';
 import type {
   Espacio, Grupo, Clase, Alumno, ModoCobro, Inscripcion, ResultadoCobro, DatosFicha,
   AlumnoDelGrupo,
@@ -932,7 +933,13 @@ function FormularioEditarClase({
       <Campo etiqueta="Hora">
         <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
       </Campo>
-      <Campo etiqueta="Duración" ayuda="En minutos.">
+      <Campo
+        etiqueta="Duración"
+        ayuda={(() => {
+          const p = duracionEnPalabras(Number(duracion));
+          return p ? `Son ${p}.` : 'En minutos.';
+        })()}
+      >
         <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
       </Campo>
       <Campo etiqueta="Título">
@@ -1042,7 +1049,13 @@ function FormularioFechas({
         <Campo etiqueta="Hora">
           <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
         </Campo>
-        <Campo etiqueta="Duración" ayuda="En minutos.">
+        <Campo
+          etiqueta="Duración"
+          ayuda={(() => {
+            const p = duracionEnPalabras(Number(duracion));
+            return p ? `Son ${p}.` : 'En minutos.';
+          })()}
+        >
           <Texto
             type="number" min="15" step="15" value={duracion}
             onChange={(e) => setDuracion(e.target.value)}
