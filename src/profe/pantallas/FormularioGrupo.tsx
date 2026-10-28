@@ -156,6 +156,9 @@ export default function FormularioGrupo({
       if (!grupo && esParticular && quien === 'nuevo' && !alumnoNombre.trim()) {
         return 'Una particular es de alguien: poné el nombre del alumno.';
       }
+      if (!grupo && esParticular && quien === 'nuevo' && !alumnoEmail.trim()) {
+        return 'Falta el correo del alumno: es con lo que entra a ver sus clases y sus pagos.';
+      }
       if (!grupo && esParticular && quien === 'existente' && !alumnoElegido) {
         return 'Elegí de qué alumno es esta particular.';
       }
@@ -388,11 +391,11 @@ export default function FormularioGrupo({
                 />
               </Campo>
               <Campo
-                etiqueta="Correo (opcional)"
-                ayuda="Con esto puede entrar a su app y ver sus clases y lo que debe."
+                etiqueta="Correo"
+                ayuda="Es con lo que entra a su app a ver sus clases y lo que debe. Sin correo, la ficha existe pero la persona no puede entrar nunca."
               >
                 <Texto
-                  type="email" value={alumnoEmail}
+                  type="email" required value={alumnoEmail}
                   onChange={(e) => setAlumnoEmail(e.target.value)}
                 />
               </Campo>
@@ -458,30 +461,33 @@ export default function FormularioGrupo({
             </div>
           )}
 
-          <div className="flex items-end gap-2">
+          {/* Dos renglones y no cuatro columnas apretadas: "Min" entraba en el
+              ancho pero no decía qué era, y una etiqueta que hay que adivinar
+              no es una etiqueta. */}
+          <div className="grid grid-cols-2 gap-3">
+            <Campo etiqueta="Día">
+              <select
+                value={dia}
+                onChange={(e) => setDia(e.target.value)}
+                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+              >
+                <option value="">Elegí</option>
+                {NOMBRE_DIA.map((n, i) => (
+                  <option key={i} value={i}>{n}</option>
+                ))}
+              </select>
+            </Campo>
+            <Campo etiqueta="Hora">
+              <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+            </Campo>
+          </div>
+
+          <div className="flex items-end gap-3">
             <div className="flex-1">
-              <Campo etiqueta="Día">
-                <select
-                  value={dia}
-                  onChange={(e) => setDia(e.target.value)}
-                  className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
-                >
-                  <option value="">Elegí</option>
-                  {NOMBRE_DIA.map((n, i) => (
-                    <option key={i} value={i}>{n}</option>
-                  ))}
-                </select>
-              </Campo>
-            </div>
-            <div className="w-28">
-              <Campo etiqueta="Hora">
-                <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-              </Campo>
-            </div>
-            <div className="w-24">
-              <Campo etiqueta="Min">
+              <Campo etiqueta="Duración" ayuda="En minutos.">
                 <Texto
                   type="number" min="15" step="15" value={duracion}
+                  placeholder="90"
                   onChange={(e) => setDuracion(e.target.value)}
                 />
               </Campo>

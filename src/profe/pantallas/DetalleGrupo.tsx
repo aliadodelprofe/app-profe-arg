@@ -412,10 +412,13 @@ function FormularioAlumno({
             <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
           </Campo>
           <Campo
-            etiqueta="Correo (opcional)"
-            ayuda="Con esto entra al portal a ver sus clases y su cuenta. Sin correo no puede entrar."
+            etiqueta="Correo"
+            ayuda="Es con lo que entra a su app a ver sus clases y lo que debe. Sin correo, la ficha existe pero la persona no puede entrar nunca."
           >
-            <Texto type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Texto
+              type="email" required value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
           </Campo>
         </>
       ) : (
@@ -898,7 +901,7 @@ function FormularioEditarClase({
       <Campo etiqueta="Hora">
         <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
       </Campo>
-      <Campo etiqueta="Duración en minutos">
+      <Campo etiqueta="Duración" ayuda="En minutos.">
         <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
       </Campo>
       <Campo etiqueta="Título">
@@ -1008,7 +1011,7 @@ function FormularioFechas({
         <Campo etiqueta="Hora">
           <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
         </Campo>
-        <Campo etiqueta="Duración (min)">
+        <Campo etiqueta="Duración" ayuda="En minutos.">
           <Texto
             type="number" min="15" step="15" value={duracion}
             onChange={(e) => setDuracion(e.target.value)}
@@ -1432,7 +1435,10 @@ function FormularioFicha({
             : 'Con esto entra al portal a ver sus clases y su cuenta. Sin correo no puede entrar.'
         }
       >
-        <Texto type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+        <Texto
+          type="email" required value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
       </Campo>
 
       {error && <Aviso>{error}</Aviso>}
