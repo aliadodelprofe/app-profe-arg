@@ -60,14 +60,36 @@ declare
   v_cuota   record;
   v_clase   record;
   v_baja    int;
+  v_sin_cargo int;
 begin
   -- 1 y 2. Crea los dos cargos, y llamarla de nuevo no crea nada.
   v_primera := public.asegurar_cargos(v_grupo);
   v_segunda := public.asegurar_cargos(v_grupo);
 
+  -- Lo que se comprueba NO es cuántos cargos creó, sino que no haya quedado
+  -- ninguna inscripción sin el suyo. Contar es frágil: alcanza con que alguien
+  -- anote un alumno más en ese grupo —o con que la app se empiece a usar— para
+  -- que el número cambie y la fila falle sin que nada esté roto. La regla que
+  -- asegurar_cargos promete es una invariante, no un número: toda inscripción
+  -- activa con precio termina con un cargo pendiente.
+  select count(*) into v_sin_cargo
+    from public.enrollments e
+    join public.groups g on g.id = e.group_id
+   where e.group_id = v_grupo
+     and e.status = 'active'
+     and (e.end_date is null or e.end_date >= current_date)
+     and case e.billing_mode
+           when 'per_period'  then g.price_per_period
+           when 'per_session' then g.price_per_session
+           else null
+         end is not null
+     and not exists (
+       select 1 from public.charges c
+        where c.enrollment_id = e.id and c.status = 'active');
+
   perform set_config('prueba.v1',
-    case when v_primera = 2 then 'PASA'
-         else 'FALLA - creo ' || v_primera || ' y se esperaban 2' end, false);
+    case when v_sin_cargo = 0 then 'PASA - creo ' || v_primera || ', y no quedo ninguna sin cargo'
+         else 'FALLA - quedaron ' || v_sin_cargo || ' inscripciones sin su cargo' end, false);
 
   perform set_config('prueba.v2',
     case when v_segunda = 0 then 'PASA'
@@ -166,7 +188,7 @@ exception
     perform set_config('prueba.v6', 'PASA', false);
 end $$;
 
-select 'Genera los dos cargos que faltaban'                   as prueba,
+select 'Ninguna inscripcion queda sin su cargo'                   as prueba,
        coalesce(current_setting('prueba.v1', true), 'NO SE EJECUTO') as resultado
 union all
 select 'Llamarla de nuevo no duplica nada',

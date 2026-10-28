@@ -181,13 +181,26 @@ begin
       perform set_config('prueba.v4', 'PASA', false);
   end;
 
-  -- Y el saldo del alumno tiene que haber quedado en cero.
-  select saldo into v_saldo
-    from public.student_account
-   where student_id = (select id from public.students where full_name = 'Alumno Portal');
+  -- Y el cargo que creó ESTA PRUEBA tiene que haber quedado saldado.
+  --
+  -- Antes acá se miraba el saldo TOTAL del alumno y se exigía cero. Eso no es
+  -- lo que esta prueba demuestra: el alumno puede deber otras cosas que nada
+  -- tienen que ver, y el día que las tuvo —porque la app se empezó a usar de
+  -- verdad— la fila empezó a fallar sin que nada estuviera roto. Lo que
+  -- confirmar_pago promete es que el cargo al que se le imputó la plata queda
+  -- cubierto, no que el alumno quede a cero con el mundo.
+  select coalesce(c.amount, 0) - coalesce(sum(a.amount), 0) into v_saldo
+    from public.charges c
+    left join public.payment_allocations a on a.charge_id = c.id
+   where c.concept = 'PRUEBA confirmar_pago'
+     and c.status = 'active'
+   group by c.id, c.amount
+   limit 1;
+
   perform set_config('prueba.v5',
     case when coalesce(v_saldo, -1) = 0 then 'PASA'
-         else 'FALLA - el saldo quedo en ' || coalesce(v_saldo::text, 'nulo') end, false);
+         else 'FALLA - al cargo de la prueba le falta cubrir '
+              || coalesce(v_saldo::text, 'no se encontro el cargo') end, false);
 end $$;
 
 
@@ -209,7 +222,7 @@ union all
 select 'Confirmar dos veces no imputa dos veces',
        coalesce(current_setting('prueba.v4', true), 'NO SE EJECUTO')
 union all
-select 'La deuda del alumno quedo en cero',
+select 'El cargo de la prueba quedo saldado',
        coalesce(current_setting('prueba.v5', true), 'NO SE EJECUTO');
 
 rollback;

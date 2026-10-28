@@ -92,19 +92,23 @@ declare
   v_url text;
 begin
   -- ---------------------------------------------------------------------- 5
+  -- Se mira LA ESCUELA DE LA PRUEBA y no "la primera de sus escuelas que tenga
+  -- logo". Lo segundo funcionó hasta que una escuela de verdad tuvo logo de
+  -- verdad: el "limit 1" devolvía esa y la fila fallaba sin que nada estuviera
+  -- roto. Una prueba tiene que mirar lo que ella misma puso.
   select t.avatar_url into v_url
     from public.tenants t
-   where t.id in (select public.my_student_tenant_ids())
-     and t.avatar_url is not null
-   limit 1;
+   where t.id = nullif(current_setting('prueba.espacio_2', true), '')::uuid
+     and t.id in (select public.my_student_tenant_ids());
 
   perform set_config('prueba.v5',
     case when v_url = 'https://ejemplo/logo2.png' then 'PASA'
-         else 'FALLA - no ve el logo de su propia escuela' end, false);
+         else 'FALLA - no ve el logo de su propia escuela, vio '
+              || coalesce(v_url, 'nada') end, false);
 
   -- ---------------------------------------------------------------------- 6
   update public.tenants set avatar_url = 'https://ejemplo/del-alumno.png'
-   where id in (select public.my_student_tenant_ids());
+   where id = nullif(current_setting('prueba.espacio_2', true), '')::uuid;
   get diagnostics v_n = row_count;
 
   perform set_config('prueba.v6',
@@ -114,10 +118,9 @@ begin
   -- ---------------------------------------------------------------------- 7
   begin
     insert into storage.objects (bucket_id, name, owner)
-    select 'logos', t.id::text || '/del-alumno.png', auth.uid()
-      from public.tenants t
-     where t.id in (select public.my_student_tenant_ids())
-     limit 1;
+    values ('logos',
+            nullif(current_setting('prueba.espacio_2', true), '') || '/del-alumno.png',
+            auth.uid());
     perform set_config('prueba.v7',
       'FALLA - el alumno subio un archivo a la carpeta de su escuela', false);
   exception when insufficient_privilege or others then

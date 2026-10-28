@@ -27,12 +27,39 @@ begin;
 -- El día fijo es MARTES (2) en todos. Da igual cuál sea: lo que se verifica es
 -- que las fechas creadas caigan todas en ese día.
 -- ----------------------------------------------------------------------------
--- El grupo del OTRO profesor se anota ahora, antes de ponerse el rol: después
--- RLS lo esconde y la fila 8 no tendría con qué probar.
+-- El grupo del otro profesor LO CREA ESTA PRUEBA, en vez de salir a buscar uno
+-- que ya exista. Buscarlo funcionó hasta el día en que la Escuela de Prueba 1
+-- quedó sin grupos —se limpiaron los espacios duplicados y se volvió a crear
+-- vacía— y entonces la fila 8 dejó de poder probar nada. Una prueba que
+-- depende de datos que otro dejó ahí no es una prueba: es una casualidad.
+--
+-- Se crea con el rol del profesor 1, que es el único que puede escribir en su
+-- espacio, y se reutiliza si ya está.
+select set_config('request.jwt.claims',
+  json_build_object(
+    'sub', (select id from auth.users where email = 'profe1@prueba.com'),
+    'role','authenticated')::text, true);
+set local role authenticated;
+
+insert into public.groups
+  (tenant_id, name, format, status, weekday, default_start_time, default_duration_min)
+select t.id, 'PRUEBA grupo ajeno', 'regular', 'active', 2, '20:00', 90
+  from public.tenants t
+ where t.name = 'Escuela de Prueba 1'
+   and not exists (
+     select 1 from public.groups g
+      where g.tenant_id = t.id and g.name = 'PRUEBA grupo ajeno')
+ limit 1;
+
+reset role;
+
+-- Se anota ahora, antes de ponerse el rol del profesor 2: después RLS lo
+-- esconde y la fila 8 no tendría con qué probar.
 select set_config('prueba.grupo_ajeno',
   (select g.id::text from public.groups g
      join public.tenants t on t.id = g.tenant_id
-    where t.name = 'Escuela de Prueba 1' limit 1), false);
+    where t.name = 'Escuela de Prueba 1'
+      and g.name = 'PRUEBA grupo ajeno' limit 1), false);
 
 select set_config('request.jwt.claims',
   json_build_object(
