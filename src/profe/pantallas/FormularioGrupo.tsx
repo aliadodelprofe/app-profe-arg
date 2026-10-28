@@ -9,12 +9,12 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   crearGrupo, editarGrupo, NOMBRE_DIA, plata,
-  traerAlumnos, crearAlumno, inscribir, precioDelGrupo,
+  traerAlumnos, crearAlumno, inscribir, precioDelGrupo, crearClases,
 } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
 import { compararFormas, MESES_POR_ANIO } from '../../comun/precios';
-import { duracionEnPalabras } from '../../comun/fechas';
+import { duracionEnPalabras, diaSemana } from '../../comun/fechas';
 
 export default function FormularioGrupo({
   espacio,
@@ -129,6 +129,28 @@ export default function FormularioGrupo({
   // Ahora el día fijo se pregunta adentro, que es donde vive: define si las
   // clases se crean solas o las cargás vos, no qué producto es.
   // --------------------------------------------------------------------
+  // --------------------------------------------------------------------
+  // CÓMO SE DA UNA PARTICULAR
+  //
+  // Son dos productos distintos y hasta ahora la app los trataba igual, con
+  // un "días y horarios (opcional)" que el profesor tenía que interpretar:
+  //
+  //   fijas   — todos los martes de 15 a 16, sin fecha de fin. Las clases se
+  //             generan solas, como un grupo regular.
+  //   pedido  — "quiero cuatro clases". Las fechas se acuerdan y se cargan a
+  //             mano, y NADA se genera solo: cuando se terminan, se terminan.
+  //
+  // Vacío-o-lleno decía lo mismo pero no lo preguntaba, y un campo opcional
+  // no es una decisión: es un campo que te olvidás de llenar.
+  // --------------------------------------------------------------------
+  type Ritmo = 'fijas' | 'pedido';
+  const [ritmo, setRitmo] = useState<Ritmo>(
+    grupo ? ((grupo.horarios ?? []).length > 0 ? 'fijas' : 'pedido') : 'fijas',
+  );
+  // Las fechas sueltas del paquete, mientras se está creando.
+  const [fechas, setFechas] = useState<string[]>([]);
+  const [fecha1, setFecha1] = useState('');
+
   type Forma = 'unico' | 'varias';
   const formaInicial: Forma =
     grupo && grupo.start_date && grupo.start_date === grupo.end_date ? 'unico' : 'varias';
@@ -138,11 +160,27 @@ export default function FormularioGrupo({
   const esFormacion = formato === 'cycle';
   const esParticular = formato === 'private';
 
-  // El día fijo lo pide el regular siempre, y la formación solo si es semanal.
-  // La particular lo ofrece: "todos los martes" se agenda solo, "dos miércoles
-  // al mes" se carga a mano.
-  const pideDiaFijo = esRegular || (esFormacion && forma === 'varias') || esParticular;
+  // El día fijo lo pide el regular siempre, la formación solo si es semanal, y
+  // la particular solo si elegiste que sea fija.
+  const pideDiaFijo = esRegular || (esFormacion && forma === 'varias')
+    || (esParticular && ritmo === 'fijas');
+  // Y las fechas a dedo, solo la particular por pedido mientras se crea.
+  const pideFechas = esParticular && ritmo === 'pedido' && !grupo;
+  // El precio del paquete: una formación, o una particular por pedido.
+  const pidePaquete = esFormacion || (esParticular && ritmo === 'pedido');
   const conDiaFijo = pideDiaFijo && horarios.length > 0;
+
+  // "mar 12/11" — corto porque son chips y entran varios en una fila.
+  function fechaCorta(iso: string) {
+    const [, m, d] = iso.split('-');
+    return `${diaSemana(iso).slice(0, 3)} ${d}/${m}`;
+  }
+
+  function sumarFecha() {
+    if (!fecha1 || fechas.includes(fecha1)) return;
+    setFechas((xs) => [...xs, fecha1].sort());
+    setFecha1('');
+  }
 
   function agregarHorario() {
     if (dia === '' || !hora) return;
@@ -188,7 +226,10 @@ export default function FormularioGrupo({
       if (esFormacion && forma === 'varias' && !porClase && !pagoUnico) {
         return 'Poné al menos un precio: por clase, el taller entero, o los dos.';
       }
-      if (!esFormacion && !porClase && !porMes) {
+      if (esParticular && ritmo === 'pedido' && !porClase && !pagoUnico) {
+        return 'Poné al menos un precio: por clase, el paquete entero, o los dos.';
+      }
+      if (!pidePaquete && !porClase && !porMes) {
         return 'Poné al menos un precio: por clase, por mes, o los dos.';
       }
       if (!grupo && esParticular && participantes.length === 0) {
@@ -203,11 +244,16 @@ export default function FormularioGrupo({
       if (esRegular && horarios.length === 0) {
         return 'Un grupo regular necesita al menos un día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
       }
-      if (dia !== '' && !hora) {
+      // Solo si el bloque está a la vista: un día a medio escribir que después
+      // escondiste al cambiar de formato no es un error, es algo que ya no existe.
+      if (pideDiaFijo && dia !== '' && !hora) {
         return 'Elegiste un día pero falta la hora. Completala y tocá "Sumar este día".';
       }
-      if (dia !== '' && hora) {
+      if (pideDiaFijo && dia !== '' && hora) {
         return 'Te quedó un día sin sumar. Tocá "Sumar este día" o borrá el día.';
+      }
+      if (pideFechas && fecha1) {
+        return 'Te quedó una fecha sin sumar. Tocá "Sumar esta fecha" o borrala.';
       }
       return null;
     })();
@@ -240,8 +286,11 @@ export default function FormularioGrupo({
       address: pideLugar ? (direccion.trim() || null) : null,
       horarios: pideDiaFijo ? horarios : [],
       price_per_session: porClase ? Number(porClase) : null,
-      price_per_period: porMes ? Number(porMes) : null,
-      price_one_time: formato === 'cycle' && pagoUnico ? Number(pagoUnico) : null,
+      // Lo que no se pregunta no se guarda. Una formación y una particular
+      // por pedido no tienen cuota mensual: dejar un precio viejo ahí sería
+      // ofrecerle al alumno una forma de pago que la pantalla no muestra.
+      price_per_period: !pidePaquete && porMes ? Number(porMes) : null,
+      price_one_time: pidePaquete && pagoUnico ? Number(pagoUnico) : null,
       online: esParticular && online,
       meeting_url: esParticular && online ? (enlace.trim() || null) : null,
     };
@@ -255,6 +304,18 @@ export default function FormularioGrupo({
       // forma de cobro es la primera que tenga precio: en una particular hay
       // una sola cargada casi siempre, y preguntarla sería preguntar algo con
       // una sola respuesta posible.
+      // Las fechas del paquete, antes de anotar a nadie: así el primer cargo
+      // por clase ya tiene a qué clase apuntar.
+      if (pideFechas && fechas.length > 0) {
+        await crearClases(espacio.id, fechas.map((f) => ({
+          group_id: g.id,
+          date: f,
+          start_time: hora || null,
+          duration_min: duracion ? Number(duracion) : null,
+          title: null,
+        })));
+      }
+
       if (!grupo && esParticular) {
         const modo = (['per_session', 'per_period', 'one_time'] as ModoCobro[])
           .find((m) => precioDelGrupo(g, m) !== null);
@@ -292,7 +353,16 @@ export default function FormularioGrupo({
   // muestra es el precio por clase —que es lo que necesita para fijar el
   // número— y lo que recibe a cambio: cobros en fecha, todo el año, de alguien
   // que ya decidió quedarse.
-  const comparacion = compararFormas(Number(porClase) || null, Number(porMes) || null);
+  //
+  // Y cuántas veces por semana se junta el grupo, que es lo que estaba
+  // faltando: un martes y jueves a $15.000 la clase cuesta $30.000 por semana
+  // viniendo suelto, no $15.000. Sin esto la app miraba una cuota de $100.000
+  // y le decía al profesor que era CARA cuando en realidad era un 23% de
+  // descuento.
+  const porSemana = horarios.length || 1;
+  const comparacion = compararFormas(
+    Number(porClase) || null, Number(porMes) || null, porSemana,
+  );
 
   // La cuenta que decide en un taller: ¿pagar el entero conviene o no? Si no
   // conviene, nadie lo va a elegir y el profesor no cobra nada por adelantado
@@ -300,25 +370,34 @@ export default function FormularioGrupo({
   const ayudaDelTaller = (() => {
     const suelto = Number(porClase);
     const entero = Number(pagoUnico);
+    const cosa = esFormacion ? 'el taller' : 'el paquete';
     if (!suelto || !entero) {
       return 'Opcional. Si lo ponés, el alumno puede pagar todo junto en vez de clase a clase.';
     }
     const clasesQueCubre = Math.round((entero / suelto) * 10) / 10;
-    return `Con este precio, pagar el taller entero le sale como ${clasesQueCubre} clases sueltas. `
-      + 'Si el taller tiene más clases que eso, le conviene — y a vos te deja la plata por adelantado.';
+    return `Con este precio, pagar ${cosa} entero le sale como ${clasesQueCubre} clases sueltas. `
+      + `Si ${cosa} tiene más clases que eso, le conviene — y a vos te deja la plata por adelantado.`;
   })();
 
   const ayudaDelMes = (() => {
     if (!comparacion) {
       return 'Con el descuento ya aplicado. Es el precio final, no un porcentaje.';
     }
+    // Con más de un encuentro por semana, decirlo: es de dónde sale el número
+    // que viene después, y sin eso parece sacado de la galera.
+    const base = porSemana > 1
+      ? `Son ${porSemana} encuentros por semana, así que suelto paga `
+        + `${plata(Number(porClase) * porSemana)} cada semana. `
+      : '';
     // Cuando el precio no funciona, decirle cuál sí — no solo que está mal.
     if (!comparacion.conviene) {
-      return 'Con este precio la cuota le sale más que venir suelto, así que nadie la va '
+      return base
+        + 'Con este precio la cuota le sale más que venir suelto, así que nadie la va '
         + `a elegir. Para que tenga sentido tiene que quedar por debajo de `
         + `${plata(comparacion.cuotaSinDescuento)}.`;
     }
-    return `Con tu cuota cada clase le sale ${plata(comparacion.porClaseConCuota)} en vez de `
+    return base
+      + `Con tu cuota cada clase le sale ${plata(comparacion.porClaseConCuota)} en vez de `
       + `${plata(Number(porClase))}: un ${comparacion.porcentaje}% menos para él. A cambio te `
       + `deja ${MESES_POR_ANIO} cobros al año en fecha fija, de alguien que decidió quedarse `
       + 'una vez en vez de decidirlo cada semana.';
@@ -482,6 +561,104 @@ export default function FormularioGrupo({
       )}
 
       {/* ------------------------------------------------------------------
+          FIJAS O POR PEDIDO
+
+          La pregunta que decide si esta particular se mantiene sola o se
+          agota. Antes se deducía de si el profesor había llenado o no un
+          campo opcional, que es pedirle que adivine qué significa dejarlo
+          vacío.
+         ------------------------------------------------------------------ */}
+      {esParticular && (
+        <Campo
+          etiqueta="¿Cómo se dan?"
+          ayuda={ritmo === 'fijas'
+            ? 'Siempre el mismo día y la misma hora, sin fecha de fin. Las clases de los próximos dos meses se crean solas.'
+            : 'El alumno pide una cantidad y acuerdan las fechas. No se genera nada solo: cuando se terminan las clases cargadas, se terminan.'}
+        >
+          <Opciones<Ritmo>
+            valor={ritmo}
+            alElegir={setRitmo}
+            opciones={[
+              { valor: 'fijas', texto: 'Fijas' },
+              { valor: 'pedido', texto: 'Por pedido' },
+            ]}
+          />
+        </Campo>
+      )}
+
+      {/* ------------------------------------------------------------------
+          LAS FECHAS DEL PAQUETE
+
+          Misma tarjeta, mismo patrón que los horarios: se arma una y se suma
+          a la lista. La hora y la duración son las mismas para todas —si una
+          va a otro horario, se corrige después desde el grupo— porque pedir
+          tres campos por fecha para cuatro fechas es pedir doce campos.
+         ------------------------------------------------------------------ */}
+      {pideFechas && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-tinta">Las fechas</p>
+
+          {fechas.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {fechas.map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFechas((xs) => xs.filter((x) => x !== f))}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento transition hover:brightness-[0.97]"
+                >
+                  {fechaCorta(f)}
+                  <span aria-hidden="true" className="text-base leading-none">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-3 rounded-2xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo etiqueta="Hora">
+                <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+              </Campo>
+              <Campo
+                etiqueta="Duración"
+                ayuda={(() => {
+                  const d = duracionEnPalabras(Number(duracion));
+                  return d ? `Son ${d}.` : 'En minutos.';
+                })()}
+              >
+                <Texto
+                  type="number" min="15" step="15" value={duracion}
+                  placeholder="60"
+                  onChange={(e) => setDuracion(e.target.value)}
+                />
+              </Campo>
+            </div>
+
+            <Campo etiqueta="Fecha">
+              <Texto
+                type="date" value={fecha1}
+                onChange={(e) => setFecha1(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sumarFecha(); } }}
+              />
+            </Campo>
+
+            <BotonSecundario
+              type="button" onClick={sumarFecha} disabled={!fecha1}
+              className="w-full"
+            >
+              + Sumar esta fecha
+            </BotonSecundario>
+          </div>
+
+          <p className="text-xs leading-relaxed text-tenue">
+            {fechas.length === 0
+              ? 'Si todavía no las acordaron, creala igual y cargalas después desde el grupo, con "Agregar fechas".'
+              : `${fechas.length} ${fechas.length === 1 ? 'clase' : 'clases'}. Se crean junto con la particular, y no aparece ninguna más sola.`}
+          </p>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
           EL HORARIO, QUE ES UNA LISTA
 
           Un taller de martes y jueves no es "un día fijo con una excepción":
@@ -588,7 +765,9 @@ export default function FormularioGrupo({
         <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
           {esFormacion
             ? 'Si ponés los dos precios, el alumno elige: paga clase a clase o el taller entero. Que el entero convenga es lo que hace que elija eso, y vos cobrás por adelantado.'
-            : 'El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas. El descuento del mes es tu herramienta para eso.'}
+            : esParticular && ritmo === 'pedido'
+              ? 'Si ponés los dos precios, el alumno elige: paga cada clase o el paquete entero. Que el paquete convenga es lo que hace que elija eso, y vos cobrás por adelantado.'
+              : 'El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas. El descuento del mes es tu herramienta para eso.'}
         </p>
       )}
 
@@ -629,9 +808,11 @@ export default function FormularioGrupo({
             />
           </Campo>
 
-          {esFormacion ? (
+          {pidePaquete ? (
             <Campo
-              etiqueta="Precio del taller entero (opcional)"
+              etiqueta={esFormacion
+                ? 'Precio del taller entero (opcional)'
+                : 'Precio del paquete entero (opcional)'}
               ayuda={ayudaDelTaller}
             >
               <Texto

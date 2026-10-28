@@ -125,7 +125,10 @@ function Arreglo({
   // La cuenta que decide. Se mide por año y no por mes a propósito: un mes no
   // tiene cuatro clases, tiene 4,33, y comparar contra cuatro le miente al
   // alumno un descuento más chico del que realmente le están dando.
-  const comparacion = compararFormas(porClase, porMes);
+  // Cuántas veces por semana se junta: en un grupo de martes y jueves, venir
+  // suelto cuesta el doble por semana, y sin contarlo la comparación le
+  // mostraba al alumno un descuento mucho más chico del real.
+  const comparacion = compararFormas(porClase, porMes, grupo.horarios?.length || 1);
 
   if (!modoQueViene || modoQueViene === 'one_time') {
     return <p className="text-tenue">Este grupo se paga una sola vez.</p>;

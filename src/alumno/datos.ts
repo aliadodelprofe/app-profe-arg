@@ -260,6 +260,10 @@ export type MiArreglo = {
     name: string;
     price_per_session: number | null;
     price_per_period: number | null;
+    // Solo para contarlos: cuántas veces por semana se junta el grupo. Es lo
+    // que hace que la comparación entre venir suelto y pagar la cuota dé
+    // bien en un grupo de martes y jueves.
+    horarios: { id: string }[];
   } | null;
 };
 
@@ -268,7 +272,8 @@ export async function misArreglos(tenantId: string): Promise<MiArreglo[]> {
     .from('enrollments')
     .select(
       'id, billing_mode, start_date, end_date, ' +
-      'grupo:groups(id, name, price_per_session, price_per_period)',
+      'grupo:groups(id, name, price_per_session, price_per_period, ' +
+      'horarios:group_schedule(id))',
     )
     .eq('tenant_id', tenantId)
     .eq('status', 'active')

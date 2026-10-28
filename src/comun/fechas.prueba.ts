@@ -67,6 +67,24 @@ esperar('sin uno de los dos precios no hay comparación',
 esperar('el techo: la cuota a la que el descuento es cero',
   Math.round(compararFormas(5000, 18000)!.cuotaSinDescuento), 21667);
 
+console.log('\nUn grupo que se junta dos veces por semana');
+// El caso real que destapo el error: martes y jueves, $15.000 la clase.
+// Suelto son $30.000 por semana, no $15.000, asi que el techo se duplica.
+esperar('el techo con dos encuentros',
+  Math.round(compararFormas(15000, 100000, 2)!.cuotaSinDescuento), 130000);
+esperar('y una cuota de 100.000 SI conviene',
+  compararFormas(15000, 100000, 2)?.conviene, true);
+esperar('la misma cuota con un solo encuentro NO conviene',
+  compararFormas(15000, 100000, 1)?.conviene, false);
+esperar('cada clase dentro de la cuota, yendo dos veces',
+  Math.round(porClaseDentroDeLaCuota(100000, 2)), 11538);
+esperar('sin decir cuantos, se supone uno',
+  compararFormas(15000, 100000)?.cuotaSinDescuento,
+  compararFormas(15000, 100000, 1)?.cuotaSinDescuento);
+esperar('cero encuentros no divide por cero: se trata como uno',
+  compararFormas(15000, 100000, 0)?.cuotaSinDescuento,
+  compararFormas(15000, 100000, 1)?.cuotaSinDescuento);
+
 console.log('\nLa duracion dicha como se dice');
 esperar('media hora', duracionEnPalabras(30), '30 minutos');
 esperar('una clase de 45', duracionEnPalabras(45), '45 minutos');
