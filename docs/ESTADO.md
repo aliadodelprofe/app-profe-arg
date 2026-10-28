@@ -83,7 +83,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Aplicada |
 | `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Aplicada |
 | `0032_una_clase_puede_ser_online.sql` | `groups.online` y `groups.meeting_url`. Una clase online no tiene sala, y un check impide que convivan con una dirección | Aplicada |
-| `0033_el_pago_unico_se_cobra.sql` | `asegurar_cargos()` gana la rama de pago único. Existía la forma de pago pero nunca generaba un cargo: el alumno figuraba al día debiendo el taller entero | Sin aplicar |
+| `0033_el_pago_unico_se_cobra.sql` | `asegurar_cargos()` gana la rama de pago único. Existía la forma de pago pero nunca generaba un cargo: el alumno figuraba al día debiendo el taller entero | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -120,12 +120,13 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/medios_de_pago.sql` | Los medios de pago (0024, 0025): que el profesor cargue los suyos y ninguno ajeno, que el alumno los vea y **no** los pueda cambiar, que lo archivado no le llegue, y que un CBU cortado no entre. En una transacción que se deshace. Repetible |
 | `supabase/tests/logo_de_la_escuela.sql` | El logo (0026): que lo ponga solo el dueño, que el alumno lo vea y no lo toque, y que nadie suba archivos a la carpeta de otro espacio. En una transacción que se deshace. Repetible |
 | `supabase/tests/avatares.sql` | El depósito de fotos (0027, 0028): que cada uno escriba en su carpeta y en ninguna otra. **No prueba el borrado**: Supabase lo prohíbe desde SQL, va por la Storage API. En una transacción que se deshace. Repetible |
+| `supabase/tests/pago_unico.sql` | El pago único (0033): que el taller con precio total genere su cargo, que venza el día de la inscripción, que no se cobre dos veces, y que un cargo suelto no lo tape. En una transacción que se deshace. Repetible |
 | `supabase/tests/lo_que_vencio.sql` | La frontera entre vencido y por vencer (0031): que un cargo de mañana no entre en el saldo, que uno sin fecha sí, y que pagar por adelantado no mueva lo vencido. En una transacción que se deshace. Repetible |
 | `supabase/tests/mi_correo.sql` | `sincronizar_mi_correo()` (0030): que copie el correo **del JWT**, que sea idempotente, y que otra persona con ese mismo correo en su token no se lleve las fichas. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 | **`npm run prueba:base`** | **Corre las diecisiete de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
-Últimos resultados (28 de octubre de 2026) — **la batería completa, 18 de 18 en verde**,
+Últimos resultados (28 de octubre de 2026) — **la batería completa, 19 de 19 en verde**,
 corrida de una con `npm run prueba:base`.
 
 Esa corrida fue la primera que se hizo entera de una sola vez, y destapó cuatro pruebas
