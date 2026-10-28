@@ -772,11 +772,11 @@ export default function FormularioGrupo({
                 onChange={(e) => setCada(e.target.value)}
                 className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
               >
-                <option value="">Todas las semanas (4 o 5 según el mes)</option>
-                <option value="4">4 por mes exactas (el 5º no se da)</option>
+                <option value="">Todas las semanas (incluso si hay 5º)</option>
+                <option value="4">4 por mes</option>
                 <option value="3">3 por mes</option>
-                <option value="2">2 por mes (el 1º y el 3º)</option>
-                <option value="1">1 por mes (el 1º)</option>
+                <option value="2">2 por mes (1º y 3º semana)</option>
+                <option value="1">1 por mes</option>
               </select>
             </Campo>
 
