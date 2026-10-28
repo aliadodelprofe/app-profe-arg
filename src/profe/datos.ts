@@ -59,6 +59,9 @@ export type Horario = {
   weekday: number;
   start_time: string | null;
   duration_min: number | null;
+  // Cuántas veces por mes se da este encuentro (migración 0036).
+  // null = todas las semanas. 2 son el primer y el tercero del mes.
+  por_mes: number | null;
 };
 
 // Lo mismo, sin el id: lo que manda el formulario.
@@ -66,6 +69,7 @@ export type DatosHorario = {
   weekday: number;
   start_time: string | null;
   duration_min: number | null;
+  por_mes: number | null;
 };
 
 // Lo que cargan los formularios de alta y de edición de grupo.
@@ -156,7 +160,7 @@ export async function traerEspacios(): Promise<Espacio[]> {
 const COLUMNAS_GRUPO =
   'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
   'price_per_session, price_per_period, price_one_time, online, meeting_url, ' +
-  'horarios:group_schedule(id, weekday, start_time, duration_min)';
+  'horarios:group_schedule(id, weekday, start_time, duration_min, por_mes)';
 
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase
@@ -801,7 +805,12 @@ export function horarioDe(g: Grupo): string | null {
   );
   if (hs.length === 0) return null;
   return hs
-    .map((h) => NOMBRE_DIA[h.weekday] + (h.start_time ? ` ${h.start_time.slice(0, 5)}` : ''))
+    .map((h) =>
+      NOMBRE_DIA[h.weekday]
+      + (h.start_time ? ` ${h.start_time.slice(0, 5)}` : '')
+      // "todas las semanas" no se dice: es lo normal y ensuciaría cada línea.
+      // Lo que hay que decir es cuando NO es todas.
+      + (h.por_mes ? ` (${h.por_mes}/mes)` : ''))
     .join(' · ');
 }
 

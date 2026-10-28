@@ -12,7 +12,7 @@ import {
   sumarDias, diaSemana, mesDe, fechasSemanales,
   mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente, duracionEnPalabras,
 } from './fechas';
-import { compararFormas, porClaseDentroDeLaCuota } from './precios';
+import { compararFormas, porClaseDentroDeLaCuota, clasesPorAnioDe } from './precios';
 
 let fallos = 0;
 
@@ -67,23 +67,45 @@ esperar('sin uno de los dos precios no hay comparación',
 esperar('el techo: la cuota a la que el descuento es cero',
   Math.round(compararFormas(5000, 18000)!.cuotaSinDescuento), 21667);
 
+console.log('\nCuantas clases hay en un anio');
+const semanal = [{ por_mes: null }];
+const martesYJueves = [{ por_mes: null }, { por_mes: null }];
+esperar('un dia todas las semanas', clasesPorAnioDe(semanal), 52);
+esperar('dos dias todas las semanas', clasesPorAnioDe(martesYJueves), 104);
+esperar('un dia, dos veces por mes', clasesPorAnioDe([{ por_mes: 2 }]), 24);
+esperar('un dia, una vez por mes', clasesPorAnioDe([{ por_mes: 1 }]), 12);
+esperar('mezclado: martes semanal y jueves quincenal',
+  clasesPorAnioDe([{ por_mes: null }, { por_mes: 2 }]), 76);
+esperar('sin horario fijo se supone semanal', clasesPorAnioDe([]), 52);
+
 console.log('\nUn grupo que se junta dos veces por semana');
 // El caso real que destapo el error: martes y jueves, $15.000 la clase.
 // Suelto son $30.000 por semana, no $15.000, asi que el techo se duplica.
+const dosPorSemana = clasesPorAnioDe(martesYJueves);
 esperar('el techo con dos encuentros',
-  Math.round(compararFormas(15000, 100000, 2)!.cuotaSinDescuento), 130000);
+  Math.round(compararFormas(15000, 100000, dosPorSemana)!.cuotaSinDescuento), 130000);
 esperar('y una cuota de 100.000 SI conviene',
-  compararFormas(15000, 100000, 2)?.conviene, true);
+  compararFormas(15000, 100000, dosPorSemana)?.conviene, true);
 esperar('la misma cuota con un solo encuentro NO conviene',
-  compararFormas(15000, 100000, 1)?.conviene, false);
+  compararFormas(15000, 100000, clasesPorAnioDe(semanal))?.conviene, false);
 esperar('cada clase dentro de la cuota, yendo dos veces',
-  Math.round(porClaseDentroDeLaCuota(100000, 2)), 11538);
-esperar('sin decir cuantos, se supone uno',
+  Math.round(porClaseDentroDeLaCuota(100000, dosPorSemana)), 11538);
+esperar('sin decir cuantas, se suponen 52',
   compararFormas(15000, 100000)?.cuotaSinDescuento,
-  compararFormas(15000, 100000, 1)?.cuotaSinDescuento);
-esperar('cero encuentros no divide por cero: se trata como uno',
-  compararFormas(15000, 100000, 0)?.cuotaSinDescuento,
-  compararFormas(15000, 100000, 1)?.cuotaSinDescuento);
+  compararFormas(15000, 100000, 52)?.cuotaSinDescuento);
+esperar('cero clases no divide por cero',
+  Number.isFinite(compararFormas(15000, 100000, 0)!.porClaseConCuota), true);
+
+console.log('\nY uno que se junta dos veces por mes');
+// Dos clases por mes a $15.000 son $30.000 por mes viniendo suelto. Una cuota
+// de $100.000 ahi es un disparate, y la app tiene que decirlo.
+const quincenal = clasesPorAnioDe([{ por_mes: 2 }]);
+esperar('el techo baja a 30.000',
+  Math.round(compararFormas(15000, 100000, quincenal)!.cuotaSinDescuento), 30000);
+esperar('100.000 por dos clases al mes NO conviene',
+  compararFormas(15000, 100000, quincenal)?.conviene, false);
+esperar('25.000 por dos clases al mes SI conviene',
+  compararFormas(15000, 25000, quincenal)?.conviene, true);
 
 console.log('\nLa duracion dicha como se dice');
 esperar('media hora', duracionEnPalabras(30), '30 minutos');

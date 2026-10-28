@@ -13,7 +13,7 @@ import {
 } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
-import { compararFormas, MESES_POR_ANIO } from '../../comun/precios';
+import { compararFormas, clasesPorAnioDe, MESES_POR_ANIO } from '../../comun/precios';
 import { duracionEnPalabras, diaSemana } from '../../comun/fechas';
 
 export default function FormularioGrupo({
@@ -47,11 +47,15 @@ export default function FormularioGrupo({
       weekday: h.weekday,
       start_time: h.start_time,
       duration_min: h.duration_min,
+      por_mes: h.por_mes,
     })),
   );
   const [dia, setDia] = useState<string>('');
   const [hora, setHora] = useState('');
   const [duracion, setDuracion] = useState('');
+  // Cuántas veces por mes se da ESE día. Vacío = todas las semanas, que es lo
+  // normal y por eso es lo que viene puesto.
+  const [cada, setCada] = useState('');
   const [online, setOnline] = useState(grupo?.online ?? false);
   const [enlace, setEnlace] = useState(grupo?.meeting_url ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -188,6 +192,7 @@ export default function FormularioGrupo({
       weekday: Number(dia),
       start_time: hora,
       duration_min: duracion ? Number(duracion) : null,
+      por_mes: cada ? Number(cada) : null,
     };
     if (horarios.some((h) => h.weekday === nuevo.weekday && h.start_time === nuevo.start_time)) {
       return;
@@ -354,15 +359,16 @@ export default function FormularioGrupo({
   // número— y lo que recibe a cambio: cobros en fecha, todo el año, de alguien
   // que ya decidió quedarse.
   //
-  // Y cuántas veces por semana se junta el grupo, que es lo que estaba
-  // faltando: un martes y jueves a $15.000 la clase cuesta $30.000 por semana
-  // viniendo suelto, no $15.000. Sin esto la app miraba una cuota de $100.000
-  // y le decía al profesor que era CARA cuando en realidad era un 23% de
-  // descuento.
-  const porSemana = horarios.length || 1;
+  // Y cuántas clases hay de verdad al año, que es lo que estaba faltando: un
+  // martes y jueves a $15.000 cuesta $30.000 por semana viniendo suelto, y
+  // un martes por medio cuesta $30.000 por MES. La cuenta contra 52 clavado
+  // le decía al profesor que una cuota de $100.000 era cara cuando era un
+  // 23% de descuento, y en el caso quincenal le diría lo contrario.
+  const clasesAlAnio = clasesPorAnioDe(horarios);
   const comparacion = compararFormas(
-    Number(porClase) || null, Number(porMes) || null, porSemana,
+    Number(porClase) || null, Number(porMes) || null, clasesAlAnio,
   );
+  const clasesAlMes = clasesAlAnio / MESES_POR_ANIO;
 
   // La cuenta que decide en un taller: ¿pagar el entero conviene o no? Si no
   // conviene, nadie lo va a elegir y el profesor no cobra nada por adelantado
@@ -383,11 +389,12 @@ export default function FormularioGrupo({
     if (!comparacion) {
       return 'Con el descuento ya aplicado. Es el precio final, no un porcentaje.';
     }
-    // Con más de un encuentro por semana, decirlo: es de dónde sale el número
-    // que viene después, y sin eso parece sacado de la galera.
-    const base = porSemana > 1
-      ? `Son ${porSemana} encuentros por semana, así que suelto paga `
-        + `${plata(Number(porClase) * porSemana)} cada semana. `
+    // Cuando el horario no es "una vez por semana", decir cuántas clases son:
+    // es de dónde sale el número que viene después, y sin eso parece sacado
+    // de la galera.
+    const base = clasesAlAnio !== 52
+      ? `Con este horario son ${Math.round(clasesAlMes * 10) / 10} clases por mes, `
+        + `así que suelto le saldrían ${plata(Number(porClase) * clasesAlMes)} al mes. `
       : '';
     // Cuando el precio no funciona, decirle cuál sí — no solo que está mal.
     if (!comparacion.conviene) {
@@ -690,6 +697,7 @@ export default function FormularioGrupo({
                 >
                   {NOMBRE_DIA[h.weekday]} {h.start_time?.slice(0, 5)}
                   {h.duration_min ? ` · ${h.duration_min}min` : ''}
+                  {h.por_mes ? ` · ${h.por_mes}/mes` : ''}
                   <span aria-hidden="true" className="text-base leading-none">×</span>
                 </button>
               ))}
@@ -735,6 +743,36 @@ export default function FormularioGrupo({
                 placeholder="90"
                 onChange={(e) => setDuracion(e.target.value)}
               />
+            </Campo>
+
+            {/* CUÁNTAS VECES POR MES, que es lo tercero que define un día
+                fijo y hasta ahora se daba por sentado. "Los martes de 15 a 16"
+                y "un martes por medio" son el mismo día y la misma hora, y la
+                app las trataba igual: generaba los cuatro martes. Al alumno
+                que pactó dos le aparecían cuatro clases y cuatro cargos. */}
+            <Campo
+              etiqueta="Cada cuánto"
+              ayuda={cada === '2'
+                ? 'El 1º y el 3º del mes: un día por medio.'
+                : cada === '1'
+                  ? 'Solo el 1º del mes.'
+                  : cada === '4'
+                    ? 'Los primeros 4 del mes. Cuando el mes tiene un quinto, ese no se da.'
+                    : cada === '3'
+                      ? 'Los primeros 3 del mes.'
+                      : 'Todas las semanas, sin saltearse ninguna.'}
+            >
+              <select
+                value={cada}
+                onChange={(e) => setCada(e.target.value)}
+                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+              >
+                <option value="">Todas las semanas</option>
+                <option value="4">4 veces por mes</option>
+                <option value="3">3 veces por mes</option>
+                <option value="2">2 veces por mes</option>
+                <option value="1">1 vez por mes</option>
+              </select>
             </Campo>
 
             <BotonSecundario

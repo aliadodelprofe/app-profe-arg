@@ -36,6 +36,7 @@ const PRUEBAS = [
   'cargos_automaticos.sql',
   'pago_unico.sql',
   'clases_automaticas.sql',
+  'clases_cada_tanto.sql',
   'invitaciones.sql',
   'forma_de_pago.sql',
   'saldo_a_favor.sql',

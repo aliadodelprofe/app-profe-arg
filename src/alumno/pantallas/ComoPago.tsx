@@ -17,7 +17,7 @@ import { cambiarFormaDePago } from '../datos';
 import type { MiArreglo } from '../datos';
 import { fecha, plata, hoyISO } from '../formato';
 import { Aviso, Boton, Confirmacion, Seccion, Lista, Fila, Hoja } from '../../comun/ui';
-import { compararFormas } from '../../comun/precios';
+import { compararFormas, clasesPorAnioDe } from '../../comun/precios';
 
 const nombre = (m: string) => (m === 'per_session' ? 'por clase' : 'por mes');
 
@@ -125,10 +125,12 @@ function Arreglo({
   // La cuenta que decide. Se mide por año y no por mes a propósito: un mes no
   // tiene cuatro clases, tiene 4,33, y comparar contra cuatro le miente al
   // alumno un descuento más chico del que realmente le están dando.
-  // Cuántas veces por semana se junta: en un grupo de martes y jueves, venir
-  // suelto cuesta el doble por semana, y sin contarlo la comparación le
-  // mostraba al alumno un descuento mucho más chico del real.
-  const comparacion = compararFormas(porClase, porMes, grupo.horarios?.length || 1);
+  // Cuántas clases hay de verdad al año: en un grupo de martes y jueves venir
+  // suelto cuesta el doble, y en uno quincenal cuesta la mitad. Sin contarlo,
+  // la comparación le mostraba al alumno un descuento que no era el suyo.
+  const comparacion = compararFormas(
+    porClase, porMes, clasesPorAnioDe(grupo.horarios ?? []),
+  );
 
   if (!modoQueViene || modoQueViene === 'one_time') {
     return <p className="text-tenue">Este grupo se paga una sola vez.</p>;
