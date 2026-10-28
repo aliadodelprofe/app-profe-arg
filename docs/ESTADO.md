@@ -80,7 +80,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0027_la_foto_del_alumno.sql` | Depósito público `avatares`, con la carpeta por usuario: la ficha es por escuela, la cara es de la persona | Aplicada |
 | `0028_el_dueno_ve_sus_imagenes.sql` | Reglas de `select` en `logos` y `avatares`: sin ellas un `update` no encuentra la fila y devuelve cero sin error | Aplicada |
 | `0029_sacar_la_foto.sql` | `actualizar_mi_ficha` distingue "no la toques" (nulo) de "sacala" (vacío). Antes no había forma de borrar la foto | Aplicada |
-| `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Sin aplicar |
+| `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -114,21 +114,34 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/mantenimiento.sql` | La tarea programada: que esté agendada, que corra sin errores, que recorra los grupos de **todos** los profesores, que correrla de nuevo no genere nada, y que ningún profesor pueda ejecutarla ni leer su registro. Correr como `postgres`. Repetible |
 | `supabase/tests/clases_automaticas.sql` | `asegurar_clases()`: que cree todos los días fijos hasta fin del mes que viene, que no duplique, que no vaya hacia atrás, que no resucite una clase cancelada, que respete el fin del grupo y que nadie genere clases en un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/forma_de_pago.sql` | `cambiar_forma_de_pago()`: que valga desde el 1 del mes que viene, que cierre lo vigente a fin de mes, que cambiar de opinión corrija en vez de apilar, que no se elija una forma sin precio y que nadie toque el arreglo de un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/medios_de_pago.sql` | Los medios de pago (0024, 0025): que el profesor cargue los suyos y ninguno ajeno, que el alumno los vea y **no** los pueda cambiar, que lo archivado no le llegue, y que un CBU cortado no entre. En una transacción que se deshace. Repetible |
+| `supabase/tests/logo_de_la_escuela.sql` | El logo (0026): que lo ponga solo el dueño, que el alumno lo vea y no lo toque, y que nadie suba archivos a la carpeta de otro espacio. En una transacción que se deshace. Repetible |
+| `supabase/tests/avatares.sql` | El depósito de fotos (0027, 0028): que cada uno escriba en su carpeta y en ninguna otra. **No prueba el borrado**: Supabase lo prohíbe desde SQL, va por la Storage API. En una transacción que se deshace. Repetible |
+| `supabase/tests/mi_correo.sql` | `sincronizar_mi_correo()` (0030): que copie el correo **del JWT**, que sea idempotente, y que otra persona con ese mismo correo en su token no se lleve las fichas. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
+| **`npm run prueba:base`** | **Corre las diecisiete de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
-Últimos resultados (10 de octubre de 2026):
-- `aislamiento.sql` Parte 2 → **3 de 3 PASA**
-- `aislamiento_cargos.sql` → **5 de 5 PASA**
-- `aislamiento_alumno.sql` → **19 de 19 PASA** (reescrita por propiedad el 10/10/2026)
-- `confirmar_pago.sql` → **6 de 6 PASA**
-- `cargos_automaticos.sql` → **7 de 7 PASA**
-- `forma_de_pago.sql` → **6 de 6 PASA**
-- `npm run prueba:fechas` → **15 de 15 PASA** (eran 18; las de clases se mudaron a `clases_automaticas.sql` en la 0018)
-- `mantenimiento.sql` → **6 de 6 PASA**
-- `comprobantes_viejos.sql` → **6 de 6 PASA**
-- `saldo_a_favor.sql` → **6 de 6 PASA** (con la 0022; con la 0021 sola fallaba la fila 1)
-- `ficha_del_alumno.sql` → **6 de 6 PASA**
-- `control_general.sql` → **11 tablas en `ok`** (`mantenimiento_log` con 0 reglas es correcto: cero políticas es "nadie")
+Últimos resultados (28 de octubre de 2026) — **la batería completa, 17 de 17 en verde**,
+corrida de una con `npm run prueba:base`.
+
+Esa corrida fue la primera que se hizo entera de una sola vez, y destapó cuatro pruebas
+frágiles que venían pasando por casualidad. **Ninguna era un bug de la app**: las cuatro
+miraban el estado total de la base en vez de lo que ellas mismas habían puesto, así que
+funcionaban con la base vacía y empezaron a fallar justo cuando la app se empezó a usar
+de verdad.
+
+| Prueba | Qué miraba antes | Qué mira ahora |
+|---|---|---|
+| `confirmar_pago.sql` | El saldo TOTAL del alumno en cero | Que el cargo que creó la prueba quede saldado |
+| `cargos_automaticos.sql` | Que creara exactamente 2 cargos | Que ninguna inscripción activa con precio quede sin su cargo |
+| `clases_automaticas.sql` | Un grupo ajeno que ya existiera | Un grupo ajeno que crea ella misma |
+| `logo_de_la_escuela.sql` | La primera escuela con logo | La escuela que la prueba creó |
+
+Es la tercera vez que aparece la misma lección y conviene dejarla escrita de una vez:
+**una prueba tiene que afirmar sobre lo que ella puso, no sobre lo que hay.** Contar filas,
+pedir totales o buscar "el primero que cumpla" son todas formas de escribir una prueba que
+depende del azar de los datos — y que el día que falla no dice nada útil, porque no falló
+por lo que decía probar.
 
 ---
 
