@@ -155,7 +155,7 @@ export default function FormularioGrupo({
         <select
           value={dia}
           onChange={(e) => setDia(e.target.value)}
-          className="w-full rounded-lg border border-linea bg-campo px-3 py-2 text-tinta outline-none focus:border-acento"
+          className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
         >
           <option value="">Sin día fijo</option>
           {NOMBRE_DIA.map((n, i) => (
@@ -182,7 +182,7 @@ export default function FormularioGrupo({
           Los precios son del grupo, no de cada alumno. Lo que elige el alumno
           al inscribirse es cuál de estas dos formas usa.
          ------------------------------------------------------------------ */}
-      <p className="rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
+      <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
         El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes
         entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas.
         El descuento del mes es tu herramienta para eso.
@@ -237,7 +237,7 @@ export default function FormularioGrupo({
       )}
 
       {formato === 'cycle' && (
-        <p className="-mt-1 rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
+        <p className="-mt-1 rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
           Una formación es un programa con principio y fin. Después de la fecha de término
           dejan de generarse clases solas, y a nadie se le genera una cuota por un mes que
           el grupo ya no cursa.

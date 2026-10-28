@@ -17,7 +17,7 @@ import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_M
 import type { Espacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
-  Esqueleto, useCarga, Avatar, Hoja,
+  Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema,
 } from '../../comun/ui';
 import ComoMePagan from './ComoMePagan';
 import Recorte from '../../comun/Recorte';
@@ -60,6 +60,9 @@ export default function Escuela({
           alCambiar={medios.recargar}
         />
       )}
+
+      <Seccion>Preferencias</Seccion>
+      <SelectorDeTema />
 
       <Seccion>Tu cuenta</Seccion>
 
@@ -246,7 +249,7 @@ function Logo({
           {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
               sus hijos en un <label>, y un input de archivo adentro de su
               propio label recibe dos clics y se cierra solo. */}
-          <label className="cursor-pointer rounded-xl border border-linea px-4 py-2.5 text-sm text-tenue transition hover:border-acento/40">
+          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-acento-suave px-4 py-2.5 text-sm font-medium text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
             {subiendo ? 'Subiendo…' : espacio.avatar_url ? 'Cambiar el logo' : 'Subir un logo'}
             <input
               type="file"

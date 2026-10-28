@@ -2,8 +2,8 @@ import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
-  editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
-  fechasSemanales, sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones,
+  editarClase, cambiarEstadoClase, lugarDe, linkMapa,
+  sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones,
   hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
   traerFicha, editarFicha,
@@ -89,7 +89,7 @@ export default function DetalleGrupo({
   // página y la empujaban para abajo.
   type Vista = 'alumnos' | 'clases';
   const [vista, setVista] = useState<Vista>('alumnos');
-  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase' | 'serie'>(null);
+  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase'>(null);
 
   // Una fila por persona, no por inscripción: ver porAlumno() en datos.ts.
   const gente = porAlumno(inscripciones.datos ?? [], hoyISO());
@@ -143,7 +143,7 @@ export default function DetalleGrupo({
       )}
 
       {cuantasEsteMes >= 5 && (
-        <p className="mb-4 rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
+        <p className="mb-4 rounded-xl border border-contorno bg-panel px-4 py-3 text-sm leading-relaxed text-tenue shadow-apoyo">
           Este mes tenés <span className="text-tinta">{cuantasEsteMes} clases</span>, no
           cuatro. A los que pagan por mes no les cobrás de más: la cuota es fija y ya está
           pensada sobre el promedio real del año, que es 4,33 clases por mes. A los que pagan
@@ -193,13 +193,20 @@ export default function DetalleGrupo({
       {/* ------------------------------------------------------------- clases */}
       {vista === 'clases' && (
         <>
-          <div className="mb-2 flex flex-wrap gap-2">
-            <Boton onClick={() => setHoja('clase')}>Cargar clase</Boton>
-            <BotonSecundario onClick={() => setHoja('serie')}>Generar varias</BotonSecundario>
+          {/* Un solo botón, y para una sola cosa: agregar una clase que NO
+              corresponde al horario. Un recupero, una extra.
+
+              "Generar varias" se fue. Tenía sentido cuando las clases se
+              cargaban a mano; desde la 0018 el horario fijo las crea solo
+              hasta fin del mes que viene, así que ese botón ofrecía hacer a
+              mano lo que la app ya hizo — y lo único que podía producir era
+              un duplicado o una confusión sobre quién manda. */}
+          <div className="mb-2">
+            <Boton onClick={() => setHoja('clase')}>Agregar una clase</Boton>
           </div>
           <p className="mb-4 text-sm text-tenue">
             {horarioDe(grupo)
-              ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Estos botones son para agregar algo fuera de ese horario.`
+              ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Este botón es para agregar algo fuera de ese horario, como un recupero.`
               : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar" y se crean solas.'}
           </p>
 
@@ -265,17 +272,6 @@ export default function DetalleGrupo({
         </Hoja>
       )}
 
-      {hoja === 'serie' && (
-        <Hoja titulo="Generar varias clases" alCerrar={() => setHoja(null)}>
-          <FormularioSerie
-            espacio={espacio}
-            grupo={grupo}
-            yaCargadas={clases.datos?.map((c) => c.date) ?? []}
-            alCerrar={() => setHoja(null)}
-            alCrear={() => { setHoja(null); clases.recargar(); }}
-          />
-        </Hoja>
-      )}
     </Marco>
   );
 }
@@ -401,7 +397,7 @@ function FormularioAlumno({
               required
               value={elegido}
               onChange={(e) => setElegido(e.target.value)}
-              className="w-full rounded-lg border border-linea bg-campo px-3 py-2 text-tinta outline-none focus:border-acento"
+              className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
             >
               <option value="">Elegir…</option>
               {disponibles.map((a) => (
@@ -849,153 +845,6 @@ function FormularioEditarClase({
   );
 }
 
-// ----------------------------------------------------------------------------
-// Generar varias clases de una
-//
-// Un grupo regular pasa siempre el mismo día a la misma hora. Cargarlas de a
-// una es trabajo repetido cuatro veces por mes.
-//
-// Dos cuidados que hacen la diferencia entre útil y peligroso:
-//
-//   - Se muestran las fechas ANTES de crear nada. Una función que escribe
-//     cuatro filas sin que veas cuáles es una función en la que no se confía.
-//   - Si en alguna de esas fechas ya hay una clase cargada, se marca y se
-//     saltea. Generar dos veces el mismo mes es el error más fácil de cometer,
-//     y duplicar clases arrastra asistencias y cargos duplicados.
-// ----------------------------------------------------------------------------
-function FormularioSerie({
-  espacio,
-  grupo,
-  yaCargadas,
-  alCerrar,
-  alCrear,
-}: {
-  espacio: Espacio;
-  grupo: Grupo;
-  yaCargadas: string[];
-  alCerrar: () => void;
-  alCrear: () => void;
-}) {
-  const hoy = new Date().toISOString().slice(0, 10);
-  const [desde, setDesde] = useState(hoy);
-  const [hora, setHora] = useState('');
-  const [duracion, setDuracion] = useState('');
-  const [cuantas, setCuantas] = useState(4);
-  const [prefijo, setPrefijo] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [guardando, setGuardando] = useState(false);
-
-  const fechas = fechasSemanales(desde, cuantas);
-  const nuevas = fechas.filter((f) => !yaCargadas.includes(f));
-
-  // ¿Ese día cae una vez más en el mismo mes, después de las cuatro?
-  // Si la quinta fecha sigue cayendo en el mes de la primera, sobra un día
-  // que quedaría sin clase. Se avisa y se ofrece; no se agrega solo.
-  const quinta = sumarDias(desde, 4 * 7);
-  const hayQuinta = cuantas === 4 && mesDe(quinta) === mesDe(desde);
-
-  async function guardar(e: FormEvent) {
-    e.preventDefault();
-    setGuardando(true);
-    setError(null);
-    try {
-      await crearClases(
-        espacio.id,
-        nuevas.map((f, i) => ({
-          group_id: grupo.id,
-          date: f,
-          start_time: hora || null,
-          duration_min: duracion ? Number(duracion) : null,
-          title: prefijo.trim() ? `${prefijo.trim()} ${i + 1}` : null,
-        })),
-      );
-      alCrear();
-    } catch (err) {
-      setError((err as Error).message);
-      setGuardando(false);
-    }
-  }
-
-  return (
-    <form
-      onSubmit={guardar}
-      className="flex flex-col gap-3"
-    >
-      <p className="text-tinta">Generar varias clases de {grupo.name}</p>
-
-      <Campo etiqueta="Primera clase" ayuda={`Cae ${diaSemana(desde)}. Las demás van una por semana, el mismo día.`}>
-        <Texto type="date" required value={desde} onChange={(e) => setDesde(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Hora (opcional)">
-        <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Duración en minutos (opcional)">
-        <Texto type="number" min="15" step="15" value={duracion} onChange={(e) => setDuracion(e.target.value)} />
-      </Campo>
-
-      <Campo etiqueta="Cuántas clases">
-        <Texto
-          type="number" min="1" max="20" required value={cuantas}
-          onChange={(e) => setCuantas(Math.max(1, Number(e.target.value) || 1))}
-        />
-      </Campo>
-
-      <Campo etiqueta="Numerarlas (opcional)" ayuda='Con "Clase" quedan Clase 1, Clase 2, y así.'>
-        <Texto value={prefijo} placeholder="Clase" onChange={(e) => setPrefijo(e.target.value)} />
-      </Campo>
-
-      {hayQuinta && (
-        <div className="rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm">
-          <p className="text-acento">
-            Este mes el {diaSemana(desde)} cae una vez más, el {fecha(quinta)}.
-            Con cuatro clases ese día queda sin cargar.
-          </p>
-          <button
-            type="button"
-            onClick={() => setCuantas(5)}
-            className="mt-1 text-tinta underline"
-          >
-            Agregar esa clase también
-          </button>
-        </div>
-      )}
-
-      {/* Las fechas a la vista antes de crear nada */}
-      <div className="rounded-lg border border-linea px-3 py-2">
-        <p className="mb-1 text-sm text-tenue">
-          Se van a crear {nuevas.length} {nuevas.length === 1 ? 'clase' : 'clases'}
-          {hora && ` a las ${hora}`}:
-        </p>
-        <ul className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-          {fechas.map((f) => {
-            const repetida = yaCargadas.includes(f);
-            return (
-              <li key={f} className={repetida ? 'text-tenue line-through' : 'text-tinta'}>
-                {fecha(f)}
-                {repetida && ' (ya está)'}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {error && <Aviso>{error}</Aviso>}
-
-      <div className="flex gap-2">
-        <Boton type="submit" disabled={guardando || nuevas.length === 0}>
-          {guardando
-            ? 'Creando…'
-            : nuevas.length === 0
-              ? 'Ya están todas cargadas'
-              : `Crear ${nuevas.length} ${nuevas.length === 1 ? 'clase' : 'clases'}`}
-        </Boton>
-        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
-      </div>
-    </form>
-  );
-}
 
 // ----------------------------------------------------------------------------
 // Un alumno inscripto en el grupo
@@ -1231,7 +1080,7 @@ function FormularioCargo({
   }
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-linea p-3">
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
       {esMensual && (
         <Campo etiqueta="Mes">
           <Texto
@@ -1345,7 +1194,7 @@ function FormularioFicha({
   const yaEntro = ficha.datos?.user_id != null;
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-lg border border-linea p-3">
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
       <p className="text-tinta">Ficha de {ficha.datos?.full_name}</p>
 
       <Campo etiqueta="Cómo lo anotás" ayuda="El nombre con el que aparece en tu lista.">

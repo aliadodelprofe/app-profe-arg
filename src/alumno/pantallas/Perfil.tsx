@@ -14,7 +14,7 @@
 import { useEffect, useState } from 'react';
 import { fotoDeGoogle, tambienDoyClases } from '../datos';
 import type { MiFicha } from '../datos';
-import { Seccion, BotonSecundario, useCarga } from '../../comun/ui';
+import { Seccion, BotonSecundario, useCarga, SelectorDeTema } from '../../comun/ui';
 import { supabase } from '../../lib/supabase';
 import MiPerfil from './MiPerfil';
 import MiAcceso from './MiAcceso';
@@ -47,6 +47,9 @@ export default function Perfil({
       <MiPerfil ficha={ficha} fotoSugerida={fotoGoogle} alGuardar={alGuardar} />
 
       {correo && <MiAcceso correo={correo} />}
+
+      <Seccion>Preferencias</Seccion>
+      <SelectorDeTema />
 
       <Seccion>Mi cuenta</Seccion>
       {doyClases.datos === true ? (

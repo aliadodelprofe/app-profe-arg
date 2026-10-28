@@ -43,7 +43,7 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
         <select
           value={mes}
           onChange={(e) => setMes(e.target.value)}
-          className="mb-3 rounded-lg border border-linea bg-campo px-3 py-2 text-sm text-tinta"
+          className="mb-3 min-h-11 rounded-xl border border-linea bg-campo px-3.5 py-2 text-sm text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
         >
           {meses.map((m) => (
             <option key={m} value={m}>{mesEnPalabras(m)}</option>

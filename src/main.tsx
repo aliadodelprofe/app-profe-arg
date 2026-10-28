@@ -5,6 +5,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { Limite } from './comun/Limite';
 import './index.css';
 import { NOMBRE } from './comun/marca';
+import { aplicarTema, temaGuardado } from './comun/tema';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -43,6 +44,10 @@ const ruta = window.location.pathname;
 function marcarAppNueva() {
   document.documentElement.dataset.app = 'nueva';
   document.title = NOMBRE;
+
+  // Antes de dibujar nada: si esto esperara a que monte un componente, la app
+  // aparecería un instante en el modo equivocado y daría un salto de color.
+  aplicarTema(temaGuardado());
 
   // La tipografía se carga ACÁ y no con un @import en el CSS, porque la hoja
   // de estilos es una sola para las tres apps: un @import se descargaría

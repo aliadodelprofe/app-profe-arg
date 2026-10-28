@@ -4,6 +4,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { NOMBRE } from './marca';
+import { guardarTema, temaGuardado } from './tema';
+import type { Tema } from './tema';
 import type React from 'react';
 
 // `conBarra` deja lugar abajo para la navegación fija del celular. Sin eso,
@@ -126,7 +128,7 @@ export function Tarjeta({
   // tarjeta sin sombra sobre fondo casi blanco se lee como un rectángulo
   // dibujado y no como algo apoyado.
   const clases =
-    'w-full rounded-2xl border border-linea bg-panel p-4 text-left shadow-apoyo';
+    'w-full rounded-2xl border border-contorno bg-panel p-4 text-left shadow-apoyo';
   if (!alTocar) return <div className={clases}>{children}</div>;
   // Una tarjeta que se toca tiene que avisar que se toca. En el celular no
   // hay `hover`, así que lo que comunica es el `active`: el hundido de medio
@@ -381,7 +383,7 @@ export function Confirmacion({
         aria-label={titulo}
         // Sin esto, un clic adentro del cartel llega al fondo y lo cierra.
         onClick={(e) => e.stopPropagation()}
-        className="anim-entrar w-full max-w-sm rounded-3xl border border-linea bg-panel p-5 shadow-tapa"
+        className="anim-entrar w-full max-w-sm rounded-3xl border border-contorno bg-panel p-5 shadow-tapa"
       >
         <p className="mb-2 text-lg font-bold tracking-tight text-tinta">{titulo}</p>
         <div className="mb-5 text-sm leading-relaxed text-tenue">{children}</div>
@@ -499,7 +501,7 @@ export function Dato({
   // rojo sobre un panel blanco se lee como un número que alguien pintó; el
   // mismo número sobre una superficie teñida se lee como una situación.
   const estilo = {
-    normal: { texto: 'text-tinta', caja: 'border-linea bg-panel' },
+    normal: { texto: 'text-tinta', caja: 'border-contorno bg-panel' },
     alerta: { texto: 'text-alerta', caja: 'border-alerta/20 bg-alerta-suave' },
     ok:     { texto: 'text-ok',     caja: 'border-ok/20 bg-ok-suave' },
   }[tono];
@@ -812,7 +814,7 @@ export function Avatar({
 // ----------------------------------------------------------------------------
 export function Lista({ children }: { children: ReactNode }) {
   return (
-    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-linea bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
+    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-contorno bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
       {children}
     </ul>
   );
@@ -934,6 +936,38 @@ export function CopiarDato({ etiqueta, valor }: { etiqueta: string; valor: strin
 
 
 // ----------------------------------------------------------------------------
+// EL MODO CLARO Y EL OSCURO
+//
+// Tres opciones y no un interruptor de dos. "Como el sistema" tiene que
+// existir y tiene que ser elegible: para mucha gente es lo correcto —el
+// celular se pone oscuro de noche solo— y sin esa opción, quien alguna vez
+// tocó el control queda atado a su elección para siempre.
+//
+// El claro es el que viene puesto. La paleta está construida sobre papel
+// cálido y terracota, y eso es lo que la distingue de cualquier panel de
+// administración; en oscuro ese papel desaparece.
+// ----------------------------------------------------------------------------
+export function SelectorDeTema() {
+  const [tema, setTema] = useState<Tema>(() => temaGuardado());
+
+  return (
+    <div>
+      <p className="mb-2 text-sm text-tenue">Cómo se ve la app</p>
+      <Opciones<Tema>
+        valor={tema}
+        alElegir={(t) => { setTema(t); guardarTema(t); }}
+        opciones={[
+          { valor: 'claro', texto: 'Claro' },
+          { valor: 'oscuro', texto: 'Oscuro' },
+          { valor: 'sistema', texto: 'Como el sistema' },
+        ]}
+      />
+    </div>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
 // EL CORTE POR MES
 //
 // Una lista larga de clases son cuarenta renglones iguales donde el ojo no
@@ -1025,7 +1059,7 @@ export function Hoja({
         aria-modal="true"
         aria-label={titulo}
         onClick={(e) => e.stopPropagation()}
-        className="anim-subir max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border-t border-linea bg-panel shadow-tapa sm:max-w-lg sm:rounded-3xl sm:border"
+        className="anim-subir max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border-t border-contorno bg-panel shadow-tapa sm:max-w-lg sm:rounded-3xl sm:border"
       >
         {/* El tirador. No hace nada: está porque es lo que le dice a cualquiera
             que esto es una hoja y que se cierra tirándola para abajo. */}
@@ -1036,7 +1070,7 @@ export function Hoja({
         {/* El encabezado se pega arriba: en una hoja larga —el recortador, un
             formulario con seis campos— perder el título al scrollear te deja
             sin saber qué estás completando. */}
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-linea bg-panel/90 px-5 pb-3 pt-4 backdrop-blur-xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-contorno bg-panel/90 px-5 pb-3 pt-4 backdrop-blur-xl">
           <h2 className="text-lg font-bold tracking-tight text-tinta">{titulo}</h2>
           <button
             onClick={alCerrar}
@@ -1073,7 +1107,7 @@ const brillo =
 
 export function Esqueleto({ filas = 3 }: { filas?: number }) {
   return (
-    <div className="-mx-5 divide-y divide-linea border-y border-linea bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
+    <div className="-mx-5 divide-y divide-linea border-y border-contorno bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
       {Array.from({ length: filas }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-5 py-3.5 sm:px-4">
           <div className={`h-10 w-10 shrink-0 rounded-full ${brillo}`} />

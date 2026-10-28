@@ -207,7 +207,7 @@ function FormularioAviso({
       {destinos.map((d) => (
         <div
           key={d.id}
-          className="flex flex-col gap-2 rounded-xl border border-linea bg-campo/50 p-3"
+          className="flex flex-col gap-2 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo"
         >
           <p className="text-sm text-tenue">
             Transferile a <span className="text-tinta">{d.holder}</span>
@@ -231,7 +231,7 @@ function FormularioAviso({
       </Campo>
 
       {falta && (
-        <p className="rounded-lg border border-linea px-3 py-2 text-xs text-tenue">
+        <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
           Estás avisando menos de lo que debés. Está bien si es una seña o un pago
           parcial — se va a descontar de lo que debés y el resto queda pendiente.
         </p>

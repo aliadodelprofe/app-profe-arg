@@ -29,7 +29,19 @@
   --color-fondo:  #faf6f1;   /* la página: papel, no blanco puro */
   --color-panel:  #ffffff;   /* tarjetas y bloques que se despegan */
   --color-campo:  #ffffff;   /* adentro de un input */
-  --color-linea:  #e7dcd0;   /* bordes y separadores */
+  --color-linea:  #e7dcd0;   /* separadores: la línea ENTRE dos cosas */
+
+  /* El contorno de una superficie es otra cosa que un separador, y conviene
+     que tengan nombres distintos.
+
+     Un separador hace falta siempre: es lo que parte una lista en filas.
+     Un contorno, en cambio, solo hace falta cuando la sombra no alcanza —y
+     en modo claro la sombra alcanza de sobra—. Dibujar las dos cosas deja
+     todo con doble trazo, que es el aspecto de un formulario impreso.
+
+     Casi transparente en claro, visible en oscuro: ahí la sombra no existe
+     y el contorno es lo único que despega el panel del fondo. */
+  --color-contorno: #2b24200f;
 
   /* Texto */
   --color-tinta:  #2b2420;   /* el texto que se lee */
@@ -68,9 +80,9 @@
      fondo casi negro no se ve, así que ahí la profundidad la da un borde
      claro arriba, que es como la luz cae sobre algo levantado.
      -------------------------------------------------------------------- */
-  --shadow-apoyo: 0 1px 2px rgb(43 36 32 / 0.05), 0 1px 3px rgb(43 36 32 / 0.04);
-  --shadow-flota: 0 2px 4px rgb(43 36 32 / 0.05), 0 8px 24px rgb(43 36 32 / 0.08);
-  --shadow-tapa:  0 -8px 40px rgb(43 36 32 / 0.18);
+  --shadow-apoyo: 0 1px 2px rgb(43 36 32 / 0.06), 0 2px 8px rgb(43 36 32 / 0.05);
+  --shadow-flota: 0 2px 6px rgb(43 36 32 / 0.06), 0 12px 32px rgb(43 36 32 / 0.10);
+  --shadow-tapa:  0 -8px 48px rgb(43 36 32 / 0.22);
 }
 
 /* ----------------------------------------------------------------------
@@ -102,14 +114,32 @@ html[data-app="nueva"] {
    administra de día en la computadora recibe el claro; el alumno que mira
    recaps de noche en el celular, el oscuro. Ninguno de los dos elige nada.
    ---------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------
+   QUIÉN ELIGE EL MODO
+
+   Antes mandaba el sistema operativo y nadie podía discutirlo: con el Mac en
+   oscuro, la app era oscura siempre. Ahora manda la persona, y el sistema es
+   solo el valor por omisión.
+
+   El claro es el modo de la casa. No es una preferencia estética: la paleta
+   está construida sobre papel cálido y terracota, y eso es lo que la
+   distingue de cualquier panel de administración. En oscuro ese papel
+   desaparece.
+
+   `data-tema` lo pone main.tsx antes de dibujar nada, leyendo lo que la
+   persona haya elegido. Las reglas de abajo se leen así:
+     · si eligió "oscuro", oscuro;
+     · si no eligió nada y el sistema está en oscuro, oscuro;
+     · si eligió "claro", claro aunque el sistema esté en oscuro.
+   ---------------------------------------------------------------------- */
 @media (prefers-color-scheme: dark) {
-  html[data-app="nueva"] {
+  html[data-app="nueva"]:not([data-tema="claro"]) {
     --avatar-sat: 38%;
     --avatar-fondo: 24%;
     --avatar-letra: 80%;
   }
 
-  :root {
+  :root:not([data-tema="claro"]) {
     --color-fondo:  #16130f;
     --color-panel:  #211c17;
     --color-campo:  #1a1510;
@@ -127,6 +157,8 @@ html[data-app="nueva"] {
     /* Teñidos del oscuro: no son los claros oscurecidos. Se construyen desde
        el fondo hacia el color, no al revés, para que sigan leyéndose como
        superficie y no como una mancha de color. */
+    --color-contorno: #ffffff14;
+
     --color-acento-suave:  #33231a;
     --color-ok-suave:      #1b2f26;
     --color-alerta-suave:  #33201e;
@@ -137,6 +169,40 @@ html[data-app="nueva"] {
     --shadow-flota: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.5);
     --shadow-tapa:  0 -8px 40px rgb(0 0 0 / 0.6);
   }
+}
+
+/* El oscuro elegido a mano, que vale aunque el sistema esté en claro. Es el
+   mismo bloque de arriba: si algún día cambia un valor, cambian los dos.
+   Duplicarlo es el precio de no depender de la preferencia del sistema. */
+html[data-app="nueva"][data-tema="oscuro"] {
+  --avatar-sat: 38%;
+  --avatar-fondo: 24%;
+  --avatar-letra: 80%;
+}
+
+:root[data-tema="oscuro"] {
+  --color-fondo:  #16130f;
+  --color-panel:  #211c17;
+  --color-campo:  #1a1510;
+  --color-linea:  #352d25;
+  --color-contorno: #ffffff14;
+
+  --color-tinta:  #f2eae1;
+  --color-tenue:  #a3907f;
+
+  --color-acento:        #e08a5e;
+  --color-sobre-acento:  #231c16;
+
+  --color-ok:     #74c39d;
+  --color-alerta: #f08a7e;
+
+  --color-acento-suave:  #33231a;
+  --color-ok-suave:      #1b2f26;
+  --color-alerta-suave:  #33201e;
+
+  --shadow-apoyo: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  --shadow-flota: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.5);
+  --shadow-tapa:  0 -8px 40px rgb(0 0 0 / 0.6);
 }
 
 /* ----------------------------------------------------------------------

@@ -184,7 +184,7 @@ function Arreglo({
           Se muestra cuánto sale CADA CLASE con la cuota: es el único número que
           se puede comparar con el precio por clase sin tener que pensar. */}
       {comparacion?.conviene && modoQueViene === 'per_session' && (
-        <p className="rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
+        <p className="rounded-xl border border-contorno bg-panel px-4 py-3 text-sm leading-relaxed text-tenue shadow-apoyo">
           Con la cuota cada clase te sale{' '}
           <span className="text-acento">{plata(comparacion.porClaseConCuota)}</span> en vez
           de {plata(porClase)}. En el año son {plata(comparacion.anualConCuota)} en vez de{' '}
@@ -193,7 +193,7 @@ function Arreglo({
         </p>
       )}
       {comparacion?.conviene && modoQueViene === 'per_period' && (
-        <p className="rounded-xl border border-linea px-4 py-3 text-sm text-tenue">
+        <p className="rounded-xl border border-contorno bg-panel px-4 py-3 text-sm leading-relaxed text-tenue shadow-apoyo">
           Cada clase te sale {plata(comparacion.porClaseConCuota)}. Viniendo suelto serían{' '}
           {plata(porClase)}.
         </p>

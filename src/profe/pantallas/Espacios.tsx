@@ -145,7 +145,7 @@ function FormularioEspacio({
   return (
     <form
       onSubmit={guardar}
-      className="mt-4 flex flex-col gap-3 rounded-xl border border-linea bg-panel p-4"
+      className="mt-4 flex flex-col gap-3 rounded-2xl border border-contorno bg-panel p-4 shadow-apoyo"
     >
       <p className="text-tinta">Nuevo espacio</p>
 

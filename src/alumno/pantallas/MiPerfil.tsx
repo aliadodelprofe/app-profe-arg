@@ -108,7 +108,7 @@ export default function MiPerfil({
               sus hijos en un <label>, y un input de archivo adentro de su
               propio label recibe dos clics y se cierra solo. Acá el label ES
               el botón, que es distinto: hay un solo label. */}
-          <label className="cursor-pointer rounded-xl border border-linea px-4 py-2.5 text-sm text-tenue transition hover:border-acento/40">
+          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-acento-suave px-4 py-2.5 text-sm font-medium text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
             {subiendo ? 'Subiendo…' : foto ? 'Cambiar la foto' : 'Subir una foto'}
             <input
               type="file"
