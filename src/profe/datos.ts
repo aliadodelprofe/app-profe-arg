@@ -49,6 +49,10 @@ export type Grupo = {
   price_per_session: number | null;
   price_per_period: number | null;
   price_one_time: number | null;
+  // Migración 0032: la clase no pasa en una sala. El alumno ve el enlace y no
+  // un mapa, y la base impide que convivan con una dirección.
+  online: boolean;
+  meeting_url: string | null;
 };
 
 // Lo que cargan los formularios de alta y de edición de grupo.
@@ -67,6 +71,10 @@ export type DatosGrupo = {
   price_per_session: number | null;
   price_per_period: number | null;
   price_one_time: number | null;
+  // Migración 0032. Online y dirección no pueden convivir: lo impide un check
+  // en la base, no solo el formulario.
+  online: boolean;
+  meeting_url: string | null;
 };
 
 export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
@@ -135,7 +143,7 @@ export async function traerEspacios(): Promise<Espacio[]> {
 const COLUMNAS_GRUPO =
   'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
   'weekday, default_start_time, default_duration_min, ' +
-  'price_per_session, price_per_period, price_one_time';
+  'price_per_session, price_per_period, price_one_time, online, meeting_url';
 
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase

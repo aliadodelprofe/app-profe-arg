@@ -646,8 +646,10 @@ function MisClases({
   );
 }
 
-// El lugar de una clase: el suyo si lo tiene, si no el del grupo.
+// El lugar de una clase: el suyo si lo tiene, si no el del grupo. Una clase
+// online no tiene lugar — tiene enlace, que es otra cosa y se muestra aparte.
 function lugarDe(c: MiClase): string | null {
+  if (c.grupo?.online) return 'online';
   return c.venue ?? c.grupo?.venue ?? null;
 }
 
@@ -694,7 +696,30 @@ function DetalleClase({ clase }: { clase: MiClase }) {
         </p>
       </div>
 
-      {(venue || address) && (
+      {/* Online y presencial son dos cosas distintas y se muestran distinto:
+          una abre un mapa, la otra abre una videollamada. Ofrecerle "cómo
+          llegar" a alguien que cursa desde su casa es ruido; no ofrecerle
+          nada cuando la clase es online es dejarlo afuera. */}
+      {clase.grupo?.online ? (
+        <div>
+          <p className="text-sm text-tenue">Dónde</p>
+          <p className="text-tinta">Esta clase es online.</p>
+          {clase.grupo.meeting_url ? (
+            <a
+              href={clase.grupo.meeting_url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-1 inline-block text-sm text-acento underline"
+            >
+              entrar a la clase
+            </a>
+          ) : (
+            <p className="mt-1 text-sm text-tenue">
+              Tu profe todavía no cargó el enlace. Escribile antes de la clase.
+            </p>
+          )}
+        </div>
+      ) : (venue || address) ? (
         <div>
           <p className="text-sm text-tenue">Dónde</p>
           {venue && <p className="text-tinta">{venue}</p>}
@@ -709,7 +734,7 @@ function DetalleClase({ clase }: { clase: MiClase }) {
             </a>
           )}
         </div>
-      )}
+      ) : null}
 
       <div>
         <p className="text-sm text-tenue">Lo que vimos</p>

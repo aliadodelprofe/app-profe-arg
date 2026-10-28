@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
-  editarClase, cambiarEstadoClase, lugarDe, linkMapa,
+  editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
   sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones,
   hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
@@ -89,7 +89,7 @@ export default function DetalleGrupo({
   // página y la empujaban para abajo.
   type Vista = 'alumnos' | 'clases';
   const [vista, setVista] = useState<Vista>('alumnos');
-  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase'>(null);
+  const [hoja, setHoja] = useState<null | 'editar' | 'anotar' | 'clase' | 'fechas'>(null);
 
   // Una fila por persona, no por inscripción: ver porAlumno() en datos.ts.
   const gente = porAlumno(inscripciones.datos ?? [], hoyISO());
@@ -201,13 +201,24 @@ export default function DetalleGrupo({
               hasta fin del mes que viene, así que ese botón ofrecía hacer a
               mano lo que la app ya hizo — y lo único que podía producir era
               un duplicado o una confusión sobre quién manda. */}
-          <div className="mb-2">
+          {/* "Agregar varias" vuelve, pero SOLO cuando el grupo no tiene día
+              fijo. En un regular era un botón para hacer a mano lo que la app
+              ya hizo; en una formación de fechas sueltas o en una particular
+              que se agenda a dedo es lo único que evita cargar ocho clases de
+              a una. El mismo botón puede ser redundante o imprescindible
+              según de qué grupo cuelgue. */}
+          <div className="mb-2 flex flex-wrap gap-2">
             <Boton onClick={() => setHoja('clase')}>Agregar una clase</Boton>
+            {!horarioDe(grupo) && (
+              <BotonSecundario onClick={() => setHoja('fechas')}>
+                Agregar varias fechas
+              </BotonSecundario>
+            )}
           </div>
           <p className="mb-4 text-sm text-tenue">
             {horarioDe(grupo)
               ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Este botón es para agregar algo fuera de ese horario, como un recupero.`
-              : 'Este grupo no tiene día fijo, así que las clases se cargan a mano. Podés ponerle uno en "Editar" y se crean solas.'}
+              : 'Este grupo no tiene día fijo: las clases las vas cargando vos a medida que las acordás.'}
           </p>
 
           {clases.error && <Aviso>{clases.error}</Aviso>}
@@ -257,6 +268,18 @@ export default function DetalleGrupo({
               // Recién anotado ya tiene que deber lo que viene.
               setRevisado(false);
             }}
+          />
+        </Hoja>
+      )}
+
+      {hoja === 'fechas' && (
+        <Hoja titulo="Agregar varias fechas" alCerrar={() => setHoja(null)}>
+          <FormularioFechas
+            espacio={espacio}
+            grupo={grupo}
+            yaCargadas={clases.datos?.map((c) => c.date) ?? []}
+            alCerrar={() => setHoja(null)}
+            alCrear={() => { setHoja(null); clases.recargar(); }}
           />
         </Hoja>
       )}
@@ -882,6 +905,142 @@ function FormularioEditarClase({
   );
 }
 
+
+// ----------------------------------------------------------------------------
+// AGREGAR VARIAS FECHAS DE UNA
+//
+// Para los grupos que NO tienen día fijo: una formación de fechas sueltas, una
+// particular que se acuerda clase a clase. Ahí cargar ocho clases de a una es
+// el trabajo que esta app vino a sacar.
+//
+// Se arma una lista a dedo en vez de generar N semanas seguidas. Es la
+// diferencia entre esto y lo que había antes: "dos miércoles al mes" o "un
+// jueves y un viernes" no son una serie, son fechas elegidas. Una serie
+// semanal ya la hace sola el día fijo.
+// ----------------------------------------------------------------------------
+function FormularioFechas({
+  espacio,
+  grupo,
+  yaCargadas,
+  alCerrar,
+  alCrear,
+}: {
+  espacio: Espacio;
+  grupo: Grupo;
+  yaCargadas: string[];
+  alCerrar: () => void;
+  alCrear: () => void;
+}) {
+  const [fechas, setFechas] = useState<string[]>([]);
+  const [dia, setDia] = useState('');
+  const [hora, setHora] = useState(grupo.default_start_time?.slice(0, 5) ?? '');
+  const [duracion, setDuracion] = useState(grupo.default_duration_min?.toString() ?? '');
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+
+  function agregar() {
+    if (!dia) return;
+    if (yaCargadas.includes(dia)) {
+      setError('Ese día ya tiene una clase cargada en este grupo.');
+      return;
+    }
+    if (fechas.includes(dia)) return;
+    setError(null);
+    setFechas((f) => [...f, dia].sort());
+    setDia('');
+  }
+
+  async function guardar(e: FormEvent) {
+    e.preventDefault();
+    if (fechas.length === 0) {
+      setError('Agregá al menos una fecha a la lista.');
+      return;
+    }
+    setGuardando(true);
+    setError(null);
+    try {
+      await crearClases(
+        espacio.id,
+        fechas.map((f) => ({
+          group_id: grupo.id,
+          date: f,
+          start_time: hora || null,
+          duration_min: duracion ? Number(duracion) : null,
+          title: null,
+        })),
+      );
+      alCrear();
+    } catch (err) {
+      setError((err as Error).message);
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <form onSubmit={guardar} className="flex flex-col gap-4">
+      <p className="text-sm text-tenue">
+        Todas con el mismo horario. Si alguna va a otra hora, cargala aparte o corregila
+        después.
+      </p>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Campo etiqueta="Hora">
+          <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+        </Campo>
+        <Campo etiqueta="Duración (min)">
+          <Texto
+            type="number" min="15" step="15" value={duracion}
+            onChange={(e) => setDuracion(e.target.value)}
+          />
+        </Campo>
+      </div>
+
+      {/* El input de fecha y el botón, juntos: agregar una fecha a la lista no
+          es guardar nada todavía. */}
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <Campo etiqueta="Fecha">
+            <Texto
+              type="date" value={dia}
+              onChange={(e) => setDia(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); agregar(); } }}
+            />
+          </Campo>
+        </div>
+        <BotonSecundario type="button" onClick={agregar} disabled={!dia}>
+          Agregar
+        </BotonSecundario>
+      </div>
+
+      {fechas.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {fechas.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFechas((xs) => xs.filter((x) => x !== f))}
+              className="inline-flex items-center gap-1.5 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento transition hover:brightness-[0.97]"
+            >
+              {fecha(f)}
+              <span aria-hidden="true" className="text-base leading-none">×</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && <Aviso>{error}</Aviso>}
+
+      <div className="flex gap-2">
+        <Boton type="submit" disabled={guardando || fechas.length === 0}>
+          {guardando
+            ? 'Creando…'
+            : `Crear ${fechas.length} ${fechas.length === 1 ? 'clase' : 'clases'}`}
+        </Boton>
+        <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
+      </div>
+    </form>
+  );
+}
 
 // ----------------------------------------------------------------------------
 // Un alumno inscripto en el grupo

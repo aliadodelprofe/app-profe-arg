@@ -26,7 +26,14 @@ export type MiClase = {
   status: 'scheduled' | 'cancelled';
   venue: string | null;
   address: string | null;
-  grupo: { name: string; venue: string | null; address: string | null } | null;
+  grupo: {
+    name: string;
+    venue: string | null;
+    address: string | null;
+    // Migración 0032. Si es online no hay mapa: hay un enlace.
+    online: boolean;
+    meeting_url: string | null;
+  } | null;
 };
 
 export type MiCargo = {
@@ -106,7 +113,7 @@ export async function misFichas(): Promise<MiFicha[]> {
 export async function misClases(tenantId: string): Promise<MiClase[]> {
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address)')
+    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address, online, meeting_url)')
     .eq('tenant_id', tenantId)
     .order('date', { ascending: false });
   if (error) throw new Error(error.message);
@@ -366,7 +373,7 @@ export type ResumenEscuela = {
 async function miProximaClase(tenantId: string): Promise<MiClase | null> {
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address)')
+    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address, online, meeting_url)')
     .eq('tenant_id', tenantId)
     .eq('status', 'scheduled')
     .gte('date', new Date().toISOString().slice(0, 10))

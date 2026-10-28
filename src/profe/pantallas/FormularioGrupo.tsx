@@ -38,35 +38,103 @@ export default function FormularioGrupo({
   const [dia, setDia] = useState<string>(grupo?.weekday?.toString() ?? '');
   const [hora, setHora] = useState(grupo?.default_start_time?.slice(0, 5) ?? '');
   const [duracion, setDuracion] = useState(grupo?.default_duration_min?.toString() ?? '');
+  const [online, setOnline] = useState(grupo?.online ?? false);
+  const [enlace, setEnlace] = useState(grupo?.meeting_url ?? '');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+
+  // --------------------------------------------------------------------
+  // CÓMO SE ARMAN LAS FECHAS
+  //
+  // No es una columna nueva: es cómo se lee la combinación de día fijo y
+  // fecha de fin, que ya existen. Se expone como una pregunta porque es LA
+  // pregunta de una formación —"¿esto es un workshop, un taller de cuatro
+  // semanas, o fechas sueltas?"— y pedirla como "día fijo (opcional)" obliga
+  // al profesor a traducir él su propio producto.
+  //
+  //   encuentro → un solo día.           sin día fijo, arranca = termina
+  //   semanal   → todas las semanas.     con día fijo, con fin
+  //   sueltas   → fechas a dedo.         sin día fijo, con fin
+  // --------------------------------------------------------------------
+  type Forma = 'encuentro' | 'semanal' | 'sueltas';
+  const formaInicial: Forma = !grupo
+    ? 'semanal'
+    : grupo.weekday !== null
+      ? 'semanal'
+      : grupo.start_date && grupo.start_date === grupo.end_date
+        ? 'encuentro'
+        : 'sueltas';
+  const [forma, setForma] = useState<Forma>(formaInicial);
+
+  const esRegular = formato === 'regular';
+  const esFormacion = formato === 'cycle';
+  const esParticular = formato === 'private';
+
+  // El día fijo lo pide el regular siempre, y la formación solo si es semanal.
+  // La particular lo ofrece: "todos los martes" se agenda solo, "dos miércoles
+  // al mes" se carga a mano.
+  const pideDiaFijo = esRegular || (esFormacion && forma === 'semanal') || esParticular;
+  const conDiaFijo = pideDiaFijo && dia !== '';
+
+  // Dónde se da. Una particular online no tiene sala; las demás sí, y es un
+  // dato que el alumno necesita para llegar.
+  const pideLugar = !esParticular || !online;
+  const lugarObligatorio = esRegular || esFormacion;
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
     setGuardando(true);
     setError(null);
 
-    if (formato === 'cycle' && !hasta) {
-      setError('Una formación necesita fecha de término: es lo que define cuánto dura.');
+    // Las validaciones que no puede hacer el navegador solo, con el mensaje
+    // diciendo QUÉ falta y no "completá los campos obligatorios".
+    const falta = (() => {
+      if (esFormacion && forma === 'encuentro' && !desde) {
+        return 'Un encuentro único necesita la fecha del día que se da.';
+      }
+      if (esFormacion && forma !== 'encuentro' && !hasta) {
+        return 'Una formación necesita fecha de término: es lo que define cuánto dura.';
+      }
+      if (esFormacion && forma === 'semanal' && dia === '') {
+        return 'Elegí el día de la semana: es lo que hace que las clases se creen solas.';
+      }
+      if (esRegular && dia === '') {
+        return 'Un grupo regular necesita día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
+      }
+      if (conDiaFijo && !hora) return 'Falta la hora de la clase.';
+      return null;
+    })();
+
+    if (falta) {
+      setError(falta);
       setGuardando(false);
       return;
     }
 
+    // Un encuentro único empieza y termina el mismo día: eso es lo que hace
+    // que no se le genere nada después.
+    const arranca = esFormacion && forma === 'encuentro' ? desde : (desde || null);
+    const termina = esFormacion
+      ? (forma === 'encuentro' ? desde : hasta || null)
+      : null;
+
     const datos: DatosGrupo = {
       name: nombre.trim(),
       format: formato,
-      level: nivel.trim() || null,
+      level: esParticular ? null : (nivel.trim() || null),
       capacity: cupo ? Number(cupo) : null,
-      start_date: desde || null,
-      end_date: formato === 'cycle' && hasta ? hasta : null,
-      venue: estudio.trim() || null,
-      address: direccion.trim() || null,
-      weekday: dia === '' ? null : Number(dia),
-      default_start_time: dia === '' ? null : hora || null,
-      default_duration_min: dia === '' ? null : (duracion ? Number(duracion) : null),
+      start_date: arranca,
+      end_date: termina,
+      venue: pideLugar ? (estudio.trim() || null) : null,
+      address: pideLugar ? (direccion.trim() || null) : null,
+      weekday: conDiaFijo ? Number(dia) : null,
+      default_start_time: conDiaFijo ? hora || null : null,
+      default_duration_min: conDiaFijo ? (duracion ? Number(duracion) : null) : null,
       price_per_session: porClase ? Number(porClase) : null,
       price_per_period: porMes ? Number(porMes) : null,
       price_one_time: formato === 'cycle' && pagoUnico ? Number(pagoUnico) : null,
+      online: esParticular && online,
+      meeting_url: esParticular && online ? (enlace.trim() || null) : null,
     };
 
     try {
@@ -121,11 +189,11 @@ export default function FormularioGrupo({
       <Campo
         etiqueta="Formato"
         ayuda={
-          formato === 'regular'
-            ? 'Recurrente y abierta: la gente entra y sale. No tiene fin.'
-            : formato === 'cycle'
-              ? 'Grupo cerrado con contenidos que progresan. Un workshop es un ciclo de una sola clase.'
-              : 'Uno a uno, agendada.'
+          esRegular
+            ? 'Recurrente y abierta: la gente entra y sale, y no tiene fin hasta que vos lo decidas.'
+            : esFormacion
+              ? 'Programa cerrado con principio y fin. Un workshop, un taller de cuatro semanas, un ciclo de dos meses.'
+              : 'Una ficha por arreglo: "Particular — Juan", los martes a las 15. Cada alumno tiene su horario y su precio, así que cada uno es su propia ficha.'
         }
       >
         <Opciones<Formato>
@@ -140,42 +208,80 @@ export default function FormularioGrupo({
       </Campo>
 
       {/* ------------------------------------------------------------------
+          CÓMO SE DICTA — solo en formación.
+
+          Es la pregunta que define el producto, y antes había que deducirla
+          llenando "día fijo (opcional)" y dos fechas. Un profesor que arma un
+          workshop no piensa "sin día fijo, arranca y termina el mismo día":
+          piensa "es un encuentro".
+         ------------------------------------------------------------------ */}
+      {esFormacion && (
+        <Campo
+          etiqueta="Cómo se dicta"
+          ayuda={
+            forma === 'encuentro'
+              ? 'Un solo día. Se carga esa clase y nada más.'
+              : forma === 'semanal'
+                ? 'El mismo día cada semana, hasta la fecha de término. Las clases se crean solas.'
+                : 'Fechas y horarios distintos. Las cargás vos, y desde la pestaña Clases podés agregar varias de una.'
+          }
+        >
+          <Opciones<Forma>
+            valor={forma}
+            alElegir={setForma}
+            opciones={[
+              { valor: 'encuentro', texto: 'Un encuentro' },
+              { valor: 'semanal', texto: 'Semanal' },
+              { valor: 'sueltas', texto: 'Fechas sueltas' },
+            ]}
+          />
+        </Campo>
+      )}
+
+      {/* ------------------------------------------------------------------
           El horario fijo. Con un día elegido, las clases se crean solas y no
           hay que cargarlas nunca más; el feriado se resuelve cancelando esa
           clase puntual, no dejando el grupo sin horario.
-         ------------------------------------------------------------------ */}
-      <Campo
-        etiqueta="Día fijo"
-        ayuda={
-          dia === ''
-            ? 'Sin día fijo hay que cargar cada clase a mano. Elegí uno y se crean solas.'
-            : 'Las clases de los próximos dos meses se crean solas. Si un día no se da, se cancela esa clase.'
-        }
-      >
-        <select
-          value={dia}
-          onChange={(e) => setDia(e.target.value)}
-          className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
-        >
-          <option value="">Sin día fijo</option>
-          {NOMBRE_DIA.map((n, i) => (
-            <option key={i} value={i}>{n}</option>
-          ))}
-        </select>
-      </Campo>
 
-      {dia !== '' && (
-        <>
+          En un regular es obligatorio: sin día fijo habría que cargar cada
+          clase a mano, todas las semanas, para siempre. En una particular es
+          una opción, porque "todos los martes" y "dos miércoles al mes" son
+          los dos arreglos normales.
+         ------------------------------------------------------------------ */}
+      {pideDiaFijo && (
+        <Campo
+          etiqueta={esRegular ? 'Día de la clase' : 'Día fijo'}
+          ayuda={
+            dia === ''
+              ? 'Sin día fijo vas cargando cada clase cuando la acordás con el alumno.'
+              : 'Las clases de los próximos dos meses se crean solas. Si un día no se da, se cancela esa clase.'
+          }
+        >
+          <select
+            value={dia}
+            onChange={(e) => setDia(e.target.value)}
+            className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+          >
+            <option value="">{esParticular ? 'Sin día fijo (las agendo yo)' : 'Elegí un día'}</option>
+            {NOMBRE_DIA.map((n, i) => (
+              <option key={i} value={i}>{n}</option>
+            ))}
+          </select>
+        </Campo>
+      )}
+
+      {conDiaFijo && (
+        <div className="grid grid-cols-2 gap-3">
           <Campo etiqueta="Hora">
-            <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+            <Texto type="time" required value={hora} onChange={(e) => setHora(e.target.value)} />
           </Campo>
-          <Campo etiqueta="Duración en minutos">
+          <Campo etiqueta="Duración (min)">
             <Texto
               type="number" min="15" step="15" value={duracion}
               onChange={(e) => setDuracion(e.target.value)}
             />
           </Campo>
-        </>
+        </div>
       )}
 
       {/* ------------------------------------------------------------------
@@ -215,52 +321,121 @@ export default function FormularioGrupo({
           lo que define el producto —un programa de dos meses— y además lo que
           hace que las clases dejen de generarse solas cuando termina. Estaban
           abajo de "Cupo (opcional)", tratadas como un detalle. */}
-      {formato === 'cycle' ? (
-        <div className="grid grid-cols-2 gap-3">
-          <Campo etiqueta="Arranca">
-            <Texto
-              type="date" required value={desde}
-              onChange={(e) => setDesde(e.target.value)}
-            />
-          </Campo>
-          <Campo etiqueta="Termina">
-            <Texto
-              type="date" required value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
-            />
-          </Campo>
-        </div>
-      ) : (
-        <Campo etiqueta="Empieza (opcional)" ayuda="Dejalo vacío si el grupo ya viene andando.">
+      {esFormacion && forma === 'encuentro' && (
+        <Campo etiqueta="Qué día es" ayuda="Empieza y termina el mismo día, así no se le genera nada después.">
+          <Texto type="date" required value={desde} onChange={(e) => setDesde(e.target.value)} />
+        </Campo>
+      )}
+
+      {esFormacion && forma !== 'encuentro' && (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <Campo etiqueta="Arranca">
+              <Texto
+                type="date" required value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+              />
+            </Campo>
+            <Campo etiqueta="Termina">
+              <Texto
+                type="date" required value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+              />
+            </Campo>
+          </div>
+          <p className="-mt-1 rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
+            Una formación es un programa con principio y fin. Después de la fecha de término
+            dejan de generarse clases solas, y a nadie se le genera una cuota por un mes que
+            el grupo ya no cursa.
+          </p>
+        </>
+      )}
+
+      {!esFormacion && (
+        <Campo etiqueta="Empieza (opcional)" ayuda="Dejalo vacío si ya viene andando.">
           <Texto type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
         </Campo>
       )}
 
-      {formato === 'cycle' && (
-        <p className="-mt-1 rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
-          Una formación es un programa con principio y fin. Después de la fecha de término
-          dejan de generarse clases solas, y a nadie se le genera una cuota por un mes que
-          el grupo ya no cursa.
-        </p>
+      {/* El nivel no va en particulares: depende del alumno que la tome, no de
+          la clase. Un profesor que da una particular a un avanzado y otra a un
+          principiante no tiene dos niveles en la misma ficha — tiene dos
+          fichas. */}
+      {!esParticular && (
+        <Campo etiqueta="Nivel">
+          <Texto
+            required value={nivel} placeholder="Principiante"
+            onChange={(e) => setNivel(e.target.value)}
+          />
+        </Campo>
       )}
 
-      <Campo etiqueta="Nivel (opcional)">
-        <Texto value={nivel} placeholder="Principiante" onChange={(e) => setNivel(e.target.value)} />
-      </Campo>
+      {/* ------------------------------------------------------------------
+          DÓNDE. Una particular puede ser online y entonces no hay sala que
+          poner: la base rechaza una clase online con dirección (migración
+          0032), así que el formulario deja de pedirla en vez de pedir algo
+          que no va a entrar.
+         ------------------------------------------------------------------ */}
+      {esParticular && (
+        <Campo
+          etiqueta="Dónde se da"
+          ayuda={online
+            ? 'Tu alumno va a ver el enlace en vez del mapa.'
+            : 'Tu alumno va a ver la dirección y el mapa.'}
+        >
+          <Opciones<'sala' | 'online'>
+            valor={online ? 'online' : 'sala'}
+            alElegir={(v) => setOnline(v === 'online')}
+            opciones={[
+              { valor: 'sala', texto: 'En una sala' },
+              { valor: 'online', texto: 'Online' },
+            ]}
+          />
+        </Campo>
+      )}
 
-      <Campo etiqueta="Estudio (opcional)" ayuda="Como le dicen al lugar: Vibras, Bunker.">
-        <Texto value={estudio} placeholder="Vibras" onChange={(e) => setEstudio(e.target.value)} />
-      </Campo>
+      {esParticular && online && (
+        <Campo etiqueta="Enlace de la clase (opcional)" ayuda="Meet, Zoom, lo que uses. Podés ponerlo después.">
+          <Texto
+            type="url" value={enlace} placeholder="https://meet.google.com/…"
+            onChange={(e) => setEnlace(e.target.value)}
+          />
+        </Campo>
+      )}
 
-      <Campo etiqueta="Dirección (opcional)" ayuda="Con esto tus alumnos abren el mapa y llegan.">
+      {pideLugar && (
+        <>
+          <Campo etiqueta={lugarObligatorio ? 'Estudio' : 'Estudio (opcional)'} ayuda="Como le dicen al lugar: Vibras, Bunker.">
+            <Texto
+              required={lugarObligatorio} value={estudio} placeholder="Vibras"
+              onChange={(e) => setEstudio(e.target.value)}
+            />
+          </Campo>
+
+          <Campo
+            etiqueta={lugarObligatorio ? 'Dirección' : 'Dirección (opcional)'}
+            ayuda="Con esto tus alumnos abren el mapa y llegan."
+          >
+            <Texto
+              required={lugarObligatorio} value={direccion}
+              placeholder="Av. Corrientes 1234, CABA"
+              onChange={(e) => setDireccion(e.target.value)}
+            />
+          </Campo>
+        </>
+      )}
+
+      <Campo
+        etiqueta={esParticular ? 'Cupo (opcional)' : 'Cupo'}
+        ayuda={esParticular
+          ? 'Dejalo en 1 si es uno a uno. Poné más si es un grupo reducido.'
+          : 'Cuántos entran. Te avisa antes de pasarte.'}
+      >
         <Texto
-          value={direccion} placeholder="Av. Corrientes 1234, CABA"
-          onChange={(e) => setDireccion(e.target.value)}
+          type="number" min="1" required={!esParticular} value={cupo}
+          placeholder={esParticular ? '1' : undefined}
+          onChange={(e) => setCupo(e.target.value)}
         />
-      </Campo>
-
-      <Campo etiqueta="Cupo (opcional)">
-        <Texto type="number" min="1" value={cupo} onChange={(e) => setCupo(e.target.value)} />
       </Campo>
 
       {error && <Aviso>{error}</Aviso>}
