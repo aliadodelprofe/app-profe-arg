@@ -52,8 +52,12 @@ begin;
   set local role authenticated;
 
   -- la ficha del alumno, enlazada a su usuario: esto es lo que la 0005 mira
-  insert into public.students (tenant_id, full_name, user_id)
-  select t.id, 'Alumno Portal',
+  -- Con correo: desde la 0035 una ficha sin correo no entra, porque es una
+  -- ficha que esa persona nunca va a poder usar. El de acá es propio y no el
+  -- de alumno1 para no confundirse con las invitaciones, que se enganchan
+  -- justamente por el correo.
+  insert into public.students (tenant_id, full_name, email, user_id)
+  select t.id, 'Alumno Portal', 'alumno-portal@prueba.com',
          nullif(current_setting('prueba.alumno_uid', true), '')::uuid
     from public.tenants t
    where t.name = 'Escuela de Prueba 2'

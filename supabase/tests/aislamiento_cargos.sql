@@ -34,8 +34,8 @@ begin;
       'role','authenticated')::text, true);
   set local role authenticated;
 
-  insert into public.students (tenant_id, full_name)
-  select t.id, 'Alumna de Prueba 2'
+  insert into public.students (tenant_id, full_name, email)
+  select t.id, 'Alumna de Prueba 2', 'alumna-prueba2@prueba.com'
     from public.tenants t
    where t.name = 'Escuela de Prueba 2'
      and not exists (select 1 from public.students s

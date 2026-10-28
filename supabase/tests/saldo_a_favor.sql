@@ -37,8 +37,8 @@ set local role authenticated;
 -- Preparación: un alumno que pagó $25.000 teniendo un solo cargo de $10.000.
 -- O sea, $15.000 a favor.
 -- ----------------------------------------------------------------------------
-insert into public.students (tenant_id, full_name)
-select id, 'PRUEBA Saldo A Favor' from public.tenants
+insert into public.students (tenant_id, full_name, email)
+select id, 'PRUEBA Saldo A Favor', 'prueba-saldo-a-favor@ejemplo.com' from public.tenants
  where name = 'Escuela de Prueba 2' limit 1;
 
 insert into public.charges (tenant_id, student_id, concept, amount, due_date)
