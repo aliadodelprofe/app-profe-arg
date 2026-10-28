@@ -335,7 +335,11 @@ export type Cuenta = {
   // Las dos caras de la misma resta, cada una recortada en cero (migración
   // 0022). Exactamente una de las dos puede ser distinta de cero: por eso un
   // alumno no puede figurar debiendo y con crédito a la vez.
+  // `saldo` es lo VENCIDO. Un cargo que vence la semana que viene no cuenta
+  // como deuda (migración 0031): reclamarle a alguien que está al día y tiene
+  // la clase del jueves por delante es la forma más rápida de perderlo.
   saldo: number;
+  por_vencer: number;
   a_favor: number;
 };
 
@@ -376,7 +380,7 @@ export async function traerAlumnos(espacioId: string): Promise<Alumno[]> {
 export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
   const { data, error } = await supabase
     .from('student_account')
-    .select('student_id, total_cargos, total_pagado, saldo, a_favor')
+    .select('student_id, total_cargos, total_pagado, saldo, por_vencer, a_favor')
     .eq('tenant_id', espacioId);
   if (error) throw new Error(error.message);
   return (data ?? []).map((c) => ({
@@ -384,6 +388,7 @@ export async function traerCuentas(espacioId: string): Promise<Cuenta[]> {
     total_cargos: num((c as Record<string, unknown>).total_cargos),
     total_pagado: num((c as Record<string, unknown>).total_pagado),
     saldo: num((c as Record<string, unknown>).saldo),
+    por_vencer: num((c as Record<string, unknown>).por_vencer),
     a_favor: num((c as Record<string, unknown>).a_favor),
   }));
 }

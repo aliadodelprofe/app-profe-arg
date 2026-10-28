@@ -349,13 +349,23 @@ function MiCuenta({
     .map((p) => ({ ...p, cuando: p.paid_on ?? p.confirmed_at?.slice(0, 10) ?? p.declared_at.slice(0, 10) }))
     .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
+  const hoy = hoyISO();
   const pendientes = (cargos ?? []).filter((c) => c.pagado < c.amount);
+  // La misma frontera que usa la vista en la base: sin fecha cuenta como
+  // vencido, porque un cargo que nadie fechó se debe ahora.
+  const vencidos = pendientes.filter((c) => !c.due_date || c.due_date <= hoy);
+  const porVenir = pendientes.filter((c) => c.due_date && c.due_date > hoy);
 
   return (
     <>
       {errorSaldo && <div className="mb-4"><Aviso>{errorSaldo}</Aviso></div>}
 
       {/* ------------------------------------------------------ el número */}
+      {/* El número grande es lo VENCIDO y nada más (migración 0031). Lo que
+          todavía no venció se dice abajo, en gris y en otra frase: el alumno
+          tiene que poder ver lo que se le viene, pero no leerlo como una
+          deuda. Antes la app le decía "$45.000, es lo que debés" sumando
+          clases que no habían pasado. */}
       <Dato
         valor={
           saldo === null
@@ -370,13 +380,19 @@ function MiCuenta({
           saldo === null
             ? ''
             : saldo.debe > 0
-              ? 'es lo que debés'
+              ? 'es lo que debés hoy'
               : saldo.aFavor > 0
                 ? 'tenés a favor: se va a descontar de lo que venga'
-                : 'no debés nada'
+                : 'no tenés nada vencido'
         }
         tono={saldo === null ? 'normal' : saldo.debe > 0 ? 'alerta' : 'ok'}
       >
+        {saldo !== null && saldo.porVencer > 0 && (
+          <p className="mt-2 text-sm text-tenue">
+            Y {plata(saldo.porVencer)} por las clases que vienen, que todavía no
+            vencieron.
+          </p>
+        )}
         {declarados.length > 0 && (
           <p className="mt-2 text-sm text-acento">
             Avisaste {plata(totalDeclarado)}. Tu profe lo tiene que confirmar.
@@ -400,27 +416,31 @@ function MiCuenta({
       )}
 
       {/* --------------------------------------------------- qué falta pagar */}
-      {pendientes.length > 0 && (
+      {/* Dos listas y no una. "Qué te falta pagar" son los que ya vencieron:
+          eso es lo que te pueden reclamar hoy. "Lo que viene" son las clases
+          que todavía no pasaron, y están para que sepas cuánto te va a salir,
+          no para que te preocupes. Mezclarlas era lo que inflaba el número. */}
+      {vencidos.length > 0 && (
         <>
-          <Seccion acotacion={`${pendientes.length} ${pendientes.length === 1 ? 'cargo' : 'cargos'}`}>
+          <Seccion acotacion={`${vencidos.length} ${vencidos.length === 1 ? 'cargo' : 'cargos'}`}>
             Qué te falta pagar
           </Seccion>
           <Lista>
-            {pendientes.map((c) => (
-              <Fila
-                key={c.id}
-                titulo={c.concept}
-                detalle={
-                  c.pagado > 0
-                    ? `pagaste ${plata(c.pagado)} · falta ${plata(c.amount - c.pagado)}` +
-                      (c.due_date ? ` · vence el ${fecha(c.due_date)}` : '')
-                    : c.due_date
-                      ? `vence el ${fecha(c.due_date)}`
-                      : null
-                }
-                valor={plata(c.amount - c.pagado)}
-              />
-            ))}
+            {vencidos.map((c) => <FilaCargo key={c.id} cargo={c} />)}
+          </Lista>
+        </>
+      )}
+
+      {porVenir.length > 0 && (
+        <>
+          <Seccion acotacion={plata(porVenir.reduce((s, c) => s + (c.amount - c.pagado), 0))}>
+            Lo que viene
+          </Seccion>
+          <p className="mb-3 text-sm text-tenue">
+            Todavía no vencieron. Los ves acá para saber cuánto te va a salir.
+          </p>
+          <Lista>
+            {porVenir.map((c) => <FilaCargo key={c.id} cargo={c} />)}
           </Lista>
         </>
       )}
@@ -457,6 +477,25 @@ function MiCuenta({
       {errorArreglos && <div className="mt-6"><Aviso>{errorArreglos}</Aviso></div>}
       <ComoPago arreglos={arreglos} alCambiar={alCambiarArreglo} />
     </>
+  );
+}
+
+// Un cargo, en una fila. Sale aparte porque ahora se dibuja en dos listas.
+function FilaCargo({ cargo }: { cargo: MiCargo }) {
+  const falta = cargo.amount - cargo.pagado;
+  return (
+    <Fila
+      titulo={cargo.concept}
+      detalle={
+        cargo.pagado > 0
+          ? `pagaste ${plata(cargo.pagado)} · falta ${plata(falta)}` +
+            (cargo.due_date ? ` · vence el ${fecha(cargo.due_date)}` : '')
+          : cargo.due_date
+            ? `vence el ${fecha(cargo.due_date)}`
+            : null
+      }
+      valor={plata(falta)}
+    />
   );
 }
 

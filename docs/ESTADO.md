@@ -81,6 +81,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0028_el_dueno_ve_sus_imagenes.sql` | Reglas de `select` en `logos` y `avatares`: sin ellas un `update` no encuentra la fila y devuelve cero sin error | Aplicada |
 | `0029_sacar_la_foto.sql` | `actualizar_mi_ficha` distingue "no la toques" (nulo) de "sacala" (vacío). Antes no había forma de borrar la foto | Aplicada |
 | `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Aplicada |
+| `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Sin aplicar |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -117,6 +118,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/medios_de_pago.sql` | Los medios de pago (0024, 0025): que el profesor cargue los suyos y ninguno ajeno, que el alumno los vea y **no** los pueda cambiar, que lo archivado no le llegue, y que un CBU cortado no entre. En una transacción que se deshace. Repetible |
 | `supabase/tests/logo_de_la_escuela.sql` | El logo (0026): que lo ponga solo el dueño, que el alumno lo vea y no lo toque, y que nadie suba archivos a la carpeta de otro espacio. En una transacción que se deshace. Repetible |
 | `supabase/tests/avatares.sql` | El depósito de fotos (0027, 0028): que cada uno escriba en su carpeta y en ninguna otra. **No prueba el borrado**: Supabase lo prohíbe desde SQL, va por la Storage API. En una transacción que se deshace. Repetible |
+| `supabase/tests/lo_que_vencio.sql` | La frontera entre vencido y por vencer (0031): que un cargo de mañana no entre en el saldo, que uno sin fecha sí, y que pagar por adelantado no mueva lo vencido. En una transacción que se deshace. Repetible |
 | `supabase/tests/mi_correo.sql` | `sincronizar_mi_correo()` (0030): que copie el correo **del JWT**, que sea idempotente, y que otra persona con ese mismo correo en su token no se lleve las fichas. En una transacción que se deshace. Repetible |
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 | **`npm run prueba:base`** | **Corre las diecisiete de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |

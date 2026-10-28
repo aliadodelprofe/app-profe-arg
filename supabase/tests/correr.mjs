@@ -38,6 +38,7 @@ const PRUEBAS = [
   'invitaciones.sql',
   'forma_de_pago.sql',
   'saldo_a_favor.sql',
+  'lo_que_vencio.sql',
   'mantenimiento.sql',
   'comprobantes_viejos.sql',
   'ficha_del_alumno.sql',

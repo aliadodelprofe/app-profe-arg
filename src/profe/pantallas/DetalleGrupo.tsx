@@ -702,6 +702,11 @@ function FilaClase({
   const cancelada = clase.status === 'cancelled';
   const lugar = lugarDe(clase, grupo);
 
+  const hoy = hoyISO();
+  const esHoy = clase.date === hoy;
+  // La ventana para completar una asistencia atrasada: una semana.
+  const puedeAsistencia = clase.date <= hoy && clase.date >= sumarDias(hoy, -7);
+
   async function cambiarEstado() {
     setTrabajando(true);
     setError(null);
@@ -752,18 +757,50 @@ function FilaClase({
         </Hoja>
       )}
 
+      {/* --------------------------------------------------------- los botones
+
+          Cada clase ofrece SOLO lo que tiene sentido en su momento. Antes las
+          tres opciones aparecían siempre, incluso para una clase de hace tres
+          meses, y eso no era generosidad: era pedirle al profesor que
+          descarte dos de cada tres botones cada vez que mira la lista.
+
+            Clase que viene  → editar y cancelar. Todavía se puede cambiar.
+            Clase de hoy     → además, tomar asistencia.
+            Clase pasada     → asistencia mientras sea reciente, y nada más.
+
+          Lo que NO se puede hacer con una clase pasada es editarla o
+          cancelarla. Cancelar una clase que ya se dio no es un cambio de
+          planes: es reescribir lo que pasó, con cargos y asistencias
+          colgando de eso. Lo que sí se puede corregir siempre es el recap,
+          que se escribe después por definición y vive en la pantalla de
+          asistencia.
+
+          La asistencia de una clase pasada se permite por una ventana de una
+          semana. El profesor la toma parado en la sala, pero si ese día se le
+          pasó, bloquearlo al día siguiente pierde el registro para siempre.
+          Pasada la semana se cierra: a esa altura ya nadie se acuerda quién
+          vino, y una asistencia inventada es peor que una vacía. */}
       <div className="flex flex-wrap gap-2">
-        {!cancelada && (
-          <BotonSecundario type="button" onClick={alTomarAsistencia}>
-            Tomar asistencia
-          </BotonSecundario>
+        {!cancelada && puedeAsistencia && (
+          <Boton type="button" onClick={alTomarAsistencia}>
+            {esHoy ? 'Tomar asistencia' : 'Completar asistencia'}
+          </Boton>
         )}
-        <BotonSecundario type="button" onClick={() => setEditando(true)}>
-          Editar
-        </BotonSecundario>
-        <BotonSecundario type="button" onClick={cambiarEstado} disabled={trabajando}>
-          {cancelada ? 'Reactivar' : 'Cancelar clase'}
-        </BotonSecundario>
+        {!pasada && (
+          <>
+            <BotonSecundario type="button" onClick={() => setEditando(true)}>
+              Editar
+            </BotonSecundario>
+            <BotonSecundario type="button" onClick={cambiarEstado} disabled={trabajando}>
+              {cancelada ? 'Reactivar' : 'Cancelar clase'}
+            </BotonSecundario>
+          </>
+        )}
+        {pasada && !puedeAsistencia && !cancelada && (
+          <p className="text-sm text-tenue">
+            Ya pasó. Lo único que se puede corregir es el resumen, desde la asistencia.
+          </p>
+        )}
       </div>
     </Fila>
   );
@@ -989,9 +1026,15 @@ function FilaAlumno({
               Corregir la ficha
             </BotonSecundario>
           )}
+          {/* "Cobrar algo aparte" y no "Agregar un cargo". El nombre viejo
+              competía con lo que la app ya hace sola —la cuota del mes y la
+              próxima clase las genera asegurar_cargos() todas las noches— y
+              leído rápido parecía la forma de cobrar eso, que es cobrarlo dos
+              veces. Esto es para lo único que el automatismo no puede saber:
+              una clase particular, un pack, materiales, un recupero. */}
           {activa && !cobrando && (
             <BotonSecundario type="button" onClick={() => setCobrando(true)}>
-              Agregar un cargo
+              Cobrar algo aparte
             </BotonSecundario>
           )}
           {activa ? (
