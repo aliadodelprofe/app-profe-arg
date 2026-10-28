@@ -42,6 +42,35 @@
   /* Estados. Son dos y alcanzan: algo salió bien, algo requiere atención. */
   --color-ok:     #35715a;   /* pagado, confirmado, al día */
   --color-alerta: #a3231b;   /* deuda, error */
+
+  /* --------------------------------------------------------------------
+     SUPERFICIES TEÑIDAS
+
+     Un fondo con una pizca del color de acción. Sirven para lo que está
+     seleccionado, lo que espera una decisión y los botones secundarios.
+
+     Van como tokens y no como `bg-acento/10` escrito en cada componente
+     porque en modo oscuro la mezcla correcta no es la misma: 10% de un
+     terracota claro sobre un fondo casi negro queda sucio, no teñido.
+     -------------------------------------------------------------------- */
+  --color-acento-suave:  #f6e6dc;
+  --color-ok-suave:      #e2efe9;
+  --color-alerta-suave:  #f7e2e0;
+
+  /* --------------------------------------------------------------------
+     ELEVACIÓN
+
+     Tres niveles y ninguno más: lo que está apoyado, lo que flota y lo que
+     tapa. Sin esto todo vive en el mismo plano y la pantalla se lee como un
+     formulario impreso.
+
+     En modo oscuro se redefinen (más abajo): una sombra negra sobre un
+     fondo casi negro no se ve, así que ahí la profundidad la da un borde
+     claro arriba, que es como la luz cae sobre algo levantado.
+     -------------------------------------------------------------------- */
+  --shadow-apoyo: 0 1px 2px rgb(43 36 32 / 0.05), 0 1px 3px rgb(43 36 32 / 0.04);
+  --shadow-flota: 0 2px 4px rgb(43 36 32 / 0.05), 0 8px 24px rgb(43 36 32 / 0.08);
+  --shadow-tapa:  0 -8px 40px rgb(43 36 32 / 0.18);
 }
 
 /* ----------------------------------------------------------------------
@@ -94,6 +123,19 @@ html[data-app="nueva"] {
 
     --color-ok:     #74c39d;
     --color-alerta: #f08a7e;
+
+    /* Teñidos del oscuro: no son los claros oscurecidos. Se construyen desde
+       el fondo hacia el color, no al revés, para que sigan leyéndose como
+       superficie y no como una mancha de color. */
+    --color-acento-suave:  #33231a;
+    --color-ok-suave:      #1b2f26;
+    --color-alerta-suave:  #33201e;
+
+    /* La profundidad del oscuro no es una sombra: es luz arriba. Una sombra
+       negra sobre un fondo casi negro no existe. */
+    --shadow-apoyo: inset 0 1px 0 rgb(255 255 255 / 0.04);
+    --shadow-flota: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.5);
+    --shadow-tapa:  0 -8px 40px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -208,10 +250,72 @@ body {
   50%      { opacity: 0.45; }
 }
 
-.anim-subir    { animation: subir 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* Entrar desde abajo, apenas. No es "subir": es que la fila no aparezca de la
+   nada. Ocho píxeles alcanzan; más que eso se nota y molesta. */
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* El brillo que recorre un esqueleto de carga. Un bloque gris que late se lee
+   como algo roto; uno que tiene un reflejo moviéndose se lee como algo que
+   está viniendo. */
+@keyframes brillo {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+.anim-subir    { animation: subir 260ms cubic-bezier(0.32, 0.72, 0, 1); }
 .anim-aparecer { animation: aparecer 160ms ease-out; }
 .anim-latir    { animation: latir 1.4s ease-in-out infinite; }
+.anim-entrar   { animation: entrar 260ms cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+
+/* El escalonado: cada fila entra un pelito después que la anterior. Es lo que
+   hace que una lista se lea como que se está armando y no como que apareció
+   de golpe. El tope existe porque con veinte filas el final llegaría tarde y
+   la espera se sentiría como lentitud. */
+.anim-escalera > *       { animation: entrar 260ms cubic-bezier(0.32, 0.72, 0, 1) backwards; }
+.anim-escalera > *:nth-child(1)  { animation-delay: 0ms; }
+.anim-escalera > *:nth-child(2)  { animation-delay: 25ms; }
+.anim-escalera > *:nth-child(3)  { animation-delay: 50ms; }
+.anim-escalera > *:nth-child(4)  { animation-delay: 75ms; }
+.anim-escalera > *:nth-child(5)  { animation-delay: 100ms; }
+.anim-escalera > *:nth-child(6)  { animation-delay: 125ms; }
+.anim-escalera > *:nth-child(7)  { animation-delay: 150ms; }
+.anim-escalera > *:nth-child(n+8) { animation-delay: 175ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .anim-subir, .anim-aparecer, .anim-latir { animation: none; }
+  .anim-subir, .anim-aparecer, .anim-latir, .anim-entrar { animation: none; }
+  .anim-escalera > * { animation: none; }
+}
+
+
+/* ----------------------------------------------------------------------
+   EL FOCO
+
+   Lo que ve quien navega con el teclado. El navegador trae un anillo propio,
+   pero es el azul del sistema sobre nuestra paleta: desentona tanto que la
+   tentación es apagarlo, y apagarlo deja la app inusable sin mouse.
+
+   `:focus-visible` y no `:focus`: así el anillo aparece con el teclado y no
+   cada vez que alguien toca un botón con el dedo.
+   ---------------------------------------------------------------------- */
+html[data-app="nueva"] :focus-visible {
+  outline: 2px solid var(--color-acento);
+  outline-offset: 2px;
+  border-radius: 10px;
+}
+
+/* Lo que se selecciona con el cursor también es parte de la app. El celeste
+   del navegador sobre una paleta cálida canta. */
+html[data-app="nueva"] ::selection {
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+}
+
+/* Los números de plata, uno debajo del otro, tienen que alinearse por la
+   coma. Con cifras de ancho variable, comparar dos montos obliga a leerlos. */
+html[data-app="nueva"] .plata {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
 }

@@ -17,7 +17,7 @@ export function Marco({
   conBarra?: boolean;
 }) {
   return (
-    <div className={'min-h-screen bg-fondo px-5 py-6 ' + (conBarra ? 'pb-28 sm:pb-10' : 'pb-10')}>
+    <div className={'min-h-screen bg-fondo px-5 pt-7 ' + (conBarra ? 'pb-28 sm:pb-12' : 'pb-12')}>
       <div className="mx-auto w-full max-w-2xl">{children}</div>
     </div>
   );
@@ -39,15 +39,22 @@ export function Encabezado({
       {volver && (
         <button
           onClick={volver.alTocar}
-          className="mb-3 text-sm text-tenue hover:text-acento"
+          className="group -ml-2 mb-3 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-tenue transition hover:bg-linea/50 hover:text-tinta"
         >
-          ← {volver.texto}
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            aria-hidden="true"
+            className="h-4 w-4 transition-transform duration-150 group-hover:-translate-x-0.5"
+          >
+            <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          {volver.texto}
         </button>
       )}
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-tinta">{titulo}</h1>
-          {bajada && <p className="text-sm text-tenue">{bajada}</p>}
+        <div className="min-w-0">
+          <Titulo>{titulo}</Titulo>
+          {bajada && <p className="mt-1 text-sm text-tenue">{bajada}</p>}
         </div>
         {derecha}
       </div>
@@ -57,14 +64,55 @@ export function Encabezado({
 
 export function Aviso({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-lg border border-alerta/40 bg-alerta/10 px-3 py-2 text-sm text-alerta">
-      {children}
+    <p
+      role="alert"
+      className="anim-aparecer flex items-start gap-2.5 rounded-xl border border-alerta/25 bg-alerta-suave px-3.5 py-3 text-sm text-alerta"
+    >
+      {/* El ícono no es decoración: un bloque de texto rojo se puede confundir
+          con un dato en rojo —una deuda, por ejemplo—. El triángulo dice
+          "esto es un problema" antes de que empieces a leer. */}
+      <svg
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0"
+      >
+        <path d="M12 9v4M12 17h.01M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"
+              strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span className="min-w-0">{children}</span>
     </p>
   );
 }
 
-export function Vacio({ children }: { children: ReactNode }) {
-  return <p className="text-tenue">{children}</p>;
+// ----------------------------------------------------------------------------
+// EL VACÍO
+//
+// Antes era una frase gris suelta en el medio de la nada, que es como se ve
+// una app rota. Un vacío bien hecho hace tres cosas: ocupa el lugar donde iba
+// el contenido —así la pantalla no se desinfla—, dice en una línea por qué no
+// hay nada, y ofrece la salida si la hay.
+// ----------------------------------------------------------------------------
+export function Vacio({
+  children,
+  accion,
+}: {
+  children: ReactNode;
+  accion?: ReactNode;
+}) {
+  return (
+    <div className="anim-aparecer flex flex-col items-center gap-3 rounded-2xl border border-dashed border-linea px-6 py-10 text-center">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-acento-suave text-acento">
+        <svg
+          viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
+          aria-hidden="true" className="h-5 w-5"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M8.5 13.5h7" strokeLinecap="round" />
+        </svg>
+      </span>
+      <p className="max-w-sm text-sm leading-relaxed text-tenue">{children}</p>
+      {accion}
+    </div>
+  );
 }
 
 export function Tarjeta({
@@ -78,7 +126,7 @@ export function Tarjeta({
   // tarjeta sin sombra sobre fondo casi blanco se lee como un rectángulo
   // dibujado y no como algo apoyado.
   const clases =
-    'w-full rounded-2xl border border-linea bg-panel p-4 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04)]';
+    'w-full rounded-2xl border border-linea bg-panel p-4 text-left shadow-apoyo';
   if (!alTocar) return <div className={clases}>{children}</div>;
   // Una tarjeta que se toca tiene que avisar que se toca. En el celular no
   // hay `hover`, así que lo que comunica es el `active`: el hundido de medio
@@ -88,8 +136,9 @@ export function Tarjeta({
       onClick={alTocar}
       className={
         clases +
-        ' flex items-start justify-between gap-3 transition hover:border-acento/40' +
-        ' active:scale-[0.99] active:bg-acento/5'
+        ' flex items-start justify-between gap-3 transition duration-150' +
+        ' hover:border-acento/40 hover:shadow-flota' +
+        ' active:scale-[0.99] active:bg-acento-suave'
       }
     >
       <span className="min-w-0 flex-1">{children}</span>
@@ -156,8 +205,14 @@ export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
 // ---------------------------------------------------------------------------
 // Piezas de formulario
 // ---------------------------------------------------------------------------
+// Alto de 44px, anillo de foco teñido en vez del borde que cambia de color, y
+// el `placeholder` más apagado que el texto: sin esa diferencia, un campo con
+// pista escrita se lee como un campo ya completado.
 const claseInput =
-  'w-full rounded-lg bg-campo border border-linea px-3 py-2 text-tinta outline-none focus:border-acento';
+  'w-full rounded-xl bg-campo border border-linea px-3.5 py-2.5 text-tinta ' +
+  'placeholder:text-tenue/50 outline-none transition ' +
+  'focus:border-acento focus:ring-4 focus:ring-acento/15 ' +
+  'disabled:opacity-50';
 
 export function Campo({
   etiqueta,
@@ -169,10 +224,10 @@ export function Campo({
   children: ReactNode;
 }) {
   return (
-    <label className="flex flex-col gap-1">
-      <span className="text-sm text-tenue">{etiqueta}</span>
+    <label className="flex flex-col gap-1.5">
+      <span className="text-sm font-medium text-tinta">{etiqueta}</span>
       {children}
-      {ayuda && <span className="text-xs text-tenue/70">{ayuda}</span>}
+      {ayuda && <span className="text-xs leading-relaxed text-tenue">{ayuda}</span>}
     </label>
   );
 }
@@ -202,10 +257,11 @@ export function Opciones<T extends string>({
           type="button"
           onClick={() => alElegir(o.valor)}
           className={
-            'rounded-lg border px-3 py-1.5 text-sm ' +
+            'min-h-10 rounded-xl border px-3.5 py-2 text-sm font-medium transition ' +
+            'active:scale-[0.97] ' +
             (valor === o.valor
-              ? 'border-acento bg-acento text-sobre-acento'
-              : 'border-linea text-tenue hover:border-acento/40')
+              ? 'border-acento bg-acento text-sobre-acento shadow-apoyo'
+              : 'border-linea bg-panel text-tenue hover:border-acento/40 hover:text-tinta')
           }
         >
           {o.texto}
@@ -215,6 +271,27 @@ export function Opciones<T extends string>({
   );
 }
 
+// ----------------------------------------------------------------------------
+// LOS DOS BOTONES
+//
+// La diferencia entre los dos tiene que ser de JERARQUÍA, no de "uno es un
+// botón y el otro casi". El secundario de antes era un rectángulo con borde
+// gris y texto gris: a un metro de distancia se lee idéntico a un control
+// deshabilitado, y eso hace que la gente no lo toque.
+//
+// Ahora el secundario está TEÑIDO con el color de acción. Sigue siendo
+// claramente menos importante que el primario —no tiene fondo lleno— pero se
+// lee como algo que se puede tocar, que es todo lo que tenía que decir.
+//
+// Los dos tienen alto mínimo de 44px. No es un número estético: es el tamaño
+// por debajo del cual un dedo empieza a errarle, y es la diferencia entre una
+// app que se usa parado en una sala y una que hay que usar sentado.
+// ----------------------------------------------------------------------------
+const baseBoton =
+  'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 ' +
+  'font-medium transition-[transform,background-color,box-shadow,border-color] duration-150 ' +
+  'active:scale-[0.97] disabled:pointer-events-none disabled:opacity-45';
+
 export function Boton({
   children,
   ...props
@@ -222,7 +299,11 @@ export function Boton({
   return (
     <button
       {...props}
-      className="rounded-xl bg-acento px-4 py-2.5 font-medium text-sobre-acento transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
+      className={
+        baseBoton +
+        ' bg-acento text-sobre-acento shadow-apoyo' +
+        ' hover:brightness-[1.07] hover:shadow-flota'
+      }
     >
       {children}
     </button>
@@ -236,7 +317,11 @@ export function BotonSecundario({
   return (
     <button
       {...props}
-      className="rounded-xl border border-linea px-4 py-2.5 text-sm text-tenue transition hover:border-acento/40 active:scale-[0.98]"
+      className={
+        baseBoton +
+        ' bg-acento-suave text-acento text-sm' +
+        ' hover:brightness-[0.97]'
+      }
     >
       {children}
     </button>
@@ -287,7 +372,7 @@ export function Confirmacion({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-5 backdrop-blur-sm"
+      className="anim-aparecer fixed inset-0 z-50 flex items-center justify-center bg-tinta/40 p-5 backdrop-blur-md"
       onClick={() => { if (!trabajando) alCancelar(); }}
     >
       <div
@@ -296,10 +381,10 @@ export function Confirmacion({
         aria-label={titulo}
         // Sin esto, un clic adentro del cartel llega al fondo y lo cierra.
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-2xl border border-linea bg-panel p-5 shadow-xl"
+        className="anim-entrar w-full max-w-sm rounded-3xl border border-linea bg-panel p-5 shadow-tapa"
       >
-        <p className="mb-2 text-lg text-tinta">{titulo}</p>
-        <div className="mb-4 text-sm text-tenue">{children}</div>
+        <p className="mb-2 text-lg font-bold tracking-tight text-tinta">{titulo}</p>
+        <div className="mb-5 text-sm leading-relaxed text-tenue">{children}</div>
         <div className="flex gap-2">
           <Boton type="button" onClick={alConfirmar} disabled={trabajando}>
             {trabajando ? 'Cambiando…' : confirmar}
@@ -331,7 +416,15 @@ export function Confirmacion({
 // ----------------------------------------------------------------------------
 export function Marca() {
   return (
-    <p className="mb-8 text-lg font-semibold tracking-tight text-acento">{NOMBRE}</p>
+    <div className="mb-8 flex items-center gap-2.5">
+      {/* Un cuadrado con la inicial. No es un logo —todavía no hay— pero es
+          una marca: algo que ocupa lugar y se reconoce de lejos. Un nombre
+          suelto en texto se lee como el título de un documento. */}
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-acento text-lg font-bold text-sobre-acento shadow-apoyo">
+        {NOMBRE.slice(0, 1)}
+      </span>
+      <span className="text-lg font-bold tracking-tight text-tinta">{NOMBRE}</span>
+    </div>
   );
 }
 
@@ -349,8 +442,18 @@ export function Marca() {
 // ============================================================================
 
 // Nivel 1 — de qué se trata esta pantalla. Uno por pantalla.
+// Nivel 1 — el nombre de la pantalla.
+//
+// Más grande y más apretado que antes. `text-2xl` con tracking normal es el
+// tamaño de un encabezado de página web; una app usa un título que ocupa el
+// ancho con confianza y letras juntas. El `text-balance` evita que un nombre
+// largo deje una palabra sola colgando en la segunda línea.
 export function Titulo({ children }: { children: ReactNode }) {
-  return <h1 className="text-2xl font-semibold tracking-tight text-tinta">{children}</h1>;
+  return (
+    <h1 className="text-pretty text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-tinta">
+      {children}
+    </h1>
+  );
 }
 
 // Nivel 2 — los bloques adentro de una pantalla.
@@ -367,9 +470,11 @@ export function Seccion({
   acotacion?: ReactNode;
 }) {
   return (
-    <div className="mb-3 mt-8 flex items-baseline justify-between gap-3 first:mt-0">
-      <h2 className="text-lg font-semibold tracking-tight text-tinta">{children}</h2>
-      {acotacion && <span className="shrink-0 text-sm text-tenue">{acotacion}</span>}
+    <div className="mb-3 mt-9 flex items-baseline justify-between gap-3 first:mt-0">
+      <h2 className="text-[1.0625rem] font-bold tracking-[-0.01em] text-tinta">{children}</h2>
+      {acotacion && (
+        <span className="shrink-0 text-xs font-medium text-tenue">{acotacion}</span>
+      )}
     </div>
   );
 }
@@ -390,12 +495,20 @@ export function Dato({
   tono?: 'normal' | 'alerta' | 'ok';
   children?: ReactNode;
 }) {
-  const color =
-    tono === 'alerta' ? 'text-alerta' : tono === 'ok' ? 'text-ok' : 'text-tinta';
+  // El bloque entero se tiñe según el estado, no solo el número. Un $32.000
+  // rojo sobre un panel blanco se lee como un número que alguien pintó; el
+  // mismo número sobre una superficie teñida se lee como una situación.
+  const estilo = {
+    normal: { texto: 'text-tinta', caja: 'border-linea bg-panel' },
+    alerta: { texto: 'text-alerta', caja: 'border-alerta/20 bg-alerta-suave' },
+    ok:     { texto: 'text-ok',     caja: 'border-ok/20 bg-ok-suave' },
+  }[tono];
   return (
-    <div className="rounded-xl border border-linea bg-panel p-4">
-      <p className={`text-3xl font-semibold tabular-nums tracking-tight ${color}`}>{valor}</p>
-      <p className="mt-0.5 text-sm text-tenue">{al}</p>
+    <div className={`anim-aparecer rounded-2xl border p-5 shadow-apoyo ${estilo.caja}`}>
+      <p className={`plata text-[2.5rem] font-bold leading-none tracking-[-0.03em] ${estilo.texto}`}>
+        {valor}
+      </p>
+      <p className="mt-2 text-sm leading-snug text-tenue">{al}</p>
       {children}
     </div>
   );
@@ -409,14 +522,19 @@ export function Etiqueta({
   children: ReactNode;
   tono?: 'normal' | 'acento' | 'alerta' | 'ok';
 }) {
+  // Rellenas y sin borde. Una etiqueta de borde fino compite visualmente con
+  // los campos y los botones, que también son rectángulos con borde; una
+  // pastilla llena se lee de inmediato como "estado", no como "control".
   const estilo = {
-    normal: 'border-linea text-tenue',
-    acento: 'border-acento/40 text-acento',
-    alerta: 'border-alerta/40 text-alerta',
-    ok: 'border-ok/40 text-ok',
+    normal: 'bg-linea/60 text-tenue',
+    acento: 'bg-acento-suave text-acento',
+    alerta: 'bg-alerta-suave text-alerta',
+    ok: 'bg-ok-suave text-ok',
   }[tono];
   return (
-    <span className={`shrink-0 rounded-full border px-2 py-0.5 text-xs ${estilo}`}>
+    <span
+      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium leading-none ${estilo}`}
+    >
       {children}
     </span>
   );
@@ -450,25 +568,49 @@ export function Navegacion<T extends string>({
   activa: T;
   alElegir: (id: T) => void;
 }) {
-  const boton = (p: Pestana<T>, vertical: boolean) => (
-    <button
-      key={p.id}
-      onClick={() => alElegir(p.id)}
-      aria-current={p.id === activa ? 'page' : undefined}
-      className={
-        (vertical
-          ? 'flex flex-1 flex-col items-center gap-1 py-2 text-xs'
-          : 'flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm') +
-        ' ' +
-        (p.id === activa
-          ? 'text-acento ' + (vertical ? '' : 'bg-acento/10 font-medium')
-          : 'text-tenue hover:text-tinta')
-      }
-    >
-      {p.icono}
-      {p.texto}
-    </button>
-  );
+  // En el celular, la pestaña activa se marca con una PASTILLA detrás del
+  // ícono, no solo con color. Es lo que hace que de un vistazo —sin leer, sin
+  // comparar tonos— sepas dónde estás parado. Un ícono naranja al lado de dos
+  // grises obliga a mirar los tres para decidir cuál es el distinto.
+  const boton = (p: Pestana<T>, vertical: boolean) => {
+    const activo = p.id === activa;
+    if (vertical) {
+      return (
+        <button
+          key={p.id}
+          onClick={() => alElegir(p.id)}
+          aria-current={activo ? 'page' : undefined}
+          className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition active:scale-95"
+        >
+          <span
+            className={
+              'flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-150 ' +
+              (activo ? 'bg-acento-suave text-acento' : 'text-tenue')
+            }
+          >
+            {p.icono}
+          </span>
+          <span className={activo ? 'text-acento' : 'text-tenue'}>{p.texto}</span>
+        </button>
+      );
+    }
+    return (
+      <button
+        key={p.id}
+        onClick={() => alElegir(p.id)}
+        aria-current={activo ? 'page' : undefined}
+        className={
+          'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 ' +
+          (activo
+            ? 'bg-acento-suave text-acento'
+            : 'text-tenue hover:bg-linea/50 hover:text-tinta')
+        }
+      >
+        {p.icono}
+        {p.texto}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -483,11 +625,16 @@ export function Navegacion<T extends string>({
           máximo y mismo margen lateral) para que el menú y el título queden
           sobre la misma línea vertical. */}
       <nav
-        className="sticky top-0 z-40 hidden border-b border-linea bg-fondo/85 backdrop-blur sm:block"
+        className="sticky top-0 z-40 hidden border-b border-linea bg-fondo/80 backdrop-blur-xl sm:block"
         aria-label="Secciones"
       >
         <div className="mx-auto flex max-w-2xl items-center gap-1 px-5 py-2.5">
-          <span className="mr-4 font-semibold tracking-tight text-acento">{NOMBRE}</span>
+          <span className="mr-4 flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-acento text-sm font-bold text-sobre-acento">
+              {NOMBRE.slice(0, 1)}
+            </span>
+            <span className="font-bold tracking-tight text-tinta">{NOMBRE}</span>
+          </span>
           {pestanas.map((p) => boton(p, false))}
         </div>
       </nav>
@@ -496,7 +643,7 @@ export function Navegacion<T extends string>({
           esté en el documento no cambia dónde se dibuja. El padding de abajo
           respeta la zona del gesto de inicio en los iPhone sin botón. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-linea bg-panel px-2 pb-[env(safe-area-inset-bottom,0px)] sm:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-linea bg-panel/85 px-2 pt-1 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl sm:hidden"
         aria-label="Secciones"
       >
         {pestanas.map((p) => boton(p, true))}
@@ -619,7 +766,10 @@ export function Avatar({
       <img
         src={foto}
         alt=""
-        className={`${medida} shrink-0 rounded-full object-cover`}
+        // El aro de adentro despega la foto del fondo. Sin él, una foto con
+        // el borde claro sobre un panel claro se derrama y el círculo deja de
+        // leerse como círculo.
+        className={`${medida} shrink-0 rounded-full object-cover ring-1 ring-tinta/10 ring-inset`}
         // Una dirección de Google puede dejar de funcionar si la persona
         // cambia su foto allá. Lo mismo si el archivo se borró del depósito.
         onError={() => setRoto(true)}
@@ -636,6 +786,7 @@ export function Avatar({
       }}
       className={
         'flex shrink-0 items-center justify-center rounded-full font-semibold ' +
+        'ring-1 ring-tinta/5 ring-inset ' +
         medida + (tam === 'normal' ? ' text-sm' : tam === 'chico' ? ' text-xs' : ' text-[8px]')
       }
     >
@@ -661,7 +812,7 @@ export function Avatar({
 // ----------------------------------------------------------------------------
 export function Lista({ children }: { children: ReactNode }) {
   return (
-    <ul className="-mx-5 divide-y divide-linea border-y border-linea bg-panel sm:mx-0 sm:rounded-2xl sm:border">
+    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-linea bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
       {children}
     </ul>
   );
@@ -693,19 +844,25 @@ export function Fila({
       <div className="flex items-center gap-3">
         {principal ?? (avatar !== undefined ? <Avatar nombre={avatar} foto={foto} /> : null)}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium text-tinta">{titulo}</div>
-          {detalle && <div className="truncate text-sm text-tenue">{detalle}</div>}
+          <div className="truncate font-medium leading-snug text-tinta">{titulo}</div>
+          {detalle && (
+            <div className="truncate text-sm leading-snug text-tenue">{detalle}</div>
+          )}
         </div>
         {(valor || bajoValor) && (
           <div className="shrink-0 text-right">
-            {valor && <div className="tabular-nums text-tinta">{valor}</div>}
-            {bajoValor && <div className="text-xs text-tenue">{bajoValor}</div>}
+            {valor && <div className="plata font-semibold leading-snug text-tinta">{valor}</div>}
+            {bajoValor && <div className="text-xs leading-snug text-tenue">{bajoValor}</div>}
           </div>
         )}
+        {/* La flechita se corre un poco al pasar el mouse. Es un detalle de dos
+            píxeles y es de los que más hacen: dice "esto lleva a algún lado"
+            antes de que toques nada. */}
         {alTocar && (
           <svg
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-            aria-hidden="true" className="h-4 w-4 shrink-0 text-tenue"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 text-tenue/60 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-acento"
           >
             <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -720,12 +877,12 @@ export function Fila({
       {alTocar ? (
         <button
           onClick={alTocar}
-          className="w-full px-5 py-3 text-left transition active:bg-acento/5 sm:px-4"
+          className="group w-full px-5 py-3.5 text-left transition-colors duration-150 hover:bg-acento-suave/40 active:bg-acento-suave sm:px-4"
         >
           {cuerpo}
         </button>
       ) : (
-        <div className="px-5 py-3 sm:px-4">{cuerpo}</div>
+        <div className="px-5 py-3.5 sm:px-4">{cuerpo}</div>
       )}
     </li>
   );
@@ -860,7 +1017,7 @@ export function Hoja({
 
   return (
     <div
-      className="anim-aparecer fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-5"
+      className="anim-aparecer fixed inset-0 z-50 flex items-end justify-center bg-tinta/40 backdrop-blur-md sm:items-center sm:p-5"
       onClick={alCerrar}
     >
       <div
@@ -868,20 +1025,23 @@ export function Hoja({
         aria-modal="true"
         aria-label={titulo}
         onClick={(e) => e.stopPropagation()}
-        className="anim-subir max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border-t border-linea bg-panel sm:max-w-lg sm:rounded-3xl sm:border"
+        className="anim-subir max-h-[90vh] w-full overflow-y-auto rounded-t-3xl border-t border-linea bg-panel shadow-tapa sm:max-w-lg sm:rounded-3xl sm:border"
       >
         {/* El tirador. No hace nada: está porque es lo que le dice a cualquiera
             que esto es una hoja y que se cierra tirándola para abajo. */}
         <div className="flex justify-center pt-3 sm:hidden">
-          <div className="h-1 w-10 rounded-full bg-linea" />
+          <div className="h-1.5 w-11 rounded-full bg-linea" />
         </div>
 
-        <div className="flex items-center justify-between gap-4 px-5 pb-3 pt-4">
-          <h2 className="text-lg font-semibold tracking-tight text-tinta">{titulo}</h2>
+        {/* El encabezado se pega arriba: en una hoja larga —el recortador, un
+            formulario con seis campos— perder el título al scrollear te deja
+            sin saber qué estás completando. */}
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-linea bg-panel/90 px-5 pb-3 pt-4 backdrop-blur-xl">
+          <h2 className="text-lg font-bold tracking-tight text-tinta">{titulo}</h2>
           <button
             onClick={alCerrar}
             aria-label="Cerrar"
-            className="-mr-1 rounded-full p-1.5 text-tenue transition hover:bg-acento/10 hover:text-tinta"
+            className="-mr-1 rounded-full p-1.5 text-tenue transition hover:bg-acento-suave hover:text-tinta"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
               <path d="M6 6l12 12M18 6L6 18" strokeLinecap="round" />
@@ -904,15 +1064,25 @@ export function Hoja({
 // El esqueleto ocupa desde el principio el lugar y la forma de lo que viene,
 // así que cuando aparece el contenido no se mueve nada.
 // ----------------------------------------------------------------------------
+// El reflejo que recorre cada bloque. Va como constante y no suelto en cada
+// div porque son cuatro clases largas repetidas cinco veces.
+const brillo =
+  'bg-linea bg-[linear-gradient(90deg,transparent,var(--color-panel),transparent)] ' +
+  'bg-[length:200%_100%] [animation:brillo_1.6s_ease-in-out_infinite] ' +
+  'motion-reduce:animate-none';
+
 export function Esqueleto({ filas = 3 }: { filas?: number }) {
   return (
-    <div className="-mx-5 divide-y divide-linea border-y border-linea bg-panel sm:mx-0 sm:rounded-2xl sm:border">
+    <div className="-mx-5 divide-y divide-linea border-y border-linea bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
       {Array.from({ length: filas }).map((_, i) => (
-        <div key={i} className="anim-latir flex items-center gap-3 px-5 py-3 sm:px-4">
-          <div className="h-10 w-10 shrink-0 rounded-full bg-linea" />
+        <div key={i} className="flex items-center gap-3 px-5 py-3.5 sm:px-4">
+          <div className={`h-10 w-10 shrink-0 rounded-full ${brillo}`} />
           <div className="min-w-0 flex-1">
-            <div className="h-3.5 w-1/3 rounded bg-linea" />
-            <div className="mt-2 h-3 w-1/2 rounded bg-linea" />
+            {/* Anchos distintos en cada fila. Tres bloques idénticos se leen
+                como un patrón decorativo; irregulares se leen como texto que
+                todavía no llegó. */}
+            <div className={`h-3.5 rounded ${brillo}`} style={{ width: `${34 + i * 9}%` }} />
+            <div className={`mt-2 h-3 rounded ${brillo}`} style={{ width: `${48 - i * 6}%` }} />
           </div>
         </div>
       ))}
@@ -938,21 +1108,29 @@ export function Segmentos<T extends string>({
   alElegir: (id: T) => void;
 }) {
   return (
-    <div className="mb-4 flex gap-1 rounded-xl bg-linea/50 p-1">
+    <div className="mb-4 flex gap-1 rounded-2xl bg-linea/50 p-1">
       {opciones.map((o) => (
         <button
           key={o.id}
           onClick={() => alElegir(o.id)}
           className={
-            'flex-1 rounded-lg px-3 py-2 text-sm font-medium transition ' +
+            'flex-1 rounded-xl px-3 py-2 text-sm font-medium transition duration-150 ' +
+            'active:scale-[0.98] ' +
             (o.id === valor
-              ? 'bg-panel text-tinta shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
+              ? 'bg-panel text-tinta shadow-apoyo'
               : 'text-tenue hover:text-tinta')
           }
         >
           {o.texto}
           {o.cuantos !== undefined && (
-            <span className="ml-1.5 tabular-nums opacity-60">{o.cuantos}</span>
+            <span
+              className={
+                'ml-1.5 inline-block min-w-5 rounded-full px-1.5 py-0.5 text-[11px] leading-none tabular-nums ' +
+                (o.id === valor ? 'bg-acento-suave text-acento' : 'bg-linea/70 text-tenue')
+              }
+            >
+              {o.cuantos}
+            </span>
           )}
         </button>
       ))}
@@ -981,7 +1159,7 @@ export function ChipFecha({ iso, apagado = false }: { iso: string; apagado?: boo
         'flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border ' +
         (apagado
           ? 'border-linea text-tenue'
-          : 'border-acento/25 bg-acento/10 text-acento')
+          : 'border-acento/25 bg-acento-suave text-acento')
       }
     >
       <span className="text-[10px] uppercase leading-none opacity-70">{DIA_CORTO[dow]}</span>

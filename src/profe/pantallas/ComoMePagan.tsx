@@ -35,7 +35,7 @@ export default function ComoMePagan({
       <Seccion>Cómo te transfieren</Seccion>
 
       {destacado ? (
-        <div className="rounded-xl border border-acento/30 bg-acento/5 px-4 py-3">
+        <div className="rounded-xl border border-acento/25 bg-acento-suave px-4 py-3">
           <p className="text-sm text-tinta">
             Tus alumnos no saben adónde transferirte.
           </p>

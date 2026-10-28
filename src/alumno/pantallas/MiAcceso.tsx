@@ -70,7 +70,7 @@ function Correo({ actual }: { actual: string }) {
       )}
 
       {aviso && (
-        <p className="mt-2 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
+        <p className="mt-2 rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm text-acento">
           {aviso}
         </p>
       )}

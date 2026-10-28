@@ -70,7 +70,7 @@ export default function Cobros({
       {sinMedio && (
         <button
           onClick={alVerEscuela}
-          className="mb-4 block w-full rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-left transition active:scale-[0.99]"
+          className="mb-4 block w-full rounded-xl border border-acento/25 bg-acento-suave px-4 py-3 text-left transition active:scale-[0.99]"
         >
           <p className="text-sm text-tinta">Tus alumnos no saben adónde transferirte.</p>
           <p className="mt-0.5 text-sm text-acento">

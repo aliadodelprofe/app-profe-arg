@@ -78,15 +78,15 @@ export default function Ingreso() {
           type="button"
           onClick={conGoogle}
           disabled={trabajando}
-          className="w-full rounded-lg border border-acento/40 px-3 py-2.5 font-medium text-tinta hover:border-acento disabled:opacity-50"
+          className="flex min-h-12 w-full items-center justify-center rounded-xl border border-linea bg-panel font-medium text-tinta shadow-apoyo transition hover:border-acento/40 hover:shadow-flota active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45"
         >
           {trabajando ? 'Un segundo…' : 'Entrar con Google'}
         </button>
 
         <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-panel" />
+          <div className="h-px flex-1 bg-linea" />
           <span className="text-xs uppercase tracking-wide text-tenue">o con tu correo</span>
-          <div className="h-px flex-1 bg-panel" />
+          <div className="h-px flex-1 bg-linea" />
         </div>
 
         <form onSubmit={enviar} className="flex flex-col gap-3">
@@ -112,7 +112,7 @@ export default function Ingreso() {
         {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
 
         {aviso && (
-          <p className="mt-4 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
+          <p className="mt-4 rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm text-acento">
             {aviso}
           </p>
         )}

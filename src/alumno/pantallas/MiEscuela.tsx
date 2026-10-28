@@ -519,7 +519,7 @@ function MisClases({
       {proxima && (
         <button
           onClick={() => setAbierta(proxima)}
-          className="anim-aparecer mb-5 w-full rounded-2xl border border-acento/30 bg-acento/5 px-5 py-4 text-left transition active:scale-[0.99]"
+          className="anim-aparecer mb-5 w-full rounded-2xl border border-acento/25 bg-acento-suave px-5 py-4 text-left transition active:scale-[0.99]"
         >
           <p className="text-xs uppercase tracking-wide text-acento">Tu próxima clase</p>
           <p className="mt-1 text-xl font-semibold tracking-tight text-tinta">

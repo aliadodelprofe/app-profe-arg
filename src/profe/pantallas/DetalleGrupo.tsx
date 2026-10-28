@@ -137,7 +137,7 @@ export default function DetalleGrupo({
       {errorGen && <div className="mb-4"><Aviso>{errorGen}</Aviso></div>}
 
       {novedades.length > 0 && (
-        <div className="anim-aparecer mb-4 rounded-xl border border-acento/30 bg-acento/5 px-4 py-3 text-sm text-acento">
+        <div className="anim-aparecer mb-4 rounded-xl border border-acento/25 bg-acento-suave px-4 py-3 text-sm text-acento">
           {novedades.map((n) => <p key={n}>{n}</p>)}
         </div>
       )}
@@ -440,7 +440,7 @@ function FormularioAlumno({
       {/* Se suma con el mes ya empezado: cobrarle la cuota entera sería
           cobrarle clases que no va a recibir. */}
       {cobro === 'per_period' && mesEmpezado && (
-        <div className="rounded-lg border border-acento/30 bg-acento/5 px-3 py-2">
+        <div className="rounded-lg border border-acento/25 bg-acento-suave px-3 py-2">
           <p className="mb-2 text-sm text-acento">
             {mesEnPalabras(mes)} ya empezó: hubo al menos una clase.
           </p>
@@ -947,7 +947,7 @@ function FormularioSerie({
       </Campo>
 
       {hayQuinta && (
-        <div className="rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm">
+        <div className="rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm">
           <p className="text-acento">
             Este mes el {diaSemana(desde)} cae una vez más, el {fecha(quinta)}.
             Con cuatro clases ese día queda sin cargar.
@@ -1083,7 +1083,7 @@ function FilaAlumno({
       {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
 
       {cobrado && (
-        <p className="mt-2 rounded-lg border border-acento/30 bg-acento/5 px-3 py-2 text-sm text-acento">
+        <p className="mt-2 rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm text-acento">
           {cobrado}
         </p>
       )}
