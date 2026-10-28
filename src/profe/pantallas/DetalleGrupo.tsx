@@ -347,6 +347,16 @@ function FormularioAlumno({
   const disponibles: Alumno[] =
     alumnos.datos?.filter((a) => !yaInscriptos.includes(a.id)) ?? [];
 
+  // EL CUPO, QUE AHORA SE MIRA
+  //
+  // Hasta hoy el número se guardaba al crear el grupo, se mostraba en el
+  // listado y nadie lo leía nunca: podías anotar doce en un grupo de seis y
+  // la app no decía nada. Avisa, no bloquea —vos sabrás si entra uno más, y
+  // una sala no es una regla de negocio— pero te lo dice ANTES, que es
+  // cuando sirve.
+  const lleno = grupo.capacity !== null && yaInscriptos.length >= grupo.capacity;
+  const [igual, setIgual] = useState(false);
+
   // ¿Este mes ya arrancó? Arrancó si ya hubo al menos una clase.
   const mes = hoyISO().slice(0, 7);
   const mesEmpezado = clases.some(
@@ -500,10 +510,31 @@ function FormularioAlumno({
         </div>
       )}
 
+      {lleno && (
+        <div className="rounded-lg border border-alerta/25 bg-alerta-suave px-3 py-2">
+          <p className="mb-2 text-sm text-alerta">
+            El cupo de este grupo es {grupo.capacity} y ya hay{' '}
+            {yaInscriptos.length === 1 ? '1 anotado' : `${yaInscriptos.length} anotados`}.
+          </p>
+          <Opciones<'no' | 'si'>
+            valor={igual ? 'si' : 'no'}
+            alElegir={(v) => setIgual(v === 'si')}
+            opciones={[
+              { valor: 'no', texto: 'Mejor no' },
+              { valor: 'si', texto: 'Anotalo igual' },
+            ]}
+          />
+          <p className="mt-2 text-xs text-tenue">
+            El cupo es tuyo, no una regla: si en la sala entra uno más, anotalo.
+            Esto es para que te enteres ahora y no cuando llegan todos.
+          </p>
+        </div>
+      )}
+
       {error && <Aviso>{error}</Aviso>}
 
       <div className="flex gap-2">
-        <Boton type="submit" disabled={guardando}>
+        <Boton type="submit" disabled={guardando || (lleno && !igual)}>
           {guardando ? 'Anotando…' : 'Anotar'}
         </Boton>
         <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>

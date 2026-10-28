@@ -66,11 +66,48 @@ export default function FormularioGrupo({
   // Solo al CREAR. Editar una particular es cambiarle el horario o el precio;
   // cambiar de alumno sería otra particular.
   // --------------------------------------------------------------------
+  // Una particular puede ser uno a uno o un grupito: una pareja, un trío que
+  // comparte la hora. Por eso es una LISTA y no un alumno. El cupo sale de
+  // acá —es cuánta gente hay— y no de un número aparte que puede contradecirla.
+  type Participante = { alumnoId: string | null; nombre: string; email: string };
   const alumnos = useCarga(() => traerAlumnos(espacio.id), [espacio.id]);
-  const [quien, setQuien] = useState<'nuevo' | 'existente'>('nuevo');
-  const [alumnoNombre, setAlumnoNombre] = useState('');
-  const [alumnoEmail, setAlumnoEmail] = useState('');
-  const [alumnoElegido, setAlumnoElegido] = useState('');
+  const [participantes, setParticipantes] = useState<Participante[]>([]);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoEmail, setNuevoEmail] = useState('');
+
+  // "Juan", "Juan y María", "Juan, María y Pedro".
+  function enLista(ps: Participante[]) {
+    const ns = ps.map((x) => x.nombre.trim()).filter(Boolean);
+    if (ns.length === 0) return '';
+    if (ns.length === 1) return ns[0];
+    return ns.slice(0, -1).join(', ') + ' y ' + ns[ns.length - 1];
+  }
+
+  // El nombre del grupo se arma solo mientras no lo toques a mano.
+  function conParticipantes(siguiente: Participante[]) {
+    setParticipantes(siguiente);
+    setNombre((n) =>
+      !n || n.startsWith('Particular — ')
+        ? (siguiente.length ? `Particular — ${enLista(siguiente)}` : '')
+        : n,
+    );
+  }
+
+  function sumarExistente(id: string) {
+    const a = (alumnos.datos ?? []).find((x) => x.id === id);
+    if (!a || participantes.some((x) => x.alumnoId === a.id)) return;
+    conParticipantes([...participantes, { alumnoId: a.id, nombre: a.full_name, email: '' }]);
+  }
+
+  function sumarNuevo() {
+    if (!nuevoNombre.trim() || !nuevoEmail.trim()) return;
+    conParticipantes([
+      ...participantes,
+      { alumnoId: null, nombre: nuevoNombre.trim(), email: nuevoEmail.trim() },
+    ]);
+    setNuevoNombre('');
+    setNuevoEmail('');
+  }
 
   // --------------------------------------------------------------------
   // CÓMO SE ARMAN LAS FECHAS
@@ -153,14 +190,14 @@ export default function FormularioGrupo({
       if (!esFormacion && !porClase && !porMes) {
         return 'Poné al menos un precio: por clase, por mes, o los dos.';
       }
-      if (!grupo && esParticular && quien === 'nuevo' && !alumnoNombre.trim()) {
-        return 'Una particular es de alguien: poné el nombre del alumno.';
+      if (!grupo && esParticular && participantes.length === 0) {
+        return 'Una particular es de alguien: sumá al menos un alumno.';
       }
-      if (!grupo && esParticular && quien === 'nuevo' && !alumnoEmail.trim()) {
-        return 'Falta el correo del alumno: es con lo que entra a ver sus clases y sus pagos.';
+      if (!grupo && esParticular && nuevoNombre.trim() && !nuevoEmail.trim()) {
+        return 'Falta el correo de ese alumno: es con lo que entra a ver sus clases y sus pagos.';
       }
-      if (!grupo && esParticular && quien === 'existente' && !alumnoElegido) {
-        return 'Elegí de qué alumno es esta particular.';
+      if (!grupo && esParticular && (nuevoNombre.trim() || nuevoEmail.trim())) {
+        return 'Te quedó un alumno escrito sin sumar. Tocá "Sumar este alumno" o borralo.';
       }
       if (esRegular && horarios.length === 0) {
         return 'Un grupo regular necesita al menos un día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
@@ -191,7 +228,11 @@ export default function FormularioGrupo({
       name: nombre.trim(),
       format: formato,
       level: esParticular ? null : (nivel.trim() || null),
-      capacity: cupo ? Number(cupo) : null,
+      // En una particular el cupo ES la gente que estás anotando. Al editar
+      // no se vuelve a preguntar, así que se respeta el que ya tenía.
+      capacity: esParticular
+        ? (grupo ? grupo.capacity : (participantes.length || null))
+        : (cupo ? Number(cupo) : null),
       start_date: arranca,
       end_date: termina,
       venue: pideLugar ? (estudio.trim() || null) : null,
@@ -209,28 +250,29 @@ export default function FormularioGrupo({
         ? await editarGrupo(grupo.id, datos)
         : await crearGrupo(espacio.id, datos);
 
-      // Y si es una particular nueva, se anota al alumno de una. La forma de
-      // cobro es la primera que tenga precio: en una particular hay una sola
-      // cargada casi siempre, y preguntarla sería preguntar algo con una sola
-      // respuesta posible.
+      // Y si es una particular nueva, se anota a toda la gente de una. La
+      // forma de cobro es la primera que tenga precio: en una particular hay
+      // una sola cargada casi siempre, y preguntarla sería preguntar algo con
+      // una sola respuesta posible.
       if (!grupo && esParticular) {
-        const alumnoId =
-          quien === 'existente'
-            ? alumnoElegido
-            : (await crearAlumno(espacio.id, {
-                full_name: alumnoNombre.trim(),
-                email: alumnoEmail.trim() || null,
-              })).id;
-
         const modo = (['per_session', 'per_period', 'one_time'] as ModoCobro[])
           .find((m) => precioDelGrupo(g, m) !== null);
 
-        if (alumnoId && modo) {
-          await inscribir(espacio.id, {
-            group_id: g.id,
-            student_id: alumnoId,
-            billing_mode: modo,
-          });
+        for (const quien of participantes) {
+          const alumnoId =
+            quien.alumnoId ??
+            (await crearAlumno(espacio.id, {
+              full_name: quien.nombre,
+              email: quien.email || null,
+            })).id;
+
+          if (alumnoId && modo) {
+            await inscribir(espacio.id, {
+              group_id: g.id,
+              student_id: alumnoId,
+              billing_mode: modo,
+            });
+          }
         }
       }
 
@@ -362,64 +404,79 @@ export default function FormularioGrupo({
          ------------------------------------------------------------------ */}
       {!grupo && esParticular && (
         <div className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
-          <Campo etiqueta="¿De quién es?">
-            <Opciones<'nuevo' | 'existente'>
-              valor={quien}
-              alElegir={setQuien}
-              opciones={[
-                { valor: 'nuevo', texto: 'Un alumno nuevo' },
-                { valor: 'existente', texto: 'Uno que ya tengo' },
-              ]}
-            />
-          </Campo>
+          <p className="text-sm font-medium text-tinta">¿Para quién es?</p>
 
-          {quien === 'nuevo' ? (
-            <>
-              <Campo etiqueta="Nombre del alumno">
-                <Texto
-                  value={alumnoNombre}
-                  placeholder="Juan Pérez"
-                  onChange={(e) => {
-                    setAlumnoNombre(e.target.value);
-                    // El nombre de la ficha se arma solo mientras no lo
-                    // toques. Escribir "Juan Pérez" dos veces es trabajo que
-                    // la app puede hacer sola.
-                    if (!nombre || nombre.startsWith('Particular — ')) {
-                      setNombre(e.target.value.trim() ? `Particular — ${e.target.value}` : '');
-                    }
-                  }}
-                />
-              </Campo>
-              <Campo
-                etiqueta="Correo"
-                ayuda="Es con lo que entra a su app a ver sus clases y lo que debe. Sin correo, la ficha existe pero la persona no puede entrar nunca."
-              >
-                <Texto
-                  type="email" required value={alumnoEmail}
-                  onChange={(e) => setAlumnoEmail(e.target.value)}
-                />
-              </Campo>
-            </>
-          ) : (
-            <Campo etiqueta="Cuál">
-              <select
-                value={alumnoElegido}
-                onChange={(e) => {
-                  setAlumnoElegido(e.target.value);
-                  const a = (alumnos.datos ?? []).find((x) => x.id === e.target.value);
-                  if (a && (!nombre || nombre.startsWith('Particular — '))) {
-                    setNombre(`Particular — ${a.full_name}`);
-                  }
-                }}
-                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
-              >
-                <option value="">Elegí un alumno</option>
-                {(alumnos.datos ?? []).map((a) => (
+          {participantes.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {participantes.map((x, i) => (
+                <button
+                  key={x.alumnoId ?? `nuevo-${i}`}
+                  type="button"
+                  onClick={() => conParticipantes(participantes.filter((_, j) => j !== i))}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento transition hover:brightness-[0.97]"
+                >
+                  {x.nombre}
+                  {x.alumnoId === null ? ' (nuevo)' : ''}
+                  <span aria-hidden="true" className="text-base leading-none">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Los que ya están en tu escuela: un toque y entran a la lista.
+              El select vuelve a "Elegí…" porque no es un valor elegido, es
+              una acción. */}
+          <Campo etiqueta="Alguien que ya tenés">
+            <select
+              value=""
+              onChange={(e) => { if (e.target.value) sumarExistente(e.target.value); }}
+              className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+            >
+              <option value="">Elegí de tu escuela…</option>
+              {(alumnos.datos ?? [])
+                .filter((a) => !participantes.some((x) => x.alumnoId === a.id))
+                .map((a) => (
                   <option key={a.id} value={a.id}>{a.full_name}</option>
                 ))}
-              </select>
+            </select>
+          </Campo>
+
+          {/* Y los que todavía no tenés. Mismo patrón que los horarios: se
+              arma uno, se suma a la lista, y la lista es lo que se guarda. */}
+          <div className="flex flex-col gap-3 rounded-xl border border-contorno bg-fondo p-3">
+            <p className="text-sm text-tenue">O cargá uno que todavía no tenés:</p>
+            <Campo etiqueta="Nombre">
+              <Texto
+                value={nuevoNombre}
+                placeholder="Juan Pérez"
+                onChange={(e) => setNuevoNombre(e.target.value)}
+              />
             </Campo>
-          )}
+            <Campo
+              etiqueta="Correo"
+              ayuda="Es con lo que entra a su app a ver sus clases y lo que debe. Sin correo, la ficha existe pero la persona no puede entrar nunca."
+            >
+              <Texto
+                type="email" value={nuevoEmail}
+                onChange={(e) => setNuevoEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); sumarNuevo(); } }}
+              />
+            </Campo>
+            <BotonSecundario
+              type="button"
+              onClick={sumarNuevo}
+              disabled={!nuevoNombre.trim() || !nuevoEmail.trim()}
+              className="w-full"
+            >
+              + Sumar este alumno
+            </BotonSecundario>
+          </div>
+
+          <p className="text-xs leading-relaxed text-tenue">
+            {participantes.length <= 1
+              ? 'Uno a uno, o sumá a los que compartan la hora: una pareja, un trío. Todos pagan el mismo precio del grupo.'
+              : `${participantes.length} personas comparten esta hora. A cada una se le genera su propio cargo con el precio de abajo.`}
+          </p>
         </div>
       )}
 
@@ -691,18 +748,17 @@ export default function FormularioGrupo({
         </>
       )}
 
-      <Campo
-        etiqueta={esParticular ? 'Cupo (opcional)' : 'Cupo'}
-        ayuda={esParticular
-          ? 'Dejalo en 1 si es uno a uno. Poné más si es un grupo reducido.'
-          : 'Cuántos entran. Te avisa antes de pasarte.'}
-      >
-        <Texto
-          type="number" min="1" required={!esParticular} value={cupo}
-          placeholder={esParticular ? '1' : undefined}
-          onChange={(e) => setCupo(e.target.value)}
-        />
-      </Campo>
+      {/* En una particular no se pregunta: el cupo es la gente que anotaste
+          arriba. Un número aparte podía contradecir a la lista, y entre los
+          dos no hay forma de saber cuál manda. */}
+      {!esParticular && (
+        <Campo etiqueta="Cupo" ayuda="Cuántos entran. Al anotar a alguien con el grupo lleno, la app te avisa.">
+          <Texto
+            type="number" min="1" required value={cupo}
+            onChange={(e) => setCupo(e.target.value)}
+          />
+        </Campo>
+      )}
 
       {error && <Aviso>{error}</Aviso>}
 
