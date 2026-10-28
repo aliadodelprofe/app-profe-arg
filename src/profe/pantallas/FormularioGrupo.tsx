@@ -750,28 +750,33 @@ export default function FormularioGrupo({
                 y "un martes por medio" son el mismo día y la misma hora, y la
                 app las trataba igual: generaba los cuatro martes. Al alumno
                 que pactó dos le aparecían cuatro clases y cuatro cargos. */}
+            {/* "Todas las semanas" y "4 por mes" se leían como lo mismo, y
+                diez meses al año lo son. Se diferencian en el mes que tiene
+                cinco martes, así que eso es lo que tienen que decir los
+                nombres: si no, el profesor elige a ciegas entre dos opciones
+                que parecen iguales. */}
             <Campo
               etiqueta="Cada cuánto"
               ayuda={cada === '2'
                 ? 'El 1º y el 3º del mes: un día por medio.'
                 : cada === '1'
-                  ? 'Solo el 1º del mes.'
+                  ? 'Solo el 1º de cada mes.'
                   : cada === '4'
-                    ? 'Los primeros 4 del mes. Cuando el mes tiene un quinto, ese no se da.'
+                    ? 'Siempre 4, ni una más. Cuando el mes tiene un quinto, ese no se da — así no le aparece un cargo que no pactaron.'
                     : cada === '3'
-                      ? 'Los primeros 3 del mes.'
-                      : 'Todas las semanas, sin saltearse ninguna.'}
+                      ? 'Los primeros 3 de cada mes.'
+                      : 'Sin saltear ninguna: cuatro o cinco según el mes. Si cobrás por mes es lo que corresponde, porque la cuota ya está pensada sobre el promedio.'}
             >
               <select
                 value={cada}
                 onChange={(e) => setCada(e.target.value)}
                 className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
               >
-                <option value="">Todas las semanas</option>
-                <option value="4">4 veces por mes</option>
-                <option value="3">3 veces por mes</option>
-                <option value="2">2 veces por mes</option>
-                <option value="1">1 vez por mes</option>
+                <option value="">Todas las semanas (4 o 5 según el mes)</option>
+                <option value="4">4 por mes exactas (el 5º no se da)</option>
+                <option value="3">3 por mes</option>
+                <option value="2">2 por mes (el 1º y el 3º)</option>
+                <option value="1">1 por mes (el 1º)</option>
               </select>
             </Campo>
 
