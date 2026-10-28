@@ -7,9 +7,12 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { crearGrupo, editarGrupo, NOMBRE_DIA, plata } from '../datos';
-import type { Espacio, Grupo, Formato, DatosGrupo } from '../datos';
-import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario } from '../../comun/ui';
+import {
+  crearGrupo, editarGrupo, NOMBRE_DIA, plata,
+  traerAlumnos, crearAlumno, inscribir, precioDelGrupo,
+} from '../datos';
+import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
+import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
 import { compararFormas, MESES_POR_ANIO } from '../../comun/precios';
 
 export default function FormularioGrupo({
@@ -35,13 +38,39 @@ export default function FormularioGrupo({
   const [porClase, setPorClase] = useState(grupo?.price_per_session?.toString() ?? '');
   const [porMes, setPorMes] = useState(grupo?.price_per_period?.toString() ?? '');
   const [pagoUnico, setPagoUnico] = useState(grupo?.price_one_time?.toString() ?? '');
-  const [dia, setDia] = useState<string>(grupo?.weekday?.toString() ?? '');
-  const [hora, setHora] = useState(grupo?.default_start_time?.slice(0, 5) ?? '');
-  const [duracion, setDuracion] = useState(grupo?.default_duration_min?.toString() ?? '');
+  // El horario es una LISTA desde la 0034: un taller puede ser martes y jueves,
+  // con horas distintas. Los tres campos de abajo son el renglón que se está
+  // escribiendo; `horarios` es lo que ya se agregó.
+  const [horarios, setHorarios] = useState<DatosHorario[]>(
+    (grupo?.horarios ?? []).map((h) => ({
+      weekday: h.weekday,
+      start_time: h.start_time,
+      duration_min: h.duration_min,
+    })),
+  );
+  const [dia, setDia] = useState<string>('');
+  const [hora, setHora] = useState('');
+  const [duracion, setDuracion] = useState('');
   const [online, setOnline] = useState(grupo?.online ?? false);
   const [enlace, setEnlace] = useState(grupo?.meeting_url ?? '');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+
+  // --------------------------------------------------------------------
+  // EL ALUMNO DE LA PARTICULAR
+  //
+  // Una particular es una ficha por arreglo, así que crear la ficha y no
+  // decir de quién es deja a la mitad algo que es una sola cosa. Se pregunta
+  // acá y se anota en el mismo guardado.
+  //
+  // Solo al CREAR. Editar una particular es cambiarle el horario o el precio;
+  // cambiar de alumno sería otra particular.
+  // --------------------------------------------------------------------
+  const alumnos = useCarga(() => traerAlumnos(espacio.id), [espacio.id]);
+  const [quien, setQuien] = useState<'nuevo' | 'existente'>('nuevo');
+  const [alumnoNombre, setAlumnoNombre] = useState('');
+  const [alumnoEmail, setAlumnoEmail] = useState('');
+  const [alumnoElegido, setAlumnoElegido] = useState('');
 
   // --------------------------------------------------------------------
   // CÓMO SE ARMAN LAS FECHAS
@@ -75,7 +104,26 @@ export default function FormularioGrupo({
   // La particular lo ofrece: "todos los martes" se agenda solo, "dos miércoles
   // al mes" se carga a mano.
   const pideDiaFijo = esRegular || (esFormacion && forma === 'varias') || esParticular;
-  const conDiaFijo = pideDiaFijo && dia !== '';
+  const conDiaFijo = pideDiaFijo && horarios.length > 0;
+
+  function agregarHorario() {
+    if (dia === '' || !hora) return;
+    const nuevo: DatosHorario = {
+      weekday: Number(dia),
+      start_time: hora,
+      duration_min: duracion ? Number(duracion) : null,
+    };
+    if (horarios.some((h) => h.weekday === nuevo.weekday && h.start_time === nuevo.start_time)) {
+      return;
+    }
+    setHorarios((hs) =>
+      [...hs, nuevo].sort(
+        (a, b) => a.weekday - b.weekday || (a.start_time ?? '').localeCompare(b.start_time ?? ''),
+      ),
+    );
+    setDia('');
+    setHora('');
+  }
 
   // Dónde se da. Una particular online no tiene sala; las demás sí, y es un
   // dato que el alumno necesita para llegar.
@@ -105,10 +153,21 @@ export default function FormularioGrupo({
       if (!esFormacion && !porClase && !porMes) {
         return 'Poné al menos un precio: por clase, por mes, o los dos.';
       }
-      if (esRegular && dia === '') {
-        return 'Un grupo regular necesita día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
+      if (!grupo && esParticular && quien === 'nuevo' && !alumnoNombre.trim()) {
+        return 'Una particular es de alguien: poné el nombre del alumno.';
       }
-      if (conDiaFijo && !hora) return 'Falta la hora de la clase.';
+      if (!grupo && esParticular && quien === 'existente' && !alumnoElegido) {
+        return 'Elegí de qué alumno es esta particular.';
+      }
+      if (esRegular && horarios.length === 0) {
+        return 'Un grupo regular necesita al menos un día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
+      }
+      if (dia !== '' && !hora) {
+        return 'Elegiste un día pero falta la hora. Completala y tocá "Agregar".';
+      }
+      if (dia !== '' && hora) {
+        return 'Te quedó un día sin agregar. Tocá "Agregar" o borrá el día.';
+      }
       return null;
     })();
 
@@ -134,9 +193,7 @@ export default function FormularioGrupo({
       end_date: termina,
       venue: pideLugar ? (estudio.trim() || null) : null,
       address: pideLugar ? (direccion.trim() || null) : null,
-      weekday: conDiaFijo ? Number(dia) : null,
-      default_start_time: conDiaFijo ? hora || null : null,
-      default_duration_min: conDiaFijo ? (duracion ? Number(duracion) : null) : null,
+      horarios: pideDiaFijo ? horarios : [],
       price_per_session: porClase ? Number(porClase) : null,
       price_per_period: porMes ? Number(porMes) : null,
       price_one_time: formato === 'cycle' && pagoUnico ? Number(pagoUnico) : null,
@@ -148,6 +205,32 @@ export default function FormularioGrupo({
       const g = grupo
         ? await editarGrupo(grupo.id, datos)
         : await crearGrupo(espacio.id, datos);
+
+      // Y si es una particular nueva, se anota al alumno de una. La forma de
+      // cobro es la primera que tenga precio: en una particular hay una sola
+      // cargada casi siempre, y preguntarla sería preguntar algo con una sola
+      // respuesta posible.
+      if (!grupo && esParticular) {
+        const alumnoId =
+          quien === 'existente'
+            ? alumnoElegido
+            : (await crearAlumno(espacio.id, {
+                full_name: alumnoNombre.trim(),
+                email: alumnoEmail.trim() || null,
+              })).id;
+
+        const modo = (['per_session', 'per_period', 'one_time'] as ModoCobro[])
+          .find((m) => precioDelGrupo(g, m) !== null);
+
+        if (alumnoId && modo) {
+          await inscribir(espacio.id, {
+            group_id: g.id,
+            student_id: alumnoId,
+            billing_mode: modo,
+          });
+        }
+      }
+
       alGuardar(g);
     } catch (err) {
       setError((err as Error).message);
@@ -266,39 +349,155 @@ export default function FormularioGrupo({
           una opción, porque "todos los martes" y "dos miércoles al mes" son
           los dos arreglos normales.
          ------------------------------------------------------------------ */}
-      {pideDiaFijo && (
-        <Campo
-          etiqueta={esRegular ? 'Día de la clase' : 'Día fijo'}
-          ayuda={
-            dia === ''
-              ? 'Sin día fijo vas cargando cada clase cuando la acordás con el alumno.'
-              : 'Las clases de los próximos dos meses se crean solas. Si un día no se da, se cancela esa clase.'
-          }
-        >
-          <select
-            value={dia}
-            onChange={(e) => setDia(e.target.value)}
-            className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
-          >
-            <option value="">{esParticular ? 'Sin día fijo (las agendo yo)' : 'Elegí un día'}</option>
-            {NOMBRE_DIA.map((n, i) => (
-              <option key={i} value={i}>{n}</option>
-            ))}
-          </select>
-        </Campo>
-      )}
+      {/* ------------------------------------------------------------------
+          DE QUIÉN ES ESTA PARTICULAR
 
-      {conDiaFijo && (
-        <div className="grid grid-cols-2 gap-3">
-          <Campo etiqueta="Hora">
-            <Texto type="time" required value={hora} onChange={(e) => setHora(e.target.value)} />
-          </Campo>
-          <Campo etiqueta="Duración (min)">
-            <Texto
-              type="number" min="15" step="15" value={duracion}
-              onChange={(e) => setDuracion(e.target.value)}
+          Va arriba, antes del horario y del precio, porque es lo primero que
+          define la ficha: "Particular — Juan" es de Juan. Antes había que
+          crear el grupo y después entrar a anotarlo, dos pasos para una cosa
+          sola.
+         ------------------------------------------------------------------ */}
+      {!grupo && esParticular && (
+        <div className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+          <Campo etiqueta="¿De quién es?">
+            <Opciones<'nuevo' | 'existente'>
+              valor={quien}
+              alElegir={setQuien}
+              opciones={[
+                { valor: 'nuevo', texto: 'Un alumno nuevo' },
+                { valor: 'existente', texto: 'Uno que ya tengo' },
+              ]}
             />
           </Campo>
+
+          {quien === 'nuevo' ? (
+            <>
+              <Campo etiqueta="Nombre del alumno">
+                <Texto
+                  value={alumnoNombre}
+                  placeholder="Juan Pérez"
+                  onChange={(e) => {
+                    setAlumnoNombre(e.target.value);
+                    // El nombre de la ficha se arma solo mientras no lo
+                    // toques. Escribir "Juan Pérez" dos veces es trabajo que
+                    // la app puede hacer sola.
+                    if (!nombre || nombre.startsWith('Particular — ')) {
+                      setNombre(e.target.value.trim() ? `Particular — ${e.target.value}` : '');
+                    }
+                  }}
+                />
+              </Campo>
+              <Campo
+                etiqueta="Correo (opcional)"
+                ayuda="Con esto puede entrar a su app y ver sus clases y lo que debe."
+              >
+                <Texto
+                  type="email" value={alumnoEmail}
+                  onChange={(e) => setAlumnoEmail(e.target.value)}
+                />
+              </Campo>
+            </>
+          ) : (
+            <Campo etiqueta="Cuál">
+              <select
+                value={alumnoElegido}
+                onChange={(e) => {
+                  setAlumnoElegido(e.target.value);
+                  const a = (alumnos.datos ?? []).find((x) => x.id === e.target.value);
+                  if (a && (!nombre || nombre.startsWith('Particular — '))) {
+                    setNombre(`Particular — ${a.full_name}`);
+                  }
+                }}
+                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+              >
+                <option value="">Elegí un alumno</option>
+                {(alumnos.datos ?? []).map((a) => (
+                  <option key={a.id} value={a.id}>{a.full_name}</option>
+                ))}
+              </select>
+            </Campo>
+          )}
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------
+          EL HORARIO, QUE ES UNA LISTA
+
+          Un taller de martes y jueves no es "un día fijo con una excepción":
+          son dos encuentros semanales, cada uno con su hora. Por eso se
+          agregan de a uno a una lista en vez de llenar un solo renglón.
+
+          Vacía, el grupo no genera nada solo y las clases se cargan a mano.
+          Para un regular eso no se permite: sería cargar cada clase, todas
+          las semanas, para siempre.
+         ------------------------------------------------------------------ */}
+      {pideDiaFijo && (
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-medium text-tinta">
+            {esRegular ? 'Días y horarios' : 'Días y horarios (opcional)'}
+          </p>
+
+          {horarios.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {horarios.map((h) => (
+                <button
+                  key={`${h.weekday}-${h.start_time}`}
+                  type="button"
+                  onClick={() =>
+                    setHorarios((hs) =>
+                      hs.filter((x) => !(x.weekday === h.weekday && x.start_time === h.start_time)),
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-full bg-acento-suave px-3 py-1.5 text-sm font-medium text-acento transition hover:brightness-[0.97]"
+                >
+                  {NOMBRE_DIA[h.weekday]} {h.start_time?.slice(0, 5)}
+                  {h.duration_min ? ` · ${h.duration_min}min` : ''}
+                  <span aria-hidden="true" className="text-base leading-none">×</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              <Campo etiqueta="Día">
+                <select
+                  value={dia}
+                  onChange={(e) => setDia(e.target.value)}
+                  className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+                >
+                  <option value="">Elegí</option>
+                  {NOMBRE_DIA.map((n, i) => (
+                    <option key={i} value={i}>{n}</option>
+                  ))}
+                </select>
+              </Campo>
+            </div>
+            <div className="w-28">
+              <Campo etiqueta="Hora">
+                <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
+              </Campo>
+            </div>
+            <div className="w-24">
+              <Campo etiqueta="Min">
+                <Texto
+                  type="number" min="15" step="15" value={duracion}
+                  onChange={(e) => setDuracion(e.target.value)}
+                />
+              </Campo>
+            </div>
+            <BotonSecundario type="button" onClick={agregarHorario} disabled={dia === '' || !hora}>
+              Agregar
+            </BotonSecundario>
+          </div>
+
+          <p className="text-xs leading-relaxed text-tenue">
+            {horarios.length === 0
+              ? esParticular
+                ? 'Sin horario fijo vas cargando cada clase cuando la acordás con el alumno.'
+                : 'Agregá al menos uno. Las clases de los próximos dos meses se crean solas.'
+              : 'Las clases de los próximos dos meses se crean solas. Si un día no se da, se cancela esa clase.'}
+          </p>
         </div>
       )}
 

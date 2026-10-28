@@ -41,15 +41,21 @@ select set_config('request.jwt.claims',
     'role','authenticated')::text, true);
 set local role authenticated;
 
-insert into public.groups
-  (tenant_id, name, format, status, weekday, default_start_time, default_duration_min)
-select t.id, 'PRUEBA grupo ajeno', 'regular', 'active', 2, '20:00', 90
-  from public.tenants t
- where t.name = 'Escuela de Prueba 1'
-   and not exists (
-     select 1 from public.groups g
-      where g.tenant_id = t.id and g.name = 'PRUEBA grupo ajeno')
- limit 1;
+-- El horario vive en group_schedule desde la 0034: el grupo se crea primero y
+-- después se le cuelga su encuentro semanal.
+with nuevo as (
+  insert into public.groups (tenant_id, name, format, status)
+  select t.id, 'PRUEBA grupo ajeno', 'regular', 'active'
+    from public.tenants t
+   where t.name = 'Escuela de Prueba 1'
+     and not exists (
+       select 1 from public.groups g
+        where g.tenant_id = t.id and g.name = 'PRUEBA grupo ajeno')
+   limit 1
+  returning id, tenant_id
+)
+insert into public.group_schedule (tenant_id, group_id, weekday, start_time, duration_min)
+select tenant_id, id, 2, '20:00', 90 from nuevo;
 
 reset role;
 
@@ -67,17 +73,23 @@ select set_config('request.jwt.claims',
     'role','authenticated')::text, true);
 set local role authenticated;
 
-insert into public.groups
-  (tenant_id, name, format, status, weekday, default_start_time, default_duration_min, end_date)
-select t.id, n.nombre, 'regular', n.estado, n.dia, '20:00', 90, n.fin
-  from public.tenants t,
-       (values
-         ('PRUEBA horario normal',   'active',   2, null::date),
-         ('PRUEBA horario con fin',  'active',   2, (current_date + 10)),
-         ('PRUEBA sin dia fijo',     'active',   null, null::date),
-         ('PRUEBA archivado',        'archived', 2, null::date)
-       ) as n(nombre, estado, dia, fin)
- where t.name = 'Escuela de Prueba 2';
+with nuevos as (
+  insert into public.groups (tenant_id, name, format, status, end_date)
+  select t.id, n.nombre, 'regular', n.estado, n.fin
+    from public.tenants t,
+         (values
+           ('PRUEBA horario normal',   'active',   2, null::date),
+           ('PRUEBA horario con fin',  'active',   2, (current_date + 10)),
+           ('PRUEBA sin dia fijo',     'active',   null, null::date),
+           ('PRUEBA archivado',        'archived', 2, null::date)
+         ) as n(nombre, estado, dia, fin)
+   where t.name = 'Escuela de Prueba 2'
+  returning id, tenant_id, name
+)
+insert into public.group_schedule (tenant_id, group_id, weekday, start_time, duration_min)
+select nuevos.tenant_id, nuevos.id, 2, '20:00', 90
+  from nuevos
+ where nuevos.name <> 'PRUEBA sin dia fijo';
 
 
 -- ----------------------------------------------------------------------------
@@ -175,6 +187,30 @@ begin
     case when v_n = 0 then 'PASA'
          else 'FALLA - creo ' || v_n || ' clases en un grupo archivado' end, false);
 
+  -- --------------------------------------------------------------------- 7b
+  -- Dos días por semana, que es lo que la 0034 vino a permitir. Se le agrega
+  -- un segundo encuentro al grupo normal y tiene que generar los dos días.
+  insert into public.group_schedule (tenant_id, group_id, weekday, start_time, duration_min)
+  select g.tenant_id, g.id, 4, '19:00', 60
+    from public.groups g
+   where g.name = 'PRUEBA horario normal'
+     and not exists (
+       select 1 from public.group_schedule x
+        where x.group_id = g.id and x.weekday = 4);
+
+  perform public.asegurar_clases(
+    (select id from public.groups where name = 'PRUEBA horario normal'));
+
+  select count(*) into v_n
+    from public.sessions s
+    join public.groups g on g.id = s.group_id
+   where g.name = 'PRUEBA horario normal'
+     and extract(dow from s.date) = 4;
+
+  perform set_config('prueba.v7b',
+    case when v_n > 0 then 'PASA - genero ' || v_n || ' jueves ademas de los martes'
+         else 'FALLA - el segundo dia del horario no genero ninguna clase' end, false);
+
   -- ---------------------------------------------------------------------- 8
   -- Nadie genera clases en el espacio de otro profesor.
   --
@@ -212,6 +248,7 @@ select * from (values
   ('Respeta la fecha de fin del grupo',                 current_setting('prueba.v5', true)),
   ('Un grupo sin dia fijo no genera nada',              current_setting('prueba.v6', true)),
   ('Un grupo archivado no genera nada',                 current_setting('prueba.v7', true)),
+  ('Dos dias por semana generan los dos',               current_setting('prueba.v7b', true)),
   ('Nadie genera clases en el espacio de otro',         current_setting('prueba.v8', true))
 ) as r(prueba, resultado);
 

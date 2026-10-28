@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import {
   traerInscripciones, traerClases, traerAlumnos, crearAlumno, inscribir, crearClase,
   editarClase, cambiarEstadoClase, lugarDe, linkMapa, crearClases,
-  sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones,
+  sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones, primerHorario,
   hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
   traerFicha, editarFicha,
@@ -951,8 +951,11 @@ function FormularioFechas({
 }) {
   const [fechas, setFechas] = useState<string[]>([]);
   const [dia, setDia] = useState('');
-  const [hora, setHora] = useState(grupo.default_start_time?.slice(0, 5) ?? '');
-  const [duracion, setDuracion] = useState(grupo.default_duration_min?.toString() ?? '');
+  // Precargado con el primer encuentro del horario, si tiene. Con dos días
+  // distintos hay que elegir uno, y el profesor lo corrige acá mismo.
+  const primero = primerHorario(grupo);
+  const [hora, setHora] = useState(primero?.start_time?.slice(0, 5) ?? '');
+  const [duracion, setDuracion] = useState(primero?.duration_min?.toString() ?? '');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 

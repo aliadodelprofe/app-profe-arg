@@ -39,11 +39,6 @@ export type Grupo = {
   status: string;
   venue: string | null;
   address: string | null;
-  // El horario fijo. weekday vacío = este grupo no tiene horario fijo y no se
-  // le genera nada solo.
-  weekday: number | null;
-  default_start_time: string | null;
-  default_duration_min: number | null;
   // Los precios del grupo, uno por cada forma de pago. El descuento del mes
   // ya viene aplicado en price_per_period: es un precio, no un cálculo.
   price_per_session: number | null;
@@ -53,6 +48,24 @@ export type Grupo = {
   // un mapa, y la base impide que convivan con una dirección.
   online: boolean;
   meeting_url: string | null;
+  // El horario fijo, que desde la 0034 es una LISTA: un grupo puede juntarse
+  // martes y jueves, con horas distintas. Lista vacía = sin horario fijo, y
+  // entonces no se le genera nada solo.
+  horarios: Horario[];
+};
+
+export type Horario = {
+  id: string;
+  weekday: number;
+  start_time: string | null;
+  duration_min: number | null;
+};
+
+// Lo mismo, sin el id: lo que manda el formulario.
+export type DatosHorario = {
+  weekday: number;
+  start_time: string | null;
+  duration_min: number | null;
 };
 
 // Lo que cargan los formularios de alta y de edición de grupo.
@@ -65,9 +78,6 @@ export type DatosGrupo = {
   end_date: string | null;
   venue: string | null;
   address: string | null;
-  weekday: number | null;
-  default_start_time: string | null;
-  default_duration_min: number | null;
   price_per_session: number | null;
   price_per_period: number | null;
   price_one_time: number | null;
@@ -75,6 +85,9 @@ export type DatosGrupo = {
   // en la base, no solo el formulario.
   online: boolean;
   meeting_url: string | null;
+  // El horario completo. Se manda entero y reemplaza al anterior: mandar "lo
+  // que cambió" obligaría a la pantalla a llevar la cuenta de qué fila es cuál.
+  horarios: DatosHorario[];
 };
 
 export type ModoCobro = 'per_session' | 'per_period' | 'one_time';
@@ -142,8 +155,8 @@ export async function traerEspacios(): Promise<Espacio[]> {
 
 const COLUMNAS_GRUPO =
   'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
-  'weekday, default_start_time, default_duration_min, ' +
-  'price_per_session, price_per_period, price_one_time, online, meeting_url';
+  'price_per_session, price_per_period, price_one_time, online, meeting_url, ' +
+  'horarios:group_schedule(id, weekday, start_time, duration_min)';
 
 export async function traerGrupos(espacioId: string): Promise<Grupo[]> {
   const { data, error } = await supabase
@@ -523,25 +536,68 @@ export async function rechazarPago(pagoId: string): Promise<void> {
 // exigen, y la regla de RLS lo compara contra tus espacios. Si mandaras el de
 // otro profesor, la base rechazaría la escritura.
 // ---------------------------------------------------------------------------
-export async function crearGrupo(espacioId: string, datos: DatosGrupo): Promise<Grupo> {
+// El horario vive en otra tabla desde la 0034, así que guardar un grupo son
+// dos escrituras. Se reemplaza entero —borrar y volver a poner— en vez de
+// comparar qué fila cambió: con tres encuentros semanales, llevar la cuenta de
+// cuál es cuál es más código y más formas de equivocarse que escribir tres
+// filas de nuevo.
+async function guardarHorarios(
+  espacioId: string,
+  grupoId: string,
+  horarios: DatosHorario[],
+): Promise<void> {
+  const { error: borrado } = await supabase
+    .from('group_schedule')
+    .delete()
+    .eq('group_id', grupoId);
+  if (borrado) throw new Error(borrado.message);
+
+  if (horarios.length === 0) return;
+
+  const { error } = await supabase
+    .from('group_schedule')
+    .insert(horarios.map((h) => ({ tenant_id: espacioId, group_id: grupoId, ...h })));
+  if (error) throw new Error(error.message);
+}
+
+async function traerGrupo(grupoId: string): Promise<Grupo> {
   const { data, error } = await supabase
     .from('groups')
-    .insert({ tenant_id: espacioId, ...datos })
     .select(COLUMNAS_GRUPO)
+    .eq('id', grupoId)
     .single();
   if (error) throw new Error(error.message);
   return data as unknown as Grupo;
 }
 
-export async function editarGrupo(grupoId: string, datos: DatosGrupo): Promise<Grupo> {
+export async function crearGrupo(espacioId: string, datos: DatosGrupo): Promise<Grupo> {
+  const { horarios, ...delGrupo } = datos;
   const { data, error } = await supabase
     .from('groups')
-    .update(datos)
-    .eq('id', grupoId)
-    .select(COLUMNAS_GRUPO)
+    .insert({ tenant_id: espacioId, ...delGrupo })
+    .select('id')
     .single();
   if (error) throw new Error(error.message);
-  return data as unknown as Grupo;
+  const id = String((data as Record<string, unknown>).id);
+  await guardarHorarios(espacioId, id, horarios);
+  return traerGrupo(id);
+}
+
+export async function editarGrupo(grupoId: string, datos: DatosGrupo): Promise<Grupo> {
+  const { horarios, ...delGrupo } = datos;
+  const { data, error } = await supabase
+    .from('groups')
+    .update(delGrupo)
+    .eq('id', grupoId)
+    .select('tenant_id')
+    .single();
+  if (error) throw new Error(error.message);
+  await guardarHorarios(
+    String((data as Record<string, unknown>).tenant_id),
+    grupoId,
+    horarios,
+  );
+  return traerGrupo(grupoId);
 }
 
 export async function crearAlumno(
@@ -736,10 +792,27 @@ export async function asegurarClases(grupoId: string): Promise<string[]> {
 }
 
 // "martes 20:00" — el horario fijo del grupo, listo para mostrar.
+// "martes 20:00" o "martes 20:00 · jueves 19:00". Vacío si no tiene horario
+// fijo, que es lo que distingue un grupo que se mantiene solo de uno que hay
+// que cargar a mano.
 export function horarioDe(g: Grupo): string | null {
-  if (g.weekday === null) return null;
-  const hora = g.default_start_time?.slice(0, 5);
-  return NOMBRE_DIA[g.weekday] + (hora ? ` ${hora}` : '');
+  const hs = [...(g.horarios ?? [])].sort(
+    (a, b) => a.weekday - b.weekday || (a.start_time ?? '').localeCompare(b.start_time ?? ''),
+  );
+  if (hs.length === 0) return null;
+  return hs
+    .map((h) => NOMBRE_DIA[h.weekday] + (h.start_time ? ` ${h.start_time.slice(0, 5)}` : ''))
+    .join(' · ');
+}
+
+// La primera hora del horario, para precargar el formulario de una clase
+// suelta. Con dos días distintos hay que elegir una, y la primera es tan
+// buena como cualquiera — el profesor la corrige en el mismo formulario.
+export function primerHorario(g: Grupo): Horario | null {
+  const hs = [...(g.horarios ?? [])].sort(
+    (a, b) => a.weekday - b.weekday || (a.start_time ?? '').localeCompare(b.start_time ?? ''),
+  );
+  return hs[0] ?? null;
 }
 
 // ---------------------------------------------------------------------------
