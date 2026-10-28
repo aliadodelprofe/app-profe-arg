@@ -166,10 +166,10 @@ export default function FormularioGrupo({
         return 'Un grupo regular necesita al menos un día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
       }
       if (dia !== '' && !hora) {
-        return 'Elegiste un día pero falta la hora. Completala y tocá "Agregar".';
+        return 'Elegiste un día pero falta la hora. Completala y tocá "Sumar este día".';
       }
       if (dia !== '' && hora) {
-        return 'Te quedó un día sin agregar. Tocá "Agregar" o borrá el día.';
+        return 'Te quedó un día sin sumar. Tocá "Sumar este día" o borrá el día.';
       }
       return null;
     })();
@@ -461,39 +461,45 @@ export default function FormularioGrupo({
             </div>
           )}
 
-          {/* Dos renglones y no cuatro columnas apretadas: "Min" entraba en el
-              ancho pero no decía qué era, y una etiqueta que hay que adivinar
-              no es una etiqueta. */}
-          <div className="grid grid-cols-2 gap-3">
-            <Campo etiqueta="Día">
-              <select
-                value={dia}
-                onChange={(e) => setDia(e.target.value)}
-                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
-              >
-                <option value="">Elegí</option>
-                {NOMBRE_DIA.map((n, i) => (
-                  <option key={i} value={i}>{n}</option>
-                ))}
-              </select>
-            </Campo>
-            <Campo etiqueta="Hora">
-              <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
-            </Campo>
-          </div>
-
-          <div className="flex items-end gap-3">
-            <div className="flex-1">
-              <Campo etiqueta="Duración" ayuda="En minutos.">
-                <Texto
-                  type="number" min="15" step="15" value={duracion}
-                  placeholder="90"
-                  onChange={(e) => setDuracion(e.target.value)}
-                />
+          {/* Los tres campos y el botón viven dentro de la misma tarjeta: son
+              UN horario que se está armando, no tres campos sueltos del
+              formulario. Al lado de "Duración" el botón parecía agregar la
+              duración; abajo y a lo ancho de la tarjeta, lo que agrega es la
+              tarjeta entera, y el texto lo dice. */}
+          <div className="flex flex-col gap-3 rounded-2xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+            <div className="grid grid-cols-2 gap-3">
+              <Campo etiqueta="Día">
+                <select
+                  value={dia}
+                  onChange={(e) => setDia(e.target.value)}
+                  className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+                >
+                  <option value="">Elegí</option>
+                  {NOMBRE_DIA.map((n, i) => (
+                    <option key={i} value={i}>{n}</option>
+                  ))}
+                </select>
+              </Campo>
+              <Campo etiqueta="Hora">
+                <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
               </Campo>
             </div>
-            <BotonSecundario type="button" onClick={agregarHorario} disabled={dia === '' || !hora}>
-              Agregar
+
+            <Campo etiqueta="Duración" ayuda="En minutos.">
+              <Texto
+                type="number" min="15" step="15" value={duracion}
+                placeholder="90"
+                onChange={(e) => setDuracion(e.target.value)}
+              />
+            </Campo>
+
+            <BotonSecundario
+              type="button"
+              onClick={agregarHorario}
+              disabled={dia === '' || !hora}
+              className="w-full"
+            >
+              + Sumar este día a la lista
             </BotonSecundario>
           </div>
 

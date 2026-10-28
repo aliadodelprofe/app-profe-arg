@@ -37,6 +37,19 @@ update public.enrollments e
 select set_config('prueba.grupo',
   (select id::text from public.groups where name = 'Grupo de Prueba'), false);
 
+-- La ficha que acabamos de tocar, anotada ahora que la tenemos a la vista.
+-- Antes el bloque de abajo la buscaba con "la primera ficha de este usuario":
+-- alumno1 tiene varias (una por escuela) y "la primera" es la que el motor
+-- devuelva ese día. Alcanzó con reescribir una fila para que cambiara el orden
+-- y la prueba midiera una ficha que no era la del grupo.
+select set_config('prueba.ficha',
+  (select s.id::text
+     from public.students s
+     join public.enrollments e on e.student_id = s.id
+    where s.full_name = 'Alumno Portal'
+      and e.group_id = (select id from public.groups where name = 'Grupo de Prueba')
+    limit 1), false);
+
 -- ----------------------------------------------------------------------------
 -- Como el alumno.
 -- ----------------------------------------------------------------------------
@@ -58,7 +71,10 @@ declare
   v_modo   text;
   v_hasta  date;
 begin
-  select id into v_ficha from public.students where user_id = auth.uid() limit 1;
+  v_ficha := nullif(current_setting('prueba.ficha', true), '')::uuid;
+  if v_ficha is null then
+    raise exception 'La preparacion no encontro la ficha de Alumno Portal en el grupo';
+  end if;
 
   -- 1. Cambiar a mensual: vale desde el 1 del mes que viene.
   v_desde := public.cambiar_forma_de_pago(v_grupo, 'per_period');

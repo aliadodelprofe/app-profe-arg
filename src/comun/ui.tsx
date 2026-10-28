@@ -314,6 +314,7 @@ export function Boton({
 
 export function BotonSecundario({
   children,
+  className = '',
   ...props
 }: React.ComponentPropsWithRef<'button'>) {
   return (
@@ -322,7 +323,8 @@ export function BotonSecundario({
       className={
         baseBoton +
         ' bg-acento-suave text-acento text-sm' +
-        ' hover:brightness-[0.97]'
+        ' hover:brightness-[0.97] ' +
+        className
       }
     >
       {children}
