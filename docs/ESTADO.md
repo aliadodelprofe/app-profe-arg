@@ -84,7 +84,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Aplicada |
 | `0032_una_clase_puede_ser_online.sql` | `groups.online` y `groups.meeting_url`. Una clase online no tiene sala, y un check impide que convivan con una dirección | Aplicada |
 | `0033_el_pago_unico_se_cobra.sql` | `asegurar_cargos()` gana la rama de pago único. Existía la forma de pago pero nunca generaba un cargo: el alumno figuraba al día debiendo el taller entero | Aplicada |
-| `0034_un_grupo_puede_tener_dos_dias.sql` | El horario pasa de tres columnas en `groups` a la tabla `group_schedule`: un grupo puede juntarse martes y jueves, con horas distintas. Las columnas viejas se borran | Sin aplicar |
+| `0034_un_grupo_puede_tener_dos_dias.sql` | El horario pasa de tres columnas en `groups` a la tabla `group_schedule`: un grupo puede juntarse martes y jueves, con horas distintas. Las columnas viejas se borran | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
