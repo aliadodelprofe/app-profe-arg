@@ -82,7 +82,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0029_sacar_la_foto.sql` | `actualizar_mi_ficha` distingue "no la toques" (nulo) de "sacala" (vacío). Antes no había forma de borrar la foto | Aplicada |
 | `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Aplicada |
 | `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Aplicada |
-| `0032_una_clase_puede_ser_online.sql` | `groups.online` y `groups.meeting_url`. Una clase online no tiene sala, y un check impide que convivan con una dirección | Sin aplicar |
+| `0032_una_clase_puede_ser_online.sql` | `groups.online` y `groups.meeting_url`. Una clase online no tiene sala, y un check impide que convivan con una dirección | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
