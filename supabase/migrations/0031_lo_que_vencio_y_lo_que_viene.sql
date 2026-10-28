@@ -89,17 +89,24 @@ select
   -- reclamar sin mentir.
   coalesce(ca.vencido, 0::numeric) as saldo,
 
-  -- Y lo que viene se muestra aparte, que no es lo mismo que esconderlo. El
-  -- alumno tiene que poder ver lo que se le viene; lo que no tiene que pasar
-  -- es que lo lea como una deuda.
-  coalesce(ca.por_vencer, 0::numeric) as por_vencer,
-
   -- A favor sigue siendo la plata que entró y todavía no se aplicó a ningún
   -- cargo. No cambia: un pago adelantado se imputa igual contra un cargo
   -- futuro, y en ese momento deja de estar a favor y pasa a estar usado.
   greatest(coalesce(en.total, 0::numeric) - coalesce(ca.total, 0::numeric), 0::numeric) as a_favor,
 
-  coalesce(im.total, 0::numeric) as total_imputado
+  coalesce(im.total, 0::numeric) as total_imputado,
+
+  -- Lo que viene va al FINAL y no donde quedaría más lindo, y no es un
+  -- capricho: `create or replace view` solo deja AGREGAR columnas al final.
+  -- Cambiarle el nombre a la sexta —que es lo que pasa si una nueva se mete
+  -- en el medio— Postgres lo rechaza de plano. Para reordenarlas habría que
+  -- borrar la vista y volver a crearla, y entre esas dos cosas la app se
+  -- quedaría sin estado de cuenta.
+  --
+  -- Mostrarlo aparte no es lo mismo que esconderlo: el alumno tiene que poder
+  -- ver lo que se le viene; lo que no tiene que pasar es que lo lea como una
+  -- deuda.
+  coalesce(ca.por_vencer, 0::numeric) as por_vencer
 from gente g
 left join cargos    ca on ca.tenant_id = g.tenant_id and ca.student_id = g.student_id
 left join entregado en on en.tenant_id = g.tenant_id and en.student_id = g.student_id
