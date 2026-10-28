@@ -431,3 +431,36 @@ export async function subirMiFoto(archivo: Blob): Promise<string> {
   if (error) throw new Error(error.message);
   return supabase.storage.from('avatares').getPublicUrl(ruta).data.publicUrl;
 }
+
+
+// ---------------------------------------------------------------------------
+// MI CORREO Y MI CONTRASEÑA  (migración 0030)
+//
+// El correo de la ficha lo escribió el profesor al anotar al alumno, y la
+// función actualizar_mi_ficha lo evita a propósito: si el alumno pudiera
+// escribir ahí lo que quisiera, podría ponerse el correo de otra persona y
+// quedarse con las invitaciones dirigidas a esa persona.
+//
+// Cambiarlo de verdad es otra cosa: Supabase le manda un enlace a la dirección
+// nueva y no la cambia hasta que lo abre. Recién después su token trae esa
+// dirección, firmada. sincronizar_mi_correo() la copia a sus fichas leyéndola
+// del token, no de un parámetro: no hay nada que falsificar.
+// ---------------------------------------------------------------------------
+export async function cambiarMiCorreo(correo: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ email: correo.trim() });
+  if (error) throw new Error(error.message);
+}
+
+export async function cambiarMiClave(clave: string): Promise<void> {
+  const { error } = await supabase.auth.updateUser({ password: clave });
+  if (error) throw new Error(error.message);
+}
+
+// Devuelve cuántas fichas quedaron al día. Se llama al entrar: el alumno
+// confirma el correo nuevo desde su casilla, no desde la app, así que cuando
+// vuelve acá el cambio ya pasó y nadie se lo avisó a las fichas.
+export async function sincronizarMiCorreo(): Promise<number> {
+  const { data, error } = await supabase.rpc('sincronizar_mi_correo');
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}

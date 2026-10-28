@@ -12,7 +12,7 @@
 import { useEffect, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { invitacionesPendientes, misFichas, resumenDeMisEscuelas } from './datos';
+import { invitacionesPendientes, misFichas, resumenDeMisEscuelas, sincronizarMiCorreo } from './datos';
 import type { MiFicha, Invitacion, ResumenEscuela } from './datos';
 import { Marco, Encabezado, Vacio, Aviso } from '../comun/ui';
 import Entrar from './pantallas/Entrar';
@@ -52,7 +52,14 @@ function Adentro({ sesion }: { sesion: Session }) {
 
   useEffect(() => {
     let vivo = true;
-    Promise.all([invitacionesPendientes(), misFichas()])
+    // Primero se pone al día el correo de las fichas y DESPUÉS se las trae.
+    // El alumno confirma el correo nuevo desde su casilla, no desde la app, así
+    // que cuando vuelve acá el cambio ya pasó y nadie se lo avisó a las fichas
+    // (migración 0030). Si eso falla, no es motivo para no mostrarle la app:
+    // se sigue igual.
+    sincronizarMiCorreo()
+      .catch(() => 0)
+      .then(() => Promise.all([invitacionesPendientes(), misFichas()]))
       .then(([inv, f]) => {
         if (!vivo) return;
         setInvitaciones(inv);

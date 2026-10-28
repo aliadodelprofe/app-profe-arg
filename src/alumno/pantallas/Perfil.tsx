@@ -17,6 +17,7 @@ import type { MiFicha } from '../datos';
 import { Seccion, BotonSecundario, useCarga } from '../../comun/ui';
 import { supabase } from '../../lib/supabase';
 import MiPerfil from './MiPerfil';
+import MiAcceso from './MiAcceso';
 import Salir from './Salir';
 
 export default function Perfil({
@@ -27,6 +28,7 @@ export default function Perfil({
   alGuardar: () => void;
 }) {
   const [fotoGoogle, setFotoGoogle] = useState<string | null>(null);
+  const [correo, setCorreo] = useState<string | null>(null);
   // Si además da clases, se le ofrece el otro lado de la app. Es la misma
   // cuenta: nadie debería necesitar dos correos para tomar y dar clases.
   const doyClases = useCarga(tambienDoyClases, []);
@@ -34,13 +36,17 @@ export default function Perfil({
   // La foto que Google ya tiene, para poder ofrecerla con un toque.
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setFotoGoogle(fotoDeGoogle(data.user));
+      if (!data.user) return;
+      setFotoGoogle(fotoDeGoogle(data.user));
+      setCorreo(data.user.email ?? null);
     });
   }, []);
 
   return (
     <>
       <MiPerfil ficha={ficha} fotoSugerida={fotoGoogle} alGuardar={alGuardar} />
+
+      {correo && <MiAcceso correo={correo} />}
 
       <Seccion>Mi cuenta</Seccion>
       {doyClases.datos === true ? (

@@ -33,6 +33,7 @@ export default function MiPerfil({
   const [foto, setFoto] = useState<string | null>(ficha.avatar_url);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [guardado, setGuardado] = useState(false);
   // El archivo que se está por recortar. Mientras hay uno, se abre la hoja
   // del recortador; lo que vuelve de ahí ya es un cuadrado de 512.
   const [aRecortar, setARecortar] = useState<File | null>(null);
@@ -84,10 +85,16 @@ export default function MiPerfil({
     try {
       await guardarMiPerfil(nombre, foto);
       alGuardar();
+      setGuardado(true);
+      setTimeout(() => setGuardado(false), 2500);
     } catch (err) {
       setError((err as Error).message);
-      setGuardando(false);
     }
+    // Siempre, pase lo que pase. Antes esto solo se apagaba en el camino del
+    // error: el del éxito contaba con que el formulario se desmontara al
+    // cerrarse la hoja que lo contenía. Cuando pasó a ser una pestaña, dejó de
+    // desmontarse y el botón se quedaba diciendo "Guardando…" para siempre.
+    setGuardando(false);
   }
 
   return (
@@ -166,15 +173,11 @@ export default function MiPerfil({
 
       {error && <Aviso>{error}</Aviso>}
 
-      <p className="text-xs text-tenue">
-        Tu correo no se edita acá: es con el que tu profesor te anotó. Si está mal,
-        pedile que lo corrija.
-      </p>
-
-      <div className="flex gap-2">
-        <Boton type="submit" disabled={guardando}>
+      <div className="flex items-center gap-3">
+        <Boton type="submit" disabled={guardando || nombre.trim() === ficha.full_name}>
           {guardando ? 'Guardando…' : 'Guardar'}
         </Boton>
+        {guardado && <span className="text-sm text-acento">Guardado.</span>}
         {alCerrar && (
           <BotonSecundario type="button" onClick={alCerrar}>Cancelar</BotonSecundario>
         )}
