@@ -81,7 +81,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0028_el_dueno_ve_sus_imagenes.sql` | Reglas de `select` en `logos` y `avatares`: sin ellas un `update` no encuentra la fila y devuelve cero sin error | Aplicada |
 | `0029_sacar_la_foto.sql` | `actualizar_mi_ficha` distingue "no la toques" (nulo) de "sacala" (vacío). Antes no había forma de borrar la foto | Aplicada |
 | `0030_el_correo_es_del_alumno.sql` | `sincronizar_mi_correo()` copia a las fichas el correo que el alumno ya verificó. Lo lee del JWT, no de un parámetro | Aplicada |
-| `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Sin aplicar |
+| `0031_lo_que_vencio_y_lo_que_viene.sql` | `student_account.saldo` pasa a ser **solo lo vencido**; lo que no venció va en `por_vencer`. Una clase que no pasó no es una deuda | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -123,7 +123,7 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 | **`npm run prueba:base`** | **Corre las diecisiete de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
-Últimos resultados (28 de octubre de 2026) — **la batería completa, 17 de 17 en verde**,
+Últimos resultados (28 de octubre de 2026) — **la batería completa, 18 de 18 en verde**,
 corrida de una con `npm run prueba:base`.
 
 Esa corrida fue la primera que se hizo entera de una sola vez, y destapó cuatro pruebas
