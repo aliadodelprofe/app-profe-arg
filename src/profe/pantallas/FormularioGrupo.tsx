@@ -52,18 +52,19 @@ export default function FormularioGrupo({
   // semanas, o fechas sueltas?"— y pedirla como "día fijo (opcional)" obliga
   // al profesor a traducir él su propio producto.
   //
-  //   encuentro → un solo día.           sin día fijo, arranca = termina
-  //   semanal   → todas las semanas.     con día fijo, con fin
-  //   sueltas   → fechas a dedo.         sin día fijo, con fin
+  //   un taller      → un solo día.   sin día fijo, arranca = termina
+  //   varias clases  → un programa.    con fin; con o sin día fijo
+  //
+  // Eran tres y ahora son dos, y la que se fue —"fechas sueltas"— no era una
+  // tercera forma: era la misma de varias clases sin día fijo. Preguntarla
+  // como opción propia obligaba a elegir entre dos cosas que no se excluyen
+  // ("es semanal" y "son fechas sueltas" responden preguntas distintas).
+  // Ahora el día fijo se pregunta adentro, que es donde vive: define si las
+  // clases se crean solas o las cargás vos, no qué producto es.
   // --------------------------------------------------------------------
-  type Forma = 'encuentro' | 'semanal' | 'sueltas';
-  const formaInicial: Forma = !grupo
-    ? 'semanal'
-    : grupo.weekday !== null
-      ? 'semanal'
-      : grupo.start_date && grupo.start_date === grupo.end_date
-        ? 'encuentro'
-        : 'sueltas';
+  type Forma = 'unico' | 'varias';
+  const formaInicial: Forma =
+    grupo && grupo.start_date && grupo.start_date === grupo.end_date ? 'unico' : 'varias';
   const [forma, setForma] = useState<Forma>(formaInicial);
 
   const esRegular = formato === 'regular';
@@ -73,7 +74,7 @@ export default function FormularioGrupo({
   // El día fijo lo pide el regular siempre, y la formación solo si es semanal.
   // La particular lo ofrece: "todos los martes" se agenda solo, "dos miércoles
   // al mes" se carga a mano.
-  const pideDiaFijo = esRegular || (esFormacion && forma === 'semanal') || esParticular;
+  const pideDiaFijo = esRegular || (esFormacion && forma === 'varias') || esParticular;
   const conDiaFijo = pideDiaFijo && dia !== '';
 
   // Dónde se da. Una particular online no tiene sala; las demás sí, y es un
@@ -89,14 +90,20 @@ export default function FormularioGrupo({
     // Las validaciones que no puede hacer el navegador solo, con el mensaje
     // diciendo QUÉ falta y no "completá los campos obligatorios".
     const falta = (() => {
-      if (esFormacion && forma === 'encuentro' && !desde) {
-        return 'Un encuentro único necesita la fecha del día que se da.';
+      if (esFormacion && forma === 'unico' && !desde) {
+        return 'Un taller de un día necesita la fecha en que se da.';
       }
-      if (esFormacion && forma !== 'encuentro' && !hasta) {
-        return 'Una formación necesita fecha de término: es lo que define cuánto dura.';
+      if (esFormacion && forma === 'varias' && !hasta) {
+        return 'Un taller de varias clases necesita fecha de término: es lo que define cuánto dura.';
       }
-      if (esFormacion && forma === 'semanal' && dia === '') {
-        return 'Elegí el día de la semana: es lo que hace que las clases se creen solas.';
+      if (esFormacion && forma === 'unico' && !pagoUnico) {
+        return 'Un taller de un día se cobra entero: poné el precio del taller.';
+      }
+      if (esFormacion && forma === 'varias' && !porClase && !pagoUnico) {
+        return 'Poné al menos un precio: por clase, el taller entero, o los dos.';
+      }
+      if (!esFormacion && !porClase && !porMes) {
+        return 'Poné al menos un precio: por clase, por mes, o los dos.';
       }
       if (esRegular && dia === '') {
         return 'Un grupo regular necesita día fijo. Sin eso habría que cargar cada clase a mano, todas las semanas, para siempre.';
@@ -113,9 +120,9 @@ export default function FormularioGrupo({
 
     // Un encuentro único empieza y termina el mismo día: eso es lo que hace
     // que no se le genere nada después.
-    const arranca = esFormacion && forma === 'encuentro' ? desde : (desde || null);
+    const arranca = esFormacion && forma === 'unico' ? desde : (desde || null);
     const termina = esFormacion
-      ? (forma === 'encuentro' ? desde : hasta || null)
+      ? (forma === 'unico' ? desde : hasta || null)
       : null;
 
     const datos: DatosGrupo = {
@@ -157,6 +164,20 @@ export default function FormularioGrupo({
   // número— y lo que recibe a cambio: cobros en fecha, todo el año, de alguien
   // que ya decidió quedarse.
   const comparacion = compararFormas(Number(porClase) || null, Number(porMes) || null);
+
+  // La cuenta que decide en un taller: ¿pagar el entero conviene o no? Si no
+  // conviene, nadie lo va a elegir y el profesor no cobra nada por adelantado
+  // — que es justamente para lo que puso ese precio.
+  const ayudaDelTaller = (() => {
+    const suelto = Number(porClase);
+    const entero = Number(pagoUnico);
+    if (!suelto || !entero) {
+      return 'Opcional. Si lo ponés, el alumno puede pagar todo junto en vez de clase a clase.';
+    }
+    const clasesQueCubre = Math.round((entero / suelto) * 10) / 10;
+    return `Con este precio, pagar el taller entero le sale como ${clasesQueCubre} clases sueltas. `
+      + 'Si el taller tiene más clases que eso, le conviene — y a vos te deja la plata por adelantado.';
+  })();
 
   const ayudaDelMes = (() => {
     if (!comparacion) {
@@ -219,20 +240,17 @@ export default function FormularioGrupo({
         <Campo
           etiqueta="Cómo se dicta"
           ayuda={
-            forma === 'encuentro'
-              ? 'Un solo día. Se carga esa clase y nada más.'
-              : forma === 'semanal'
-                ? 'El mismo día cada semana, hasta la fecha de término. Las clases se crean solas.'
-                : 'Fechas y horarios distintos. Las cargás vos, y desde la pestaña Clases podés agregar varias de una.'
+            forma === 'unico'
+              ? 'Un solo día. Se cobra entero y por adelantado.'
+              : 'Un programa con principio y fin. Si tiene día fijo las clases se crean solas; si no, las cargás vos.'
           }
         >
           <Opciones<Forma>
             valor={forma}
             alElegir={setForma}
             opciones={[
-              { valor: 'encuentro', texto: 'Un encuentro' },
-              { valor: 'semanal', texto: 'Semanal' },
-              { valor: 'sueltas', texto: 'Fechas sueltas' },
+              { valor: 'unico', texto: 'Un taller' },
+              { valor: 'varias', texto: 'Taller de varias clases' },
             ]}
           />
         </Campo>
@@ -288,46 +306,83 @@ export default function FormularioGrupo({
           Los precios son del grupo, no de cada alumno. Lo que elige el alumno
           al inscribirse es cuál de estas dos formas usa.
          ------------------------------------------------------------------ */}
-      <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
-        El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes
-        entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas.
-        El descuento del mes es tu herramienta para eso.
-      </p>
+      {!(esFormacion && forma === 'unico') && (
+        <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
+          {esFormacion
+            ? 'Si ponés los dos precios, el alumno elige: paga clase a clase o el taller entero. Que el entero convenga es lo que hace que elija eso, y vos cobrás por adelantado.'
+            : 'El alumno elige cómo paga. Si la cuota mensual le conviene, se compromete al mes entero y vos sabés con cuánto contás; si no, va a venir suelto cuando tenga ganas. El descuento del mes es tu herramienta para eso.'}
+        </p>
+      )}
 
-      <Campo etiqueta="Precio por clase">
-        <Texto
-          type="number" min="0" step="any" value={porClase}
-          onChange={(e) => setPorClase(e.target.value)}
-        />
-      </Campo>
+      {/* ------------------------------------------------------------------
+          LOS PRECIOS, SEGÚN QUÉ SE VENDE
 
-      <Campo etiqueta="Precio del mes" ayuda={ayudaDelMes}>
-        <Texto
-          type="number" min="0" step="any" value={porMes}
-          onChange={(e) => setPorMes(e.target.value)}
-        />
-      </Campo>
+          No son tres casilleros que se llenan siempre. Cada formato se cobra
+          de una manera y las otras no aplican:
 
-      {formato === 'cycle' && (
-        <Campo etiqueta="Pago único (workshop)" ayuda="Para un ciclo de una sola clase.">
+            Taller de un día  → entero. Por clase o por mes no quieren decir
+                                nada cuando hay una sola clase y un solo mes.
+            Taller de varias  → por clase, o el taller entero. NO por mes: un
+                                programa de seis semanas no se factura en
+                                meses, y cobrarlo entero es lo que le asegura
+                                al profesor la plata por adelantado.
+            Regular / particular → por clase o por mes, que es la decisión que
+                                después toma el alumno.
+         ------------------------------------------------------------------ */}
+      {esFormacion && forma === 'unico' ? (
+        <Campo
+          etiqueta="Precio del taller"
+          ayuda="Se cobra entero y vence el día que el alumno se anota."
+        >
           <Texto
-            type="number" min="0" step="any" value={pagoUnico}
+            type="number" min="0" step="any" required value={pagoUnico}
             onChange={(e) => setPagoUnico(e.target.value)}
           />
         </Campo>
+      ) : (
+        <>
+          <Campo
+            etiqueta="Precio por clase"
+            ayuda={esFormacion ? 'Para quien prefiere pagar clase a clase.' : undefined}
+          >
+            <Texto
+              type="number" min="0" step="any" value={porClase}
+              onChange={(e) => setPorClase(e.target.value)}
+            />
+          </Campo>
+
+          {esFormacion ? (
+            <Campo
+              etiqueta="Precio del taller entero (opcional)"
+              ayuda={ayudaDelTaller}
+            >
+              <Texto
+                type="number" min="0" step="any" value={pagoUnico}
+                onChange={(e) => setPagoUnico(e.target.value)}
+              />
+            </Campo>
+          ) : (
+            <Campo etiqueta="Precio del mes" ayuda={ayudaDelMes}>
+              <Texto
+                type="number" min="0" step="any" value={porMes}
+                onChange={(e) => setPorMes(e.target.value)}
+              />
+            </Campo>
+          )}
+        </>
       )}
 
       {/* Las fechas van ACÁ y no al final del formulario. En una formación son
           lo que define el producto —un programa de dos meses— y además lo que
           hace que las clases dejen de generarse solas cuando termina. Estaban
           abajo de "Cupo (opcional)", tratadas como un detalle. */}
-      {esFormacion && forma === 'encuentro' && (
+      {esFormacion && forma === 'unico' && (
         <Campo etiqueta="Qué día es" ayuda="Empieza y termina el mismo día, así no se le genera nada después.">
           <Texto type="date" required value={desde} onChange={(e) => setDesde(e.target.value)} />
         </Campo>
       )}
 
-      {esFormacion && forma !== 'encuentro' && (
+      {esFormacion && forma === 'varias' && (
         <>
           <div className="grid grid-cols-2 gap-3">
             <Campo etiqueta="Arranca">

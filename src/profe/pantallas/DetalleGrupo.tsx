@@ -328,7 +328,18 @@ function FormularioAlumno({
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [elegido, setElegido] = useState('');
-  const [cobro, setCobro] = useState<ModoCobro>('per_session');
+  // Las formas que este grupo puede cobrar de verdad, que son las que tienen
+  // precio cargado. Si no hay ninguna, el formulario lo dice en vez de dejar
+  // anotar a alguien que nunca va a recibir un cargo.
+  const formasConPrecio = ([
+    { valor: 'per_session' as ModoCobro, texto: 'Por clase' },
+    { valor: 'per_period' as ModoCobro, texto: 'Por mes' },
+    { valor: 'one_time' as ModoCobro, texto: 'El taller entero' },
+  ]).filter((o) => precioDelGrupo(grupo, o.valor) !== null);
+
+  const [cobro, setCobro] = useState<ModoCobro>(
+    formasConPrecio[0]?.valor ?? 'per_session',
+  );
   const [diferir, setDiferir] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
@@ -442,18 +453,25 @@ function FormularioAlumno({
           }
           if (cobro === 'per_session') return `Paga ${plata(p)} cada clase.`;
           if (cobro === 'per_period') return `Paga ${plata(p)} el mes, con el descuento ya aplicado.`;
-          return `Paga ${plata(p)} una sola vez.`;
+          return `Paga ${plata(p)} una sola vez, y le vence hoy.`;
         })()}
       >
-        <Opciones<ModoCobro>
-          valor={cobro}
-          alElegir={setCobro}
-          opciones={[
-            { valor: 'per_session', texto: 'Por clase' },
-            { valor: 'per_period', texto: 'Por mes' },
-            { valor: 'one_time', texto: 'Pago único' },
-          ]}
-        />
+        {/* Solo las formas que ESTE grupo tiene con precio. Ofrecer "por mes"
+            en un taller que no tiene precio mensual era ofrecer una forma que
+            no genera ningún cargo: el alumno quedaba anotado, al día, y
+            debiendo todo. La app decía que sí y no cobraba nada. */}
+        {formasConPrecio.length > 0 ? (
+          <Opciones<ModoCobro>
+            valor={cobro}
+            alElegir={setCobro}
+            opciones={formasConPrecio}
+          />
+        ) : (
+          <Aviso>
+            Este grupo no tiene ningún precio cargado, así que a quien anotes no se le va
+            a generar nada. Ponele un precio primero, en "Editar".
+          </Aviso>
+        )}
       </Campo>
 
       {/* Se suma con el mes ya empezado: cobrarle la cuota entera sería
