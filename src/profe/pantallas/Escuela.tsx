@@ -20,7 +20,7 @@ import {
 import type { Espacio, ActividadDelEspacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
-  Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema,
+  Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema, claseOpcion,
 } from '../../comun/ui';
 import ComoMePagan from './ComoMePagan';
 import Recorte from '../../comun/Recorte';
@@ -212,12 +212,7 @@ function Datos({
                         : [...xs, { slug: d.slug, nota: null }],
                     )
                   }
-                  className={
-                    'rounded-full px-3.5 py-2 text-sm font-medium transition active:scale-95 '
-                    + (puesta
-                      ? 'bg-acento text-sobre-acento'
-                      : 'bg-linea/50 text-tenue hover:text-tinta')
-                  }
+                  className={claseOpcion(puesta)}
                 >
                   {d.name}
                 </button>

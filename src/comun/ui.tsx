@@ -198,8 +198,12 @@ export function useCarga<T>(pedir: () => Promise<T>, claves: unknown[]) {
 // Alto de 44px, anillo de foco teñido en vez del borde que cambia de color, y
 // el `placeholder` más apagado que el texto: sin esa diferencia, un campo con
 // pista escrita se lee como un campo ya completado.
+// `min-w-0` por el mismo motivo que en Campo: un input tiene un ancho mínimo
+// propio —el navegador se lo da por el tipo, y en los de fecha y hora es
+// grande— y adentro de un flex eso gana sobre el `w-full`. Con las dos clases,
+// un campo nunca es más ancho que el lugar que tiene.
 const claseInput =
-  'w-full rounded-xl bg-campo border border-linea px-3.5 py-2.5 text-tinta ' +
+  'w-full min-w-0 rounded-xl bg-campo border border-linea px-3.5 py-2.5 text-tinta ' +
   'placeholder:text-tenue/50 outline-none transition ' +
   'focus:border-acento focus:ring-4 focus:ring-acento/15 ' +
   'disabled:opacity-50';
@@ -213,8 +217,19 @@ export function Campo({
   ayuda?: string;
   children: ReactNode;
 }) {
+  // `min-w-0` NO es decoración.
+  //
+  // Un campo adentro de una grilla o de un flex arranca con `min-width: auto`,
+  // que quiere decir "nunca más angosto que mi contenido". Y un <input
+  // type="time"> trae un ancho mínimo propio del navegador, bastante grande en
+  // Safari. Entre las dos cosas, la columna se estiraba más que su lugar y el
+  // campo de la hora se salía de la tarjeta: el `w-full` del input no alcanza,
+  // porque el que crecía era el contenedor.
+  //
+  // Va acá y no en cada pantalla: es la clase de arreglo que, puesto en un
+  // lugar, no vuelve a pasar en ninguno.
   return (
-    <label className="flex flex-col gap-1.5">
+    <label className="flex min-w-0 flex-col gap-1.5">
       <span className="text-sm font-medium text-tinta">{etiqueta}</span>
       {children}
       {ayuda && <span className="text-xs leading-relaxed text-tenue">{ayuda}</span>}
@@ -228,6 +243,41 @@ export function Texto(props: React.InputHTMLAttributes<HTMLInputElement>) {
 
 export function Area(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={claseInput + ' min-h-24 resize-y'} />;
+}
+
+// El desplegable, con la misma pinta que los demás campos.
+//
+// Estaba escrito a mano cinco veces, con la lista de clases copiada y pegada
+// en cinco archivos. Eso no es un detalle de prolijidad: el día que cambie el
+// color del foco o el radio de los campos, cuatro de esos cinco van a quedar
+// como estaban y nadie se va a dar cuenta hasta que alguien mire dos pantallas
+// juntas.
+export function Selector({
+  className = '',
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <select {...props} className={claseInput + ' ' + className}>
+      {children}
+    </select>
+  );
+}
+
+// El aspecto de una opción que se elige tocándola. Vive afuera de `Opciones`
+// porque hay dos lugares que necesitan la misma pinta con otro comportamiento:
+// elegir UNA de varias (esto) y marcar VARIAS de una lista (las actividades de
+// la escuela, las del grupo). Si cada uno se dibujara por su cuenta, el mismo
+// formulario terminaría con dos clases de botón que hacen lo mismo y no se
+// parecen — que es exactamente lo que había.
+export function claseOpcion(activa: boolean): string {
+  return (
+    'min-h-10 rounded-xl border px-3.5 py-2 text-sm font-medium transition '
+    + 'active:scale-[0.97] '
+    + (activa
+      ? 'border-acento bg-acento text-sobre-acento shadow-apoyo'
+      : 'border-linea bg-panel text-tenue hover:border-acento/40 hover:text-tinta')
+  );
 }
 
 export function Opciones<T extends string>({
@@ -246,13 +296,7 @@ export function Opciones<T extends string>({
           key={o.valor}
           type="button"
           onClick={() => alElegir(o.valor)}
-          className={
-            'min-h-10 rounded-xl border px-3.5 py-2 text-sm font-medium transition ' +
-            'active:scale-[0.97] ' +
-            (valor === o.valor
-              ? 'border-acento bg-acento text-sobre-acento shadow-apoyo'
-              : 'border-linea bg-panel text-tenue hover:border-acento/40 hover:text-tinta')
-          }
+          className={claseOpcion(valor === o.valor)}
         >
           {o.texto}
         </button>

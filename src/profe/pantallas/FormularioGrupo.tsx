@@ -12,7 +12,9 @@ import {
   traerAlumnos, crearAlumno, inscribir, precioDelGrupo, crearClases, traerDisciplinas,
 } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
-import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
+import {
+  Aviso, Campo, Texto, Selector, Opciones, Boton, BotonSecundario, useCarga, claseOpcion,
+} from '../../comun/ui';
 import { compararFormas, clasesPorAnioDe, MESES_POR_ANIO } from '../../comun/precios';
 import { duracionEnPalabras, diaSemana } from '../../comun/fechas';
 
@@ -446,12 +448,7 @@ export default function FormularioGrupo({
                   type="button"
                   aria-pressed={puesta}
                   onClick={() => setActividad(puesta ? '' : d.slug)}
-                  className={
-                    'rounded-full px-3.5 py-2 text-sm font-medium transition active:scale-95 '
-                    + (puesta
-                      ? 'bg-acento text-sobre-acento'
-                      : 'bg-linea/50 text-tenue hover:text-tinta')
-                  }
+                  className={claseOpcion(puesta)}
                 >
                   {d.name}
                 </button>
@@ -553,10 +550,9 @@ export default function FormularioGrupo({
               El select vuelve a "Elegí…" porque no es un valor elegido, es
               una acción. */}
           <Campo etiqueta="Alguien que ya tenés">
-            <select
+            <Selector
               value=""
               onChange={(e) => { if (e.target.value) sumarExistente(e.target.value); }}
-              className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
             >
               <option value="">Elegí de tu escuela…</option>
               {(alumnos.datos ?? [])
@@ -564,7 +560,7 @@ export default function FormularioGrupo({
                 .map((a) => (
                   <option key={a.id} value={a.id}>{a.full_name}</option>
                 ))}
-            </select>
+            </Selector>
           </Campo>
 
           {/* Y los que todavía no tenés. Mismo patrón que los horarios: se
@@ -751,16 +747,15 @@ export default function FormularioGrupo({
           <div className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
             <div className="grid grid-cols-2 gap-3">
               <Campo etiqueta="Día">
-                <select
+                <Selector
                   value={dia}
                   onChange={(e) => setDia(e.target.value)}
-                  className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
                 >
                   <option value="">Elegí</option>
                   {NOMBRE_DIA.map((n, i) => (
                     <option key={i} value={i}>{n}</option>
                   ))}
-                </select>
+                </Selector>
               </Campo>
               <Campo etiqueta="Hora">
                 <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
@@ -806,17 +801,16 @@ export default function FormularioGrupo({
                       ? 'Los primeros 3 de cada mes.'
                       : 'Sin saltear ninguna: cuatro o cinco según el mes. Si cobrás por mes es lo que corresponde, porque la cuota ya está pensada sobre el promedio.'}
             >
-              <select
+              <Selector
                 value={cada}
                 onChange={(e) => setCada(e.target.value)}
-                className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
               >
                 <option value="">Todas las semanas (incluso si hay 5º)</option>
                 <option value="4">4 por mes</option>
                 <option value="3">3 por mes</option>
                 <option value="2">2 por mes (1º y 3º semana)</option>
                 <option value="1">1 por mes</option>
-              </select>
+              </Selector>
             </Campo>
 
             <BotonSecundario

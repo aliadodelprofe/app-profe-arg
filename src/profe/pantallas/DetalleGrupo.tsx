@@ -19,7 +19,7 @@ import type {
   AlumnoDelGrupo,
 } from '../datos';
 import {
-  Marco, Aviso, Vacio, useCarga, Campo, Texto, Area, Opciones,
+  Marco, Aviso, Vacio, useCarga, Campo, Texto, Selector, Area, Opciones,
   Boton, BotonSecundario, BarraAccion,
   Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto, ChipFecha, CorteDeMes,
 } from '../../comun/ui';
@@ -462,17 +462,16 @@ function FormularioAlumno({
                 : 'Buscando…'}
             </p>
           ) : (
-            <select
+            <Selector
               required
               value={elegido}
               onChange={(e) => setElegido(e.target.value)}
-              className="w-full rounded-xl border border-linea bg-campo px-3.5 py-2.5 text-tinta placeholder:text-tenue/50 outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
             >
               <option value="">Elegir…</option>
               {disponibles.map((a) => (
                 <option key={a.id} value={a.id}>{a.full_name}</option>
               ))}
-            </select>
+            </Selector>
           )}
         </Campo>
       )}
@@ -1087,7 +1086,7 @@ function FormularioFechas({
       {/* El input de fecha y el botón, juntos: agregar una fecha a la lista no
           es guardar nada todavía. */}
       <div className="flex items-end gap-2">
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <Campo etiqueta="Fecha">
             <Texto
               type="date" value={dia}

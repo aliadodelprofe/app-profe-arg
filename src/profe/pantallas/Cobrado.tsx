@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import type { Cobro } from '../datos';
 import { fecha, plata, mesDe, mesEnPalabras, hoyISO } from '../datos';
-import { Vacio, Dato, Lista, Fila } from '../../comun/ui';
+import { Vacio, Dato, Lista, Fila, Selector } from '../../comun/ui';
 
 export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
   const [mes, setMes] = useState(mesDe(hoyISO()));
@@ -40,15 +40,15 @@ export default function Cobrado({ cobros }: { cobros: Cobro[] }) {
   return (
     <>
       {meses.length > 1 && (
-        <select
+        <Selector
           value={mes}
           onChange={(e) => setMes(e.target.value)}
-          className="mb-3 min-h-11 rounded-xl border border-linea bg-campo px-3.5 py-2 text-sm text-tinta outline-none transition focus:border-acento focus:ring-4 focus:ring-acento/15"
+          className="mb-3 text-sm"
         >
           {meses.map((m) => (
             <option key={m} value={m}>{mesEnPalabras(m)}</option>
           ))}
-        </select>
+        </Selector>
       )}
 
       <div className="mb-3">
