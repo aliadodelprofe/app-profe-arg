@@ -10,7 +10,7 @@ import { Fragment, useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   misClases, misCargos, miSaldo, misPagos, declararPago,
-  subirComprobante, COMPROBANTE_MAX_MB, misArreglos, misMediosDePago,
+  subirComprobante, COMPROBANTE_MAX_MB, misArreglos, misMediosDePago, queEnsena,
 } from '../datos';
 import type {
   MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo, DondeTransferir as TipoDestino,
@@ -93,8 +93,8 @@ export default function MiEscuela({
             <Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />
             <div className="min-w-0">
               <Titulo>{escuela}</Titulo>
-              {ficha.escuela?.discipline && (
-                <p className="truncate text-sm text-tenue">{ficha.escuela.discipline}</p>
+              {queEnsena(ficha) && (
+                <p className="truncate text-sm text-tenue">{queEnsena(ficha)}</p>
               )}
             </div>
           </div>

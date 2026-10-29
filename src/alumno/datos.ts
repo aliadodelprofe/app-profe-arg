@@ -14,7 +14,13 @@ export type MiFicha = {
   full_name: string;
   avatar_url: string | null;
   tenant_id: string;
-  escuela: { name: string; discipline: string | null; avatar_url: string | null } | null;
+  escuela: {
+    name: string;
+    avatar_url: string | null;
+    // Qué enseña (migración 0037). Vienen con el nombre para mostrar listo:
+    // la app del alumno no tiene por qué conocer el catálogo.
+    disciplinas: { disciplina: { name: string; orden: number } | null }[];
+  } | null;
 };
 
 export type MiClase = {
@@ -105,9 +111,25 @@ export async function rechazarInvitacion(studentId: string): Promise<void> {
 export async function misFichas(): Promise<MiFicha[]> {
   const { data, error } = await supabase
     .from('students')
-    .select('id, full_name, avatar_url, tenant_id, escuela:tenants(name, discipline, avatar_url)');
+    .select(
+      'id, full_name, avatar_url, tenant_id, ' +
+      'escuela:tenants(name, avatar_url, ' +
+      'disciplinas:tenant_disciplines(disciplina:disciplines(name, orden)))',
+    );
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiFicha[];
+}
+
+// "Bachata · Salsa", en el orden del catálogo. Vacío si la escuela todavía
+// no cargó ninguna: ahí la pantalla no muestra la línea en vez de mostrarla
+// en blanco.
+export function queEnsena(ficha: MiFicha): string | null {
+  const ds = (ficha.escuela?.disciplinas ?? [])
+    .map((x) => x.disciplina)
+    .filter((d): d is { name: string; orden: number } => d !== null)
+    .sort((a, b) => a.orden - b.orden || a.name.localeCompare(b.name))
+    .map((d) => d.name);
+  return ds.length > 0 ? ds.join(' · ') : null;
 }
 
 export async function misClases(tenantId: string): Promise<MiClase[]> {

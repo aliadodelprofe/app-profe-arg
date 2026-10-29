@@ -97,7 +97,7 @@ export default function Espacios({
             avatar={e.name}
             foto={e.avatar_url}
             titulo={e.name}
-            detalle={`${e.discipline ?? 'sin disciplina'} · plan ${e.plan}`}
+            detalle={`${e.disciplinas.length > 0 ? `${e.disciplinas.length} ${e.disciplinas.length === 1 ? 'actividad' : 'actividades'}` : 'sin actividades'} · plan ${e.plan}`}
             alTocar={() => alElegir(e)}
           />
         ))}
@@ -125,7 +125,6 @@ function FormularioEspacio({
   alCrear: () => void;
 }) {
   const [nombre, setNombre] = useState('');
-  const [disciplina, setDisciplina] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
 
@@ -134,7 +133,7 @@ function FormularioEspacio({
     setGuardando(true);
     setError(null);
     try {
-      await crearEspacio(nombre.trim(), disciplina.trim() || null);
+      await crearEspacio(nombre.trim());
       alCrear();
     } catch (err) {
       setError((err as Error).message);
@@ -153,9 +152,10 @@ function FormularioEspacio({
         <Texto required value={nombre} onChange={(e) => setNombre(e.target.value)} />
       </Campo>
 
-      <Campo etiqueta="Disciplina (opcional)">
-        <Texto value={disciplina} placeholder="bachata" onChange={(e) => setDisciplina(e.target.value)} />
-      </Campo>
+      {/* Las actividades no se piden acá. Crear el espacio es un paso, y
+          marcar seis botones antes de ver nada es un peaje: se eligen después,
+          en "Mi escuela", que es donde se editan y donde se ven junto al logo
+          y el nombre. */}
 
       {error && <Aviso>{error}</Aviso>}
 

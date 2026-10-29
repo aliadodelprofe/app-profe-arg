@@ -694,7 +694,7 @@ export function Navegacion<T extends string>({
           máximo y mismo margen lateral) para que el menú y el título queden
           sobre la misma línea vertical. */}
       <nav
-        className="sticky top-0 z-40 hidden border-b border-linea bg-fondo/80 backdrop-blur-xl sm:block"
+        className="sticky top-0 z-40 hidden border-b border-linea bg-panel/85 backdrop-blur-xl sm:block"
         aria-label="Secciones"
       >
         <div className="mx-auto flex max-w-2xl items-center gap-1 px-5">
@@ -713,8 +713,17 @@ export function Navegacion<T extends string>({
           respeta la zona del gesto de inicio en los iPhone sin botón. */}
       <nav
         className={
+          // Del color del PANEL y no del fondo. La barra no es parte de la
+          // página: está por encima y la página le pasa por abajo. Del mismo
+          // color que el fondo quedaba pegada, y la única pista de que era
+          // otra cosa era una línea de un píxel.
+          //
+          // En claro eso es blanco sobre el papel tibio de la página; en
+          // oscuro es al revés —el panel es más CLARO que el fondo—, porque
+          // en lo oscuro lo que está levantado recibe más luz, no menos. Es
+          // el mismo token en los dos modos y cada uno sabe qué significa.
           'fixed inset-x-0 bottom-0 z-40 flex items-center border-t border-linea'
-          + ' bg-fondo/90 px-2 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl sm:hidden'
+          + ' bg-panel/90 px-2 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl sm:hidden'
           // Alto fijo, y no "el que salga": la barra de acción se apoya justo
           // encima con ese mismo número (ALTO_NAV). Si el alto dependiera del
           // contenido, cualquier cambio en el ícono o la letra abriría una
@@ -761,7 +770,7 @@ export function BarraAccion({
   return (
     <div
       className={
-        'fixed inset-x-0 z-30 border-t border-linea bg-fondo/90 backdrop-blur-xl'
+        'fixed inset-x-0 z-30 border-t border-linea bg-panel/90 backdrop-blur-xl'
         + ' shadow-barra'
         + (conBarra
           ? ' bottom-[calc(var(--alto-nav)+env(safe-area-inset-bottom,0px))] sm:bottom-0'

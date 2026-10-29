@@ -48,6 +48,7 @@ const PRUEBAS = [
   'logo_de_la_escuela.sql',
   'avatares.sql',
   'mi_correo.sql',
+  'lo_que_ensena.sql',
   'control_general.sql',
 ];
 

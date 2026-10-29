@@ -13,7 +13,10 @@
 // ============================================================================
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_MAX_MB } from '../datos';
+import {
+  editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_MAX_MB,
+  traerDisciplinas, guardarDisciplinas,
+} from '../datos';
 import type { Espacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
@@ -118,13 +121,18 @@ function Datos({
   alRenombrar: (nuevo: Espacio) => void;
 }) {
   const [nombre, setNombre] = useState(espacio.name);
-  const [disciplina, setDisciplina] = useState(espacio.discipline ?? '');
+  // El catálogo, para armar el menú. Y lo elegido, como un conjunto: el orden
+  // en el que las tocaste no es información.
+  const catalogo = useCarga(() => traerDisciplinas(), []);
+  const [elegidas, setElegidas] = useState<string[]>(espacio.disciplinas);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
-  const cambio =
-    nombre.trim() !== espacio.name || disciplina.trim() !== (espacio.discipline ?? '');
+  const mismas =
+    elegidas.length === espacio.disciplinas.length
+    && elegidas.every((d) => espacio.disciplinas.includes(d));
+  const cambio = nombre.trim() !== espacio.name || !mismas;
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
@@ -135,10 +143,10 @@ function Datos({
     setGuardando(true);
     setError(null);
     try {
-      const nuevo = await editarEspacio(espacio.id, {
-        name: nombre.trim(),
-        discipline: disciplina.trim() || null,
-      });
+      // Las actividades primero: así lo que vuelve de editarEspacio ya las
+      // trae puestas y la pantalla no muestra un estado viejo por un segundo.
+      if (!mismas) await guardarDisciplinas(espacio.id, elegidas);
+      const nuevo = await editarEspacio(espacio.id, { name: nombre.trim() });
       alRenombrar(nuevo);
       setGuardado(true);
       setTimeout(() => setGuardado(false), 2500);
@@ -169,13 +177,55 @@ function Datos({
         />
       </Campo>
 
-      <Campo etiqueta="Disciplina" ayuda="Opcional.">
-        <Texto
-          value={disciplina}
-          onChange={(e) => setDisciplina(e.target.value)}
-          placeholder="bachata"
-        />
-      </Campo>
+      {/* ------------------------------------------------------------------
+          QUÉ ENSEÑÁS
+
+          Era un campo de texto libre donde cada uno escribía lo que quería, y
+          una sola cosa. Ahora son botones y podés marcar las que des: el que
+          da bachata también da salsa, y elegir una lo obligaba a mentir.
+
+          Botones y no un desplegable con selección múltiple: en el celular esa
+          cosa es una lista gris donde no se ve qué quedó marcado, y acá lo que
+          importa es ver de un vistazo lo que ya elegiste.
+         ------------------------------------------------------------------ */}
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium text-tinta">Qué enseñás</p>
+        {catalogo.error && <Aviso>{catalogo.error}</Aviso>}
+        {!catalogo.datos && !catalogo.error && (
+          <p className="text-sm text-tenue">Buscando…</p>
+        )}
+        {catalogo.datos && (
+          <div className="flex flex-wrap gap-2">
+            {catalogo.datos.map((d) => {
+              const puesta = elegidas.includes(d.slug);
+              return (
+                <button
+                  key={d.slug}
+                  type="button"
+                  aria-pressed={puesta}
+                  onClick={() =>
+                    setElegidas((xs) =>
+                      puesta ? xs.filter((x) => x !== d.slug) : [...xs, d.slug],
+                    )
+                  }
+                  className={
+                    'rounded-full px-3.5 py-2 text-sm font-medium transition active:scale-95 '
+                    + (puesta
+                      ? 'bg-acento text-sobre-acento'
+                      : 'bg-linea/50 text-tenue hover:text-tinta')
+                  }
+                >
+                  {d.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <p className="text-xs leading-relaxed text-tenue">
+          Marcá todas las que des. Es lo que ven tus alumnos debajo del nombre, y
+          lo que algún día va a servirle a alguien para encontrarte.
+        </p>
+      </div>
 
       {error && <Aviso>{error}</Aviso>}
 

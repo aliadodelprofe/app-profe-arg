@@ -21,9 +21,18 @@ export * from '../comun/fechas';
 export type Espacio = {
   id: string;
   name: string;
-  discipline: string | null;
   avatar_url: string | null;
   plan: string;
+  // Qué enseña (migración 0037). Son varias: el que da bachata también da
+  // salsa. Vienen de tenant_disciplines, no de una columna del espacio.
+  disciplinas: string[];      // los slugs
+};
+
+// Una entrada del catálogo: lo que llena el menú.
+export type Disciplina = {
+  slug: string;
+  name: string;
+  orden: number;
 };
 
 export type Formato = 'cycle' | 'regular' | 'private';
@@ -148,12 +157,13 @@ export type Clase = {
 export async function traerEspacios(): Promise<Espacio[]> {
   const { data, error } = await supabase
     .from('tenant_members')
-    .select('espacio:tenants(id, name, discipline, avatar_url, plan)');
+    .select('espacio:tenants(id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug))');
   if (error) throw new Error(error.message);
-  const filas = (data ?? []) as unknown as { espacio: Espacio | null }[];
+  const filas = (data ?? []) as unknown as { espacio: unknown }[];
   return filas
     .map((f) => f.espacio)
-    .filter((e): e is Espacio => e !== null)
+    .filter((e): e is Record<string, unknown> => e !== null && e !== undefined)
+    .map(normalizarEspacio)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -677,13 +687,9 @@ export async function guardarRecap(claseId: string, recap: string): Promise<void
 // De hecho la tabla tenants no tiene regla de INSERT: esta función es la única
 // puerta, justamente para que no pueda quedar un espacio sin dueño.
 // ---------------------------------------------------------------------------
-export async function crearEspacio(
-  nombre: string,
-  disciplina: string | null,
-): Promise<string> {
+export async function crearEspacio(nombre: string): Promise<string> {
   const { data, error } = await supabase.rpc('create_tenant', {
     p_name: nombre,
-    p_discipline: disciplina,
   });
   if (error) throw new Error(error.message);
   return String(data);
@@ -1272,16 +1278,71 @@ export async function traerClasesDelEspacio(
 // ---------------------------------------------------------------------------
 export async function editarEspacio(
   espacioId: string,
-  datos: { name?: string; discipline?: string | null; avatar_url?: string | null },
+  datos: { name?: string; avatar_url?: string | null },
 ): Promise<Espacio> {
   const { data, error } = await supabase
     .from('tenants')
     .update(datos)
     .eq('id', espacioId)
-    .select('id, name, discipline, avatar_url, plan')
+    .select('id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug)')
     .single();
   if (error) throw new Error(error.message);
-  return data as Espacio;
+  return normalizarEspacio(data);
+}
+
+// ---------------------------------------------------------------------------
+// LO QUE ENSEÑA LA ESCUELA  (migración 0037)
+//
+// El catálogo lo lee cualquiera que entró a la app: es la lista del menú.
+// Nadie lo escribe desde acá — se cambia con una migración— así que no hay
+// función para eso.
+// ---------------------------------------------------------------------------
+export async function traerDisciplinas(): Promise<Disciplina[]> {
+  const { data, error } = await supabase
+    .from('disciplines')
+    .select('slug, name, orden')
+    .order('orden')
+    .order('name');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Disciplina[];
+}
+
+// Se guarda la lista entera: borrar lo que ya no está y agregar lo nuevo.
+//
+// Es el mismo patrón que `guardarHorarios`, y por el mismo motivo: comparar
+// qué cambió del lado de la app y mandar solo la diferencia es más código y
+// un error más —el que deja una fila que ya nadie quería— a cambio de ahorrar
+// dos consultas sobre una tabla de cinco filas.
+export async function guardarDisciplinas(
+  espacioId: string,
+  slugs: string[],
+): Promise<void> {
+  const { error: borrado } = await supabase
+    .from('tenant_disciplines')
+    .delete()
+    .eq('tenant_id', espacioId);
+  if (borrado) throw new Error(borrado.message);
+
+  if (slugs.length === 0) return;
+
+  const { error } = await supabase
+    .from('tenant_disciplines')
+    .insert(slugs.map((slug) => ({ tenant_id: espacioId, slug })));
+  if (error) throw new Error(error.message);
+}
+
+// Supabase devuelve la relación como [{slug}]. Acá se aplana a string[], para
+// que ninguna pantalla tenga que saber cómo viene armada la consulta.
+export function normalizarEspacio(fila: unknown): Espacio {
+  const r = (fila ?? {}) as Record<string, unknown>;
+  const ds = (r.disciplinas ?? []) as { slug: unknown }[];
+  return {
+    id: String(r.id),
+    name: String(r.name),
+    avatar_url: (r.avatar_url as string) ?? null,
+    plan: String(r.plan ?? 'free'),
+    disciplinas: ds.map((d) => String(d.slug)),
+  };
 }
 
 // ---------------------------------------------------------------------------
