@@ -27,12 +27,68 @@
 // asegurar_clases(), los cargos asegurar_cargos(), el estado de cuenta sale de
 // student_account. El día que uno deje de ser cierto, esta pantalla miente.
 // ============================================================================
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Boton, BotonSecundario } from '../comun/ui';
 import { NOMBRE } from '../comun/marca';
 
 function ir(donde: string) {
   window.location.href = donde;
+}
+
+// ----------------------------------------------------------------------------
+// LO QUE ENTRA CUANDO LLEGA A LA PANTALLA
+//
+// Un bloque envuelto acá arranca invisible y se revela cuando el scroll lo
+// alcanza. No es adorno: es lo que hace que una página larga se lea como un
+// recorrido en vez de como un volcado. El usuario baja y la página le va
+// contestando.
+//
+// El observador se desconecta después de la primera vez. Si no, una sección
+// que entra y sale de cuadro parpadearía cada vez que uno sube y baja, y eso
+// no es diseño: es mareo.
+//
+// Y si el navegador no tiene IntersectionObserver —uno muy viejo— el bloque se
+// muestra de una. Una animación que no se puede correr no puede ser la razón
+// por la que alguien no ve la mitad de la página.
+// ----------------------------------------------------------------------------
+function Aparece({ children, demora = 0 }: { children: ReactNode; demora?: number }) {
+  const caja = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = caja.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      setVisible(true);
+      return;
+    }
+    const obs = new IntersectionObserver(
+      (entradas) => {
+        for (const e of entradas) {
+          if (e.isIntersecting) {
+            setVisible(true);
+            obs.disconnect();
+          }
+        }
+      },
+      // Un poco adentro del borde: el bloque se revela cuando ya se ve de
+      // verdad, no cuando asoma un píxel abajo de todo.
+      { rootMargin: '0px 0px -12% 0px' },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={caja}
+      className={'revelar' + (visible ? ' visible' : '')}
+      style={{ animationDelay: `${demora}ms` }}
+    >
+      {children}
+    </div>
+  );
 }
 
 const icono = 'h-[18px] w-[18px]';
@@ -135,9 +191,9 @@ export default function Inicio() {
           título; así quedan como luz y no como objeto.
          ------------------------------------------------------------------ */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -left-24 -top-28 h-80 w-80 rounded-full bg-acento/20 blur-3xl" />
-        <div className="absolute -right-28 top-20 h-72 w-72 rounded-full bg-ok/15 blur-3xl" />
-        <div className="absolute left-1/4 top-[36rem] h-64 w-64 rounded-full bg-acento/10 blur-3xl" />
+        <div className="flota-a absolute -left-24 -top-28 h-80 w-80 rounded-full bg-acento/20 blur-3xl" />
+        <div className="flota-b absolute -right-28 top-20 h-72 w-72 rounded-full bg-ok/15 blur-3xl" />
+        <div className="flota-c absolute left-1/4 top-[36rem] h-64 w-64 rounded-full bg-acento/10 blur-3xl" />
       </div>
 
       <div className="relative mx-auto w-full max-w-2xl px-5 pb-16 pt-8">
@@ -149,29 +205,40 @@ export default function Inicio() {
             seis palabras, y la palabra que importa va en el color de la
             marca.
            -------------------------------------------------------------- */}
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-acento text-lg font-bold text-sobre-acento shadow-apoyo">
-            {NOMBRE.slice(0, 1)}
-          </span>
-          <span className="text-lg font-bold tracking-tight text-tinta">{NOMBRE}</span>
-        </div>
+        {/* El encabezado entra escalonado: marca, título, bajada, botones. Cada
+            pieza un pelito después que la anterior, así la página se arma a la
+            vista en vez de aparecer entera de golpe. */}
+        <Aparece>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-acento text-lg font-bold text-sobre-acento shadow-apoyo">
+              {NOMBRE.slice(0, 1)}
+            </span>
+            <span className="text-lg font-bold tracking-tight text-tinta">{NOMBRE}</span>
+          </div>
+        </Aparece>
 
-        <h1 className="mt-14 text-pretty text-[2.75rem] font-bold leading-[1] tracking-[-0.04em] text-tinta sm:text-[3.5rem]">
-          Tus clases
-          <br />
-          en orden.
-          <br />
-          <span className="text-acento">Tu plata también.</span>
-        </h1>
+        <Aparece demora={120}>
+          <h1 className="mt-14 text-pretty text-[2.75rem] font-bold leading-[1] tracking-[-0.04em] text-tinta sm:text-[3.5rem]">
+            Tus clases
+            <br />
+            en orden.
+            <br />
+            <span className="text-acento">Tu plata también.</span>
+          </h1>
+        </Aparece>
 
-        <p className="mt-6 text-pretty text-lg leading-snug text-tenue">
-          La app del profe y la de sus alumnos, mirando la misma cuenta.
-        </p>
+        <Aparece demora={260}>
+          <p className="mt-6 text-pretty text-lg leading-snug text-tenue">
+            La app del profe y la de sus alumnos, mirando la misma cuenta.
+          </p>
+        </Aparece>
 
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Boton onClick={() => ir('/profe')}>Doy clases</Boton>
-          <BotonSecundario onClick={() => ir('/alumno')}>Tomo clases</BotonSecundario>
-        </div>
+        <Aparece demora={380}>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Boton onClick={() => ir('/profe')}>Doy clases</Boton>
+            <BotonSecundario onClick={() => ir('/alumno')}>Tomo clases</BotonSecundario>
+          </div>
+        </Aparece>
 
         {/* --------------------------------------------------------------
             LOS DOS BLOQUES
@@ -179,6 +246,7 @@ export default function Inicio() {
             Gemelos: mismo tamaño, misma forma, misma cantidad de renglones.
             Que uno fuera más grande diría que el otro es el invitado.
            -------------------------------------------------------------- */}
+        <Aparece>
         <div className="mt-20 flex flex-col gap-4 sm:flex-row sm:gap-5 [&>*]:flex-1">
           <Bloque
             para="Si das clases"
@@ -206,6 +274,7 @@ export default function Inicio() {
             <Renglon icono={IconoCopiar}>El alias de tu profe, listo para copiar.</Renglon>
           </Bloque>
         </div>
+        </Aparece>
 
         {/* --------------------------------------------------------------
             CÓMO ARRANCA
@@ -214,6 +283,7 @@ export default function Inicio() {
             marcha, porque esta persona ya migró datos a algo una vez y le
             llevó un fin de semana. Tres pasos, y ninguno dice "importá".
            -------------------------------------------------------------- */}
+        <Aparece>
         <div className="mt-20">
           <h2 className="text-2xl font-bold tracking-[-0.02em] text-tinta">
             Arrancar lleva dos minutos
@@ -225,7 +295,11 @@ export default function Inicio() {
               ['Cargás un grupo', 'Día, hora y precio.'],
               ['Anotás a tus alumnos', 'Nombre y correo: con eso les llega su acceso.'],
             ].map(([titulo, bajada], i) => (
-              <li key={titulo} className="flex items-center gap-4 rounded-2xl bg-panel px-5 py-4 shadow-apoyo">
+              <li
+                key={titulo}
+                className="anim-entrar flex items-center gap-4 rounded-2xl bg-panel px-5 py-4 shadow-apoyo"
+                style={{ animationDelay: `${i * 90}ms` }}
+              >
                 <span className="plata flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-acento-suave text-base font-bold text-acento">
                   {i + 1}
                 </span>
@@ -241,6 +315,7 @@ export default function Inicio() {
             De ahí en más las clases y los cobros van solos. Vos tomás asistencia.
           </p>
         </div>
+        </Aparece>
 
         {/* --------------------------------------------------------------
             EL CIERRE
@@ -248,6 +323,7 @@ export default function Inicio() {
             Repite los dos accesos: quien llegó hasta acá scrolleando no va a
             volver arriba a buscarlos.
            -------------------------------------------------------------- */}
+        <Aparece>
         <div className="mt-20 rounded-3xl bg-acento px-6 py-10 text-center shadow-flota">
           <p className="text-pretty text-2xl font-bold leading-tight tracking-[-0.02em] text-sobre-acento">
             Probala con un grupo
@@ -272,6 +348,7 @@ export default function Inicio() {
             </button>
           </div>
         </div>
+        </Aparece>
 
         <p className="mt-12 text-center text-xs text-tenue">
           {NOMBRE} · hecho en Buenos Aires

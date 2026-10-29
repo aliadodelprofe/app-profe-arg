@@ -361,9 +361,68 @@ body {
 .anim-escalera > *:nth-child(7)  { animation-delay: 150ms; }
 .anim-escalera > *:nth-child(n+8) { animation-delay: 175ms; }
 
+/* ----------------------------------------------------------------------
+   LA PUERTA DE ENTRADA
+
+   Dos animaciones que solo viven ahí, porque son de otra naturaleza que las
+   de la app: adentro, una animación acompaña algo que el usuario hizo y dura
+   menos de un cuarto de segundo. Acá no hizo nada todavía — está mirando —
+   y lo que se busca es que la página se sienta viva mientras la recorre.
+
+   1. REVELAR: cada sección entra cuando llega a la pantalla.
+
+   Empieza invisible y la clase `visible` la trae. La pone el componente
+   Aparece, con un observador que mira cuándo el bloque entró en cuadro: así
+   la página no se descarga entera de un saque, sino que se va armando a
+   medida que uno baja. El `both` deja el bloque en su estado final al
+   terminar, y el observador se desconecta después de la primera vez — una
+   sección que vuelve a entrar y a salir parpadeando es mareo, no diseño.
+   ---------------------------------------------------------------------- */
+@keyframes revelar {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.revelar          { opacity: 0; }
+.revelar.visible  { animation: revelar 640ms cubic-bezier(0.22, 0.75, 0.3, 1) both; }
+
+/* ----------------------------------------------------------------------
+   2. FLOTAR: las manchas del encabezado se mueven.
+
+   Tres recorridos distintos, lentos y largos —veinte a treinta segundos— y
+   con duraciones que no son múltiplos entre sí, para que nunca vuelvan a
+   coincidir en la misma posición. Si coincidieran, el ojo detecta el bucle y
+   deja de leer la página para mirar la animación.
+
+   Se mueven con `transform` y nada más: es lo único que el navegador puede
+   animar sin volver a dibujar la página. Un `blur` de esta medida redibujado
+   sesenta veces por segundo le derrite la batería a cualquier celular.
+   ---------------------------------------------------------------------- */
+@keyframes flotar-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(8%, 12%, 0) scale(1.12); }
+}
+@keyframes flotar-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(-10%, 8%, 0) scale(0.92); }
+}
+@keyframes flotar-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50%      { transform: translate3d(12%, -10%, 0) scale(1.1); }
+}
+
+.flota-a { animation: flotar-a 23s ease-in-out infinite; will-change: transform; }
+.flota-b { animation: flotar-b 29s ease-in-out infinite; will-change: transform; }
+.flota-c { animation: flotar-c 19s ease-in-out infinite; will-change: transform; }
+
 @media (prefers-reduced-motion: reduce) {
   .anim-subir, .anim-aparecer, .anim-latir, .anim-entrar { animation: none; }
   .anim-escalera > * { animation: none; }
+  /* La revelación se apaga dejando todo A LA VISTA, no invisible: apagarla
+     sin esto escondería media página para quien pidió menos movimiento. */
+  .revelar { opacity: 1; }
+  .revelar.visible { animation: none; }
+  .flota-a, .flota-b, .flota-c { animation: none; }
 }
 
 
