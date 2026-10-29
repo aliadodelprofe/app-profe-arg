@@ -62,6 +62,7 @@ declare
   v_ficha uuid := nullif(current_setting('prueba.ficha', true), '')::uuid;
   v_tenant uuid := (select tenant_id from public.groups
                      where id = nullif(current_setting('prueba.grupo', true), '')::uuid);
+  v_insc  uuid;
 begin
   if v_ficha is null then
     raise exception 'alumno1 no tiene ficha en la escuela de ese grupo';
@@ -73,9 +74,16 @@ begin
      set status = 'ended', end_date = current_date - 31
    where group_id = v_grupo and student_id = v_ficha;
 
+  -- Y se anota CUÁL es, por su id.
+  --
+  -- Buscarla después por "la de por clase más nueva" no alcanza: si quedó otra
+  -- que arranca el mismo día —y quedaba— ordenar por fecha no las distingue y
+  -- el desempate lo hace el motor. Una prueba no puede depender de eso.
   insert into public.enrollments
     (tenant_id, group_id, student_id, billing_mode, status, start_date, end_date)
-  values (v_tenant, v_grupo, v_ficha, 'per_session', 'active', current_date - 30, null);
+  values (v_tenant, v_grupo, v_ficha, 'per_session', 'active', current_date - 30, null)
+  returning id into v_insc;
+  perform set_config('prueba.inscripcion', v_insc::text, false);
 end $$;
 
 -- ----------------------------------------------------------------------------
@@ -111,12 +119,11 @@ begin
          else 'FALLA - dijo que vale desde ' || v_desde || ' y deberia ser ' || v_inicio end,
     false);
 
-  -- 2. La inscripción de ahora queda cerrada a fin de mes. Es la que abrió la
-  --    preparación: la más nueva de las de por clase.
+  -- 2. La inscripción de ahora queda cerrada a fin de mes. Se busca POR SU ID:
+  --    es la fila que abrió la preparación y ninguna otra.
   select end_date into v_hasta
     from public.enrollments
-   where group_id = v_grupo and student_id = v_ficha and billing_mode = 'per_session'
-   order by start_date desc limit 1;
+   where id = nullif(current_setting('prueba.inscripcion', true), '')::uuid;
   perform set_config('prueba.v2',
     case when v_hasta = v_fin then 'PASA'
          else 'FALLA - la de por clase termina el ' || coalesce(v_hasta::text,'nunca') end,
