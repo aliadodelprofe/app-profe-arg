@@ -8,6 +8,7 @@
 // de un profesor.
 // ============================================================================
 import { supabase } from '../lib/supabase';
+import { idUnico } from '../comun/id';
 
 export type MiFicha = {
   id: string;
@@ -267,7 +268,7 @@ export async function subirComprobante(
   studentId: string,
 ): Promise<string> {
   const extension = (archivo.name.split('.').pop() ?? 'jpg').toLowerCase().slice(0, 5);
-  const ruta = `${tenantId}/${studentId}/${crypto.randomUUID()}.${extension}`;
+  const ruta = `${tenantId}/${studentId}/${idUnico()}.${extension}`;
   const { error } = await supabase.storage
     .from('comprobantes')
     .upload(ruta, archivo, { contentType: archivo.type || undefined });
@@ -480,7 +481,7 @@ export async function subirMiFoto(archivo: Blob): Promise<string> {
   const { data: usuario } = await supabase.auth.getUser();
   const id = usuario.user?.id;
   if (!id) throw new Error('Tu sesión venció. Entrá de nuevo.');
-  const ruta = `${id}/${crypto.randomUUID()}.jpg`;
+  const ruta = `${id}/${idUnico()}.jpg`;
   const { error } = await supabase.storage
     .from('avatares')
     .upload(ruta, archivo, { contentType: 'image/jpeg' });

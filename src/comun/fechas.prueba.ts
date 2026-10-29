@@ -13,6 +13,7 @@ import {
   mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente, duracionEnPalabras,
 } from './fechas';
 import { compararFormas, porClaseDentroDeLaCuota, clasesPorAnioDe } from './precios';
+import { idUnico } from './id';
 
 let fallos = 0;
 
@@ -119,6 +120,17 @@ esperar('el singular del minuto suelto', duracionEnPalabras(61), '1 hora y 1 min
 esperar('vacio no dice nada', duracionEnPalabras(null), null);
 esperar('cero tampoco', duracionEnPalabras(0), null);
 esperar('ni la basura', duracionEnPalabras(Number('abc')), null);
+
+console.log('\nEl nombre unico de los archivos que se suben');
+// Lo que se verifica no es el azar —eso lo pone el navegador— sino que el
+// formato sea el de siempre y que dos no choquen. Un comprobante pisado es
+// la prueba de un pago que desaparece.
+const FORMA = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+esperar('tiene la forma de un uuid v4', FORMA.test(idUnico()), true);
+const muchos = new Set(Array.from({ length: 5000 }, () => idUnico()));
+esperar('cinco mil seguidos y ninguno se repite', muchos.size, 5000);
+esperar('todos con la misma forma',
+  [...muchos].every((x) => FORMA.test(x)), true);
 
 console.log(fallos === 0 ? '\nTodo bien.\n' : `\n${fallos} fallaron.\n`);
 process.exit(fallos === 0 ? 0 : 1);

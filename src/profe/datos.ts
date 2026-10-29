@@ -11,6 +11,7 @@
 // ajenos, el problema está en una migración, no acá.
 // ============================================================================
 import { supabase } from '../lib/supabase';
+import { idUnico } from '../comun/id';
 import {
   NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente, fecha,
 } from '../comun/fechas';
@@ -1385,7 +1386,7 @@ export const LOGO_MAX_MB = 2;
 export async function subirLogo(espacioId: string, archivo: Blob): Promise<string> {
   // Siempre .jpg: lo que llega acá ya pasó por el recortador, que devuelve un
   // cuadrado de 512 en JPEG.
-  const ruta = `${espacioId}/${crypto.randomUUID()}.jpg`;
+  const ruta = `${espacioId}/${idUnico()}.jpg`;
   const { error } = await supabase.storage
     .from('logos')
     .upload(ruta, archivo, { contentType: 'image/jpeg' });
