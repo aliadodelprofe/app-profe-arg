@@ -90,10 +90,17 @@ declare
   v_pudo  boolean := true;
   v_filas int;
 begin
+  -- Se exige el error de PERMISO y no "cualquier error". Esta prueba venía
+  -- pasando por el motivo equivocado: el profesor SÍ podía ejecutar la
+  -- función, y lo que fallaba adentro era otra cosa —una escritura que RLS
+  -- tapaba, una lectura de Vault que su rol no tiene—. La función reventaba,
+  -- la prueba veía un error y lo daba por bueno. La 0042 le sacó el permiso
+  -- de ejecución de verdad; esto verifica que sea ESE el motivo.
   begin
     perform public.mantenimiento_diario();
-  exception when others then
-    v_pudo := false;
+  exception
+    when insufficient_privilege then v_pudo := false;
+    when others then v_pudo := true;   -- fallo, pero no por falta de permiso
   end;
 
   perform set_config('prueba.v5',

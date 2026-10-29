@@ -98,12 +98,21 @@ select set_config('request.jwt.claims',
     'role','authenticated')::text, true);
 set local role authenticated;
 
+-- Se exige el error de PERMISO y no "cualquier error", y no es un detalle:
+-- así fue como las pruebas de las otras dos tareas estuvieron pasando por el
+-- motivo equivocado durante meses. El profesor sí podía ejecutarlas; lo que
+-- fallaba adentro era otra cosa, la función reventaba, y la prueba daba por
+-- bueno un error que no era el que decía estar buscando.
 do $$
 begin
   perform public.limpiar_archivos_sueltos();
   perform set_config('prueba.v7', 'FALLA - un profesor pudo ejecutarla', false);
-exception when others then
-  perform set_config('prueba.v7', 'PASA - la base lo rechazo (' || sqlstate || ')', false);
+exception
+  when insufficient_privilege then
+    perform set_config('prueba.v7', 'PASA - no tiene permiso de ejecucion', false);
+  when others then
+    perform set_config('prueba.v7',
+      'FALLA - fallo por otra cosa (' || sqlstate || '), no por falta de permiso', false);
 end $$;
 
 do $$
