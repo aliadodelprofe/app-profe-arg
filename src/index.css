@@ -383,6 +383,55 @@ html[data-app="nueva"] :focus-visible {
   border-radius: 10px;
 }
 
+/* ----------------------------------------------------------------------
+   LOS CAMPOS DE FECHA Y HORA, QUE NO RESPETAN EL ANCHO QUE SE LES DA
+
+   En Safari —y en el celular sobre todo— un <input type="date"> o
+   type="time" no es una caja de texto: es un control nativo armado con
+   piezas internas del navegador. Esas piezas tienen su propio ancho, y el
+   control se dimensiona según ellas: `width: 100%` queda por debajo de ese
+   piso y el campo se sale de donde esté metido.
+
+   Eso fue lo que pasó con "Hora" adentro de la tarjeta del horario y con
+   "Empieza" adentro de la hoja. No era la grilla —eso ya lo habíamos
+   arreglado con min-width— era el control en sí.
+
+   `appearance: none` apaga esa maquinaria de medición y lo deja comportarse
+   como cualquier otro campo. El selector nativo sigue abriéndose igual al
+   tocarlo: lo que se apaga es cómo se mide, no lo que hace.
+
+   `max-width: 100%` es el cinturón de seguridad: pase lo que pase adentro,
+   el campo no puede ser más ancho que el lugar que tiene.
+
+   Y el valor adentro se alinea a la izquierda, como el texto de todos los
+   demás campos. Sin esto, en algunos navegadores queda centrado y una fecha
+   cargada se ve corrida respecto del campo de arriba.
+   ---------------------------------------------------------------------- */
+html[data-app="nueva"] input[type="date"],
+html[data-app="nueva"] input[type="time"],
+html[data-app="nueva"] input[type="datetime-local"],
+html[data-app="nueva"] input[type="month"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
+html[data-app="nueva"] input[type="date"]::-webkit-date-and-time-value,
+html[data-app="nueva"] input[type="time"]::-webkit-date-and-time-value,
+html[data-app="nueva"] input[type="datetime-local"]::-webkit-date-and-time-value,
+html[data-app="nueva"] input[type="month"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+  margin: 0;
+}
+
+/* El iconito del calendario también ocupa lugar y empuja. */
+html[data-app="nueva"] input::-webkit-calendar-picker-indicator {
+  margin-inline-start: 0;
+  padding: 0;
+}
+
 /* Lo que se selecciona con el cursor también es parte de la app. El celeste
    del navegador sobre una paleta cálida canta. */
 html[data-app="nueva"] ::selection {
