@@ -389,31 +389,43 @@ body {
 /* ----------------------------------------------------------------------
    2. FLOTAR: las manchas del encabezado se mueven.
 
-   Tres recorridos distintos, lentos y largos —veinte a treinta segundos— y
-   con duraciones que no son múltiplos entre sí, para que nunca vuelvan a
-   coincidir en la misma posición. Si coincidieran, el ojo detecta el bucle y
-   deja de leer la página para mirar la animación.
+   La primera versión de esto no se notaba, y el motivo es aritmético: el
+   recorrido era de un 10% del tamaño de la mancha en veintitrés segundos, o
+   sea un píxel y medio por segundo, detrás de un difuminado de 64 píxeles.
+   Se movía; no se podía ver. Una animación que hay que buscar no existe.
 
-   Se mueven con `transform` y nada más: es lo único que el navegador puede
-   animar sin volver a dibujar la página. Un `blur` de esta medida redibujado
-   sesenta veces por segundo le derrite la batería a cualquier celular.
+   Ahora el recorrido es grande —entre un tercio y la mitad de su tamaño— y
+   el ciclo dura la tercera parte. También cambian de tamaño y de opacidad,
+   que es lo que hace que parezcan luz moviéndose y no un círculo paseando.
+
+   Las tres duraciones siguen sin ser múltiplos entre sí: si lo fueran,
+   volverían a coincidir en la misma posición cada tanto, el ojo detecta el
+   bucle y deja de leer la página para mirar la animación.
+
+   Se mueven con `transform` y `opacity`, y nada más: son las dos únicas
+   propiedades que el navegador anima sin volver a dibujar la página. Un
+   `blur` de esta medida redibujado sesenta veces por segundo le derrite la
+   batería a cualquier celular.
    ---------------------------------------------------------------------- */
 @keyframes flotar-a {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50%      { transform: translate3d(8%, 12%, 0) scale(1.12); }
+  0%   { transform: translate3d(0, 0, 0) scale(1);      opacity: 0.9; }
+  50%  { transform: translate3d(38%, 26%, 0) scale(1.4); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(1);      opacity: 0.9; }
 }
 @keyframes flotar-b {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
-  50%      { transform: translate3d(-10%, 8%, 0) scale(0.92); }
+  0%   { transform: translate3d(0, 0, 0) scale(1.1);      opacity: 1; }
+  50%  { transform: translate3d(-34%, 30%, 0) scale(0.8); opacity: 0.75; }
+  100% { transform: translate3d(0, 0, 0) scale(1.1);      opacity: 1; }
 }
 @keyframes flotar-c {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
-  50%      { transform: translate3d(12%, -10%, 0) scale(1.1); }
+  0%   { transform: translate3d(0, 0, 0) scale(0.9);      opacity: 0.8; }
+  50%  { transform: translate3d(42%, -28%, 0) scale(1.3); opacity: 1; }
+  100% { transform: translate3d(0, 0, 0) scale(0.9);      opacity: 0.8; }
 }
 
-.flota-a { animation: flotar-a 23s ease-in-out infinite; will-change: transform; }
-.flota-b { animation: flotar-b 29s ease-in-out infinite; will-change: transform; }
-.flota-c { animation: flotar-c 19s ease-in-out infinite; will-change: transform; }
+.flota-a { animation: flotar-a 11s ease-in-out infinite; will-change: transform, opacity; }
+.flota-b { animation: flotar-b 15s ease-in-out infinite; will-change: transform, opacity; }
+.flota-c { animation: flotar-c 13s ease-in-out infinite; will-change: transform, opacity; }
 
 @media (prefers-reduced-motion: reduce) {
   .anim-subir, .anim-aparecer, .anim-latir, .anim-entrar { animation: none; }
