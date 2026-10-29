@@ -318,7 +318,7 @@ export default function Inicio() {
           Gemelos: mismo tamaño, misma forma, misma cantidad de renglones. Que
           uno fuera más grande diría que el otro es el invitado. */}
       <section className="bg-panel">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-24">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-24 pt-12">
           <Aparece>
             <div className="flex flex-col gap-4 sm:flex-row sm:gap-5 [&>*]:flex-1">
               <Bloque
@@ -359,7 +359,7 @@ export default function Inicio() {
           marcha, porque esta persona ya migró datos a algo una vez y le llevó
           un fin de semana. Tres pasos, y ninguno dice "importá". */}
       <section className="bg-fondo">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-24">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-24 pt-12">
           <Aparece>
             <div>
               <h2 className="text-2xl font-bold tracking-[-0.02em] text-tinta">
@@ -405,7 +405,7 @@ export default function Inicio() {
           producto donde el acento ocupa una pantalla entera — funciona porque
           es lo último: cierra la página con color en vez de desvanecerse. */}
       <section className="bg-acento">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-14 text-center">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-14 pt-12 text-center">
           <Aparece>
             <div>
               <p className="text-pretty text-3xl font-bold leading-tight tracking-[-0.03em] text-sobre-acento">
