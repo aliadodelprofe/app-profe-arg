@@ -8,18 +8,30 @@ import { guardarTema, temaGuardado } from './tema';
 import type { Tema } from './tema';
 import type React from 'react';
 
-// `conBarra` deja lugar abajo para la navegación fija del celular. Sin eso,
-// la última tarjeta de cualquier lista queda tapada por la barra y nadie se
-// da cuenta hasta que un alumno reclama que "no le aparece" algo que sí está.
+// `conBarra` deja lugar abajo para la navegación fija del celular, y
+// `conAccion` para la barra de acción. Sin eso, la última fila de cualquier
+// lista queda tapada por la barra y nadie se da cuenta hasta que un alumno
+// reclama que "no le aparece" algo que sí está.
+//
+// La navegación solo existe en el celular; la barra de acción, en los dos.
 export function Marco({
   children,
   conBarra = false,
+  conAccion = false,
 }: {
   children: ReactNode;
   conBarra?: boolean;
+  conAccion?: boolean;
 }) {
+  const abajo = conBarra && conAccion
+    ? 'pb-48 sm:pb-28'
+    : conAccion
+      ? 'pb-28'
+      : conBarra
+        ? 'pb-28 sm:pb-12'
+        : 'pb-12';
   return (
-    <div className={'min-h-screen bg-fondo px-5 pt-7 ' + (conBarra ? 'pb-28 sm:pb-12' : 'pb-12')}>
+    <div className={'min-h-screen bg-fondo px-5 pt-7 ' + abajo}>
       <div className="mx-auto w-full max-w-2xl">{children}</div>
     </div>
   );
@@ -100,8 +112,10 @@ export function Vacio({
   children: ReactNode;
   accion?: ReactNode;
 }) {
+  // Sin recuadro punteado. El recuadro decía "acá iba una caja que no está",
+  // que es describir el hueco en vez de llenarlo. El aire y el ícono alcanzan.
   return (
-    <div className="anim-aparecer flex flex-col items-center gap-3 rounded-2xl border border-dashed border-linea px-6 py-10 text-center">
+    <div className="anim-aparecer flex flex-col items-center gap-3 px-6 py-12 text-center">
       <span className="flex h-11 w-11 items-center justify-center rounded-full bg-acento-suave text-acento">
         <svg
           viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
@@ -117,43 +131,17 @@ export function Vacio({
   );
 }
 
-export function Tarjeta({
-  children,
-  alTocar,
-}: {
-  children: ReactNode;
-  alTocar?: () => void;
-}) {
-  // La sombra es mínima y solo se nota en modo claro, que es donde una
-  // tarjeta sin sombra sobre fondo casi blanco se lee como un rectángulo
-  // dibujado y no como algo apoyado.
-  const clases =
-    'w-full rounded-2xl border border-contorno bg-panel p-4 text-left shadow-apoyo';
-  if (!alTocar) return <div className={clases}>{children}</div>;
-  // Una tarjeta que se toca tiene que avisar que se toca. En el celular no
-  // hay `hover`, así que lo que comunica es el `active`: el hundido de medio
-  // píxel al apretar es lo que separa "esto es una app" de "esto es un div".
-  return (
-    <button
-      onClick={alTocar}
-      className={
-        clases +
-        ' flex items-start justify-between gap-3 transition duration-150' +
-        ' hover:border-acento/40 hover:shadow-flota' +
-        ' active:scale-[0.99] active:bg-acento-suave'
-      }
-    >
-      <span className="min-w-0 flex-1">{children}</span>
-      <svg
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-        aria-hidden="true"
-        className="mt-1 h-4 w-4 shrink-0 text-tenue"
-      >
-        <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </button>
-  );
-}
+// La Tarjeta se fue.
+//
+// Era el rectángulo con borde, fondo y sombra en el que metíamos cada cosa.
+// Diez de esos uno abajo del otro convertían la pantalla en una grilla de
+// jaulas donde nada pesaba más que nada, y era la razón principal por la que
+// la app se veía como un sistema y no como una app.
+//
+// Lo que separa ahora es el aire, el tamaño de la letra y una línea de un
+// píxel. Lo que lleva sombra es lo que flota de verdad: una hoja, la barra
+// de acción, la navegación.
+
 
 // ---------------------------------------------------------------------------
 // Carga de datos: pide, y devuelve una de tres cosas — todavía nada, un error,
@@ -454,7 +442,7 @@ export function Marca() {
 // largo deje una palabra sola colgando en la segunda línea.
 export function Titulo({ children }: { children: ReactNode }) {
   return (
-    <h1 className="text-pretty text-[1.75rem] font-bold leading-[1.15] tracking-[-0.02em] text-tinta">
+    <h1 className="text-pretty text-[2rem] font-bold leading-[1.1] tracking-[-0.03em] text-tinta sm:text-[1.75rem]">
       {children}
     </h1>
   );
@@ -473,11 +461,20 @@ export function Seccion({
   children: ReactNode;
   acotacion?: ReactNode;
 }) {
+  // Sin cajas, el título de sección es lo único que divide la pantalla, así
+  // que tiene que pesar: bien grande, bien negro, y con mucho aire arriba.
+  //
+  // Probé poniéndole además una línea arriba y la saqué: `first:` solo agarra
+  // si la sección es el primer hijo de su padre, y en estas pantallas casi
+  // nunca lo es —hay un título, un aviso, un número antes—, así que la
+  // primera sección de cada pantalla se comía una raya suelta debajo del
+  // encabezado. El aire solo alcanza, que es lo que hace la página que
+  // miramos de referencia.
   return (
-    <div className="mb-3 mt-9 flex items-baseline justify-between gap-3 first:mt-0">
-      <h2 className="text-[1.0625rem] font-bold tracking-[-0.01em] text-tinta">{children}</h2>
+    <div className="mb-4 mt-12 flex items-baseline justify-between gap-3 first:mt-0">
+      <h2 className="text-xl font-bold tracking-[-0.02em] text-tinta">{children}</h2>
       {acotacion && (
-        <span className="shrink-0 text-xs font-medium text-tenue">{acotacion}</span>
+        <span className="shrink-0 text-sm font-medium text-tenue">{acotacion}</span>
       )}
     </div>
   );
@@ -492,30 +489,62 @@ export function Dato({
   valor,
   al,
   tono = 'normal',
+  alTocar,
   children,
 }: {
   valor: string;
   al: string;
   tono?: 'normal' | 'alerta' | 'ok';
+  // Sin caja, un bloque que se toca no tiene nada que lo diga: no hay borde
+  // que se ilumine ni sombra que crezca. Lo dice la flechita al final de la
+  // bajada, que es lo mismo que hace cualquier fila de lista.
+  alTocar?: () => void;
   children?: ReactNode;
 }) {
-  // El bloque entero se tiñe según el estado, no solo el número. Un $32.000
-  // rojo sobre un panel blanco se lee como un número que alguien pintó; el
-  // mismo número sobre una superficie teñida se lee como una situación.
-  const estilo = {
-    normal: { texto: 'text-tinta', caja: 'border-contorno bg-panel' },
-    alerta: { texto: 'text-alerta', caja: 'border-alerta/20 bg-alerta-suave' },
-    ok:     { texto: 'text-ok',     caja: 'border-ok/20 bg-ok-suave' },
+  // El color va en el NÚMERO, no en una superficie teñida detrás.
+  //
+  // Antes el bloque entero se pintaba de rojo claro o verde claro. Con dos de
+  // estos en la misma pantalla —lo que te deben y lo que falta confirmar— la
+  // pantalla quedaba a franjas de colores, y el ojo iba al color del fondo en
+  // vez de ir a la cifra. A 2,75rem y en negrita, la cifra no necesita que
+  // nadie la ayude: es lo primero que se ve de la pantalla.
+  const texto = {
+    normal: 'text-tinta',
+    alerta: 'text-alerta',
+    ok:     'text-ok',
   }[tono];
-  return (
-    <div className={`anim-aparecer rounded-2xl border p-5 shadow-apoyo ${estilo.caja}`}>
-      <p className={`plata text-[2.5rem] font-bold leading-none tracking-[-0.03em] ${estilo.texto}`}>
+  const cuerpo = (
+    <>
+      <p className={`plata text-[2.75rem] font-bold leading-none tracking-[-0.035em] ${texto}`}>
         {valor}
       </p>
-      <p className="mt-2 text-sm leading-snug text-tenue">{al}</p>
+      <p className="mt-2 flex items-center gap-1 text-[0.9375rem] leading-snug text-tenue">
+        <span className="min-w-0">{al}</span>
+        {alTocar && (
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            aria-hidden="true"
+            className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5 group-hover:text-acento"
+          >
+            <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </p>
       {children}
-    </div>
+    </>
   );
+
+  if (alTocar) {
+    return (
+      <button
+        onClick={alTocar}
+        className="anim-aparecer group -mx-2 block w-full rounded-2xl px-2 py-2 text-left transition active:scale-[0.99] active:bg-acento-suave"
+      >
+        {cuerpo}
+      </button>
+    );
+  }
+  return <div className="anim-aparecer py-2">{cuerpo}</div>;
 }
 
 // Nivel 4 — la marquita al costado de algo: un formato, un estado.
@@ -655,6 +684,59 @@ export function Navegacion<T extends string>({
     </>
   );
 }
+
+// ============================================================================
+// LA BARRA DE ACCIÓN FIJA
+//
+// Para una pantalla con UNA acción que importa: anotar un alumno, confirmar
+// un pago, cargar una clase. El botón vivía arriba de todo y, apenas
+// scrolleabas tres filas, desaparecía: la acción principal de la pantalla
+// dejaba de existir justo cuando terminabas de leer lo que te hacía falta
+// para decidirla.
+//
+// Queda pegada abajo, con el dato que decide a la izquierda —cuánto deben,
+// cuánto sale— y el botón a la derecha. Es el patrón de cualquier app de
+// reservas y funciona por una razón sola: lo que tenés que saber y lo que
+// tenés que hacer quedan juntos y nunca se van de la pantalla.
+//
+// `conBarra` la levanta por encima de la navegación del celular, que también
+// es fija. Dos barras fijas sin saber una de la otra se pisan, y la de abajo
+// gana.
+// ============================================================================
+export function BarraAccion({
+  dato,
+  bajoDato,
+  children,
+  conBarra = false,
+}: {
+  dato?: ReactNode;
+  bajoDato?: ReactNode;
+  children: ReactNode;      // el botón, o los botones
+  conBarra?: boolean;
+}) {
+  return (
+    <div
+      className={
+        'fixed inset-x-0 z-30 border-t border-linea bg-fondo/90 backdrop-blur-xl'
+        + ' shadow-barra'
+        + (conBarra
+          ? ' bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-0'
+          : ' bottom-0')
+      }
+    >
+      <div className="mx-auto flex max-w-2xl items-center justify-between gap-4 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:pb-3">
+        <div className="min-w-0">
+          {dato && (
+            <p className="plata truncate text-lg font-bold leading-tight text-tinta">{dato}</p>
+          )}
+          {bajoDato && <p className="truncate text-xs text-tenue">{bajoDato}</p>}
+        </div>
+        <div className="flex shrink-0 gap-2">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 
 // Los íconos son tres formas propias y no una librería: tres dibujos no
 // justifican una dependencia, y cualquier set que bajemos va a tener el estilo
@@ -814,9 +896,15 @@ export function Avatar({
 // vuelve a ser una tarjeta redondeada, porque ahí el borde a borde sería una
 // línea de un metro.
 // ----------------------------------------------------------------------------
+// Una lista no es una caja con filas adentro: es una sucesión de filas.
+//
+// El contenedor tenía borde, fondo propio y sombra, y ese marco competía con
+// las líneas de adentro: dos separadores distintos diciendo lo mismo. Queda
+// solo el de adentro, que es el que hace falta, y las filas se apoyan sobre
+// la página como el resto del contenido.
 export function Lista({ children }: { children: ReactNode }) {
   return (
-    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-contorno bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
+    <ul className="anim-escalera -mx-5 divide-y divide-linea sm:-mx-2">
       {children}
     </ul>
   );
@@ -881,12 +969,12 @@ export function Fila({
       {alTocar ? (
         <button
           onClick={alTocar}
-          className="group w-full px-5 py-3.5 text-left transition-colors duration-150 hover:bg-acento-suave/40 active:bg-acento-suave sm:px-4"
+          className="group w-full px-5 py-4 text-left transition-colors duration-150 hover:bg-acento-suave/40 active:bg-acento-suave sm:px-2"
         >
           {cuerpo}
         </button>
       ) : (
-        <div className="px-5 py-3.5 sm:px-4">{cuerpo}</div>
+        <div className="px-5 py-4 sm:px-2">{cuerpo}</div>
       )}
     </li>
   );
@@ -920,7 +1008,7 @@ export function CopiarDato({ etiqueta, valor }: { etiqueta: string; valor: strin
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-linea px-3 py-2">
+    <div className="flex items-center justify-between gap-3 border-b border-linea py-2.5 last:border-0">
       <div className="min-w-0">
         <p className="text-xs text-tenue">{etiqueta}</p>
         <p className="truncate font-mono text-sm text-tinta">{valor}</p>
@@ -1109,9 +1197,9 @@ const brillo =
 
 export function Esqueleto({ filas = 3 }: { filas?: number }) {
   return (
-    <div className="-mx-5 divide-y divide-linea border-y border-contorno bg-panel shadow-apoyo sm:mx-0 sm:rounded-2xl sm:border">
+    <div className="-mx-5 divide-y divide-linea sm:-mx-2">
       {Array.from({ length: filas }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 px-5 py-3.5 sm:px-4">
+        <div key={i} className="flex items-center gap-3 px-5 py-4 sm:px-2">
           <div className={`h-10 w-10 shrink-0 rounded-full ${brillo}`} />
           <div className="min-w-0 flex-1">
             {/* Anchos distintos en cada fila. Tres bloques idénticos se leen

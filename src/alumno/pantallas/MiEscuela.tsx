@@ -18,9 +18,9 @@ import type {
 import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
-  Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Boton, BotonSecundario,
+  Marco, Aviso, Vacio, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
-  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato,
+  Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato, BarraAccion,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Perfil from './Perfil';
@@ -68,7 +68,7 @@ export default function MiEscuela({
     <>
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
-      <Marco conBarra>
+      <Marco conBarra conAccion={tab === 'cuenta'}>
       {/* A la izquierda la escuela, a la derecha vos. Antes estaban las dos
           caras del mismo lado: al lado del nombre de la escuela iba la foto
           DEL ALUMNO, y abajo la misma foto otra vez en el perfil.
@@ -207,7 +207,7 @@ function FormularioAviso({
       {destinos.map((d) => (
         <div
           key={d.id}
-          className="flex flex-col gap-2 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo"
+          className="flex flex-col gap-2 rounded-2xl bg-fondo p-4"
         >
           <p className="text-sm text-tenue">
             Transferile a <span className="text-tinta">{d.holder}</span>
@@ -231,7 +231,7 @@ function FormularioAviso({
       </Campo>
 
       {falta && (
-        <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
+        <p className="border-l-2 border-linea pl-3.5 text-xs leading-relaxed text-tenue">
           Estás avisando menos de lo que debés. Está bien si es una seña o un pago
           parcial — se va a descontar de lo que debés y el resto queda pendiente.
         </p>
@@ -398,10 +398,32 @@ function MiCuenta({
             Avisaste {plata(totalDeclarado)}. Tu profe lo tiene que confirmar.
           </p>
         )}
-        <div className="mt-4">
-          <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
-        </div>
       </Dato>
+
+      {/* "Ya transferí" colgaba del número y, apenas scrolleabas la lista de
+          cargos, desaparecía. Es LA acción de esta pantalla: ahora queda
+          pegada abajo con lo que debe a la izquierda, como el precio y el
+          botón de reservar de cualquier app de turnos. Lo que tenés que
+          saber y lo que tenés que hacer, juntos y siempre a la vista. */}
+      <BarraAccion
+        conBarra
+        dato={saldo === null
+          ? null
+          : saldo.debe > 0
+            ? plata(saldo.debe)
+            : saldo.aFavor > 0
+              ? plata(saldo.aFavor)
+              : 'Al día'}
+        bajoDato={saldo === null
+          ? null
+          : saldo.debe > 0
+            ? 'vencido'
+            : saldo.aFavor > 0
+              ? 'a favor tuyo'
+              : 'no debés nada'}
+      >
+        <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
+      </BarraAccion>
 
       {declarando && (
         <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>

@@ -83,6 +83,9 @@
   --shadow-apoyo: 0 1px 2px rgb(43 36 32 / 0.06), 0 2px 8px rgb(43 36 32 / 0.05);
   --shadow-flota: 0 2px 6px rgb(43 36 32 / 0.06), 0 12px 32px rgb(43 36 32 / 0.10);
   --shadow-tapa:  0 -8px 48px rgb(43 36 32 / 0.22);
+  /* La barra de acción fija. Apenas se despega de la página: tiene que
+     decir "esto está por encima", no tapar lo que hay abajo. */
+  --shadow-barra: 0 -1px 24px rgb(43 36 32 / 0.07);
 }
 
 /* ----------------------------------------------------------------------
@@ -168,6 +171,7 @@ html[data-app="nueva"] {
     --shadow-apoyo: inset 0 1px 0 rgb(255 255 255 / 0.04);
     --shadow-flota: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.5);
     --shadow-tapa:  0 -8px 40px rgb(0 0 0 / 0.6);
+    --shadow-barra: 0 -1px 20px rgb(0 0 0 / 0.4);
   }
 }
 
@@ -203,6 +207,7 @@ html[data-app="nueva"][data-tema="oscuro"] {
   --shadow-apoyo: inset 0 1px 0 rgb(255 255 255 / 0.04);
   --shadow-flota: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 8px 24px rgb(0 0 0 / 0.5);
   --shadow-tapa:  0 -8px 40px rgb(0 0 0 / 0.6);
+  --shadow-barra: 0 -1px 20px rgb(0 0 0 / 0.4);
 }
 
 /* ----------------------------------------------------------------------

@@ -13,7 +13,7 @@ import { useState } from 'react';
 import { aceptarInvitacion, rechazarInvitacion } from '../datos';
 import type { Invitacion, FormaDePago } from '../datos';
 import { fecha, plata } from '../formato';
-import { Aviso, Tarjeta, Boton, BotonSecundario } from '../../comun/ui';
+import { Aviso, Boton, BotonSecundario } from '../../comun/ui';
 
 // Una forma de pago, dicha en castellano.
 //
@@ -42,10 +42,12 @@ export default function Invitaciones({
 }) {
   return (
     <div className="mb-8">
-      <h2 className="mb-2 text-sm font-medium uppercase tracking-wide text-tenue">
+      {/* El título pesa como título. En minúsculas y en gris chiquito era una
+          etiqueta de formulario, no el encabezado de lo que pasó. */}
+      <h2 className="mb-3 text-xl font-bold tracking-[-0.02em] text-tinta">
         {invitaciones.length === 1 ? 'Te anotaron en un curso' : 'Te anotaron en unos cursos'}
       </h2>
-      <ul className="flex flex-col gap-2">
+      <ul className="divide-y divide-linea border-t border-linea">
         {invitaciones.map((i) => (
           <li key={i.student_id}>
             <Fila invitacion={i} alResponder={alResponder} />
@@ -79,8 +81,8 @@ function Fila({
   }
 
   return (
-    <Tarjeta>
-      <p className="text-tinta">{invitacion.escuela}</p>
+    <div className="py-4">
+      <p className="font-medium text-tinta">{invitacion.escuela}</p>
       <p className="text-sm text-tenue">
         Te anotaron como <span className="text-tinta">{invitacion.anotado_como}</span> en{' '}
         {invitacion.grupos}.
@@ -124,6 +126,6 @@ function Fila({
           No soy yo
         </BotonSecundario>
       </div>
-    </Tarjeta>
+    </div>
   );
 }

@@ -490,7 +490,7 @@ export default function FormularioGrupo({
           sola.
          ------------------------------------------------------------------ */}
       {!grupo && esParticular && (
-        <div className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+        <div className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
           <p className="text-sm font-medium text-tinta">¿Para quién es?</p>
 
           {participantes.length > 0 && (
@@ -530,7 +530,7 @@ export default function FormularioGrupo({
 
           {/* Y los que todavía no tenés. Mismo patrón que los horarios: se
               arma uno, se suma a la lista, y la lista es lo que se guarda. */}
-          <div className="flex flex-col gap-3 rounded-xl border border-contorno bg-fondo p-3">
+          <div className="flex flex-col gap-3 rounded-xl bg-panel p-3.5">
             <p className="text-sm text-tenue">O cargá uno que todavía no tenés:</p>
             <Campo etiqueta="Nombre">
               <Texto
@@ -621,7 +621,7 @@ export default function FormularioGrupo({
             </div>
           )}
 
-          <div className="flex flex-col gap-3 rounded-2xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+          <div className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
             <div className="grid grid-cols-2 gap-3">
               <Campo etiqueta="Hora">
                 <Texto type="time" value={hora} onChange={(e) => setHora(e.target.value)} />
@@ -709,7 +709,7 @@ export default function FormularioGrupo({
               formulario. Al lado de "Duración" el botón parecía agregar la
               duración; abajo y a lo ancho de la tarjeta, lo que agrega es la
               tarjeta entera, y el texto lo dice. */}
-          <div className="flex flex-col gap-3 rounded-2xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+          <div className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
             <div className="grid grid-cols-2 gap-3">
               <Campo etiqueta="Día">
                 <select
@@ -805,7 +805,7 @@ export default function FormularioGrupo({
           al inscribirse es cuál de estas dos formas usa.
          ------------------------------------------------------------------ */}
       {!(esFormacion && forma === 'unico') && (
-        <p className="rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
+        <p className="border-l-2 border-linea pl-3.5 text-xs leading-relaxed text-tenue">
           {esFormacion
             ? 'Si ponés los dos precios, el alumno elige: paga clase a clase o el taller entero. Que el entero convenga es lo que hace que elija eso, y vos cobrás por adelantado.'
             : esParticular && ritmo === 'pedido'
@@ -900,7 +900,7 @@ export default function FormularioGrupo({
               />
             </Campo>
           </div>
-          <p className="-mt-1 rounded-xl border border-contorno bg-panel px-3.5 py-2.5 text-xs leading-relaxed text-tenue shadow-apoyo">
+          <p className="-mt-1 border-l-2 border-linea pl-3.5 text-xs leading-relaxed text-tenue">
             Una formación es un programa con principio y fin. Después de la fecha de término
             dejan de generarse clases solas, y a nadie se le genera una cuota por un mes que
             el grupo ya no cursa.

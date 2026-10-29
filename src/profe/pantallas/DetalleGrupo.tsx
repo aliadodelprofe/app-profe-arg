@@ -19,8 +19,8 @@ import type {
   AlumnoDelGrupo,
 } from '../datos';
 import {
-  Marco, Aviso, Vacio, Tarjeta, useCarga, Campo, Texto, Area, Opciones,
-  Boton, BotonSecundario,
+  Marco, Aviso, Vacio, useCarga, Campo, Texto, Area, Opciones,
+  Boton, BotonSecundario, BarraAccion,
   Titulo, Etiqueta, Segmentos, Lista, Fila, Hoja, Esqueleto, ChipFecha, CorteDeMes,
 } from '../../comun/ui';
 
@@ -109,7 +109,7 @@ export default function DetalleGrupo({
   ].filter(Boolean) as string[];
 
   return (
-    <Marco>
+    <Marco conAccion>
       {/* ----------------------------------------------------- la cabecera */}
       <button
         onClick={alVolver}
@@ -144,7 +144,7 @@ export default function DetalleGrupo({
       )}
 
       {cuantasEsteMes >= 5 && (
-        <p className="mb-4 rounded-xl border border-contorno bg-panel px-4 py-3 text-sm leading-relaxed text-tenue shadow-apoyo">
+        <p className="mb-4 border-l-2 border-linea pl-3.5 text-sm leading-relaxed text-tenue">
           Este mes tenés <span className="text-tinta">{cuantasEsteMes} clases</span>, no
           cuatro. A los que pagan por mes no les cobrás de más: la cuota es fija y ya está
           pensada sobre el promedio real del año, que es 4,33 clases por mes. A los que pagan
@@ -165,10 +165,6 @@ export default function DetalleGrupo({
       {/* ------------------------------------------------------------ alumnos */}
       {vista === 'alumnos' && (
         <>
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Boton onClick={() => setHoja('anotar')}>Anotar alumno</Boton>
-          </div>
-
           {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
           {!inscripciones.datos && !inscripciones.error && <Esqueleto />}
           {inscripciones.datos && gente.length === 0 && (
@@ -208,14 +204,6 @@ export default function DetalleGrupo({
               que se agenda a dedo es lo único que evita cargar ocho clases de
               a una. El mismo botón puede ser redundante o imprescindible
               según de qué grupo cuelgue. */}
-          <div className="mb-2 flex flex-wrap gap-2">
-            <Boton onClick={() => setHoja('clase')}>Agregar una clase</Boton>
-            {!horarioDe(grupo) && (
-              <BotonSecundario onClick={() => setHoja('fechas')}>
-                Agregar varias fechas
-              </BotonSecundario>
-            )}
-          </div>
           <p className="mb-4 text-sm text-tenue">
             {horarioDe(grupo)
               ? `Este grupo se mantiene solo: las clases de los ${horarioDe(grupo)} se van creando hasta fin del mes que viene. Este botón es para agregar algo fuera de ese horario, como un recupero.`
@@ -294,6 +282,34 @@ export default function DetalleGrupo({
             alCrear={() => { setHoja(null); clases.recargar(); }}
           />
         </Hoja>
+      )}
+
+      {/* LA ACCIÓN, PEGADA ABAJO.
+          
+          Estos botones vivían arriba de la lista y desaparecían al tercer
+          scroll: la acción principal de la pantalla dejaba de existir justo
+          cuando terminabas de leer lo que te hacía falta para decidirla. Y
+          cambian según la solapa, porque no es la misma pantalla: en Alumnos
+          lo que hacés es anotar a alguien, en Clases es agregar una fecha. */}
+      {vista === 'alumnos' ? (
+        <BarraAccion
+          dato={activos.length === 0
+            ? 'Nadie anotado'
+            : `${activos.length} ${activos.length === 1 ? 'alumno' : 'alumnos'}`}
+          bajoDato={grupo.capacity ? `de ${grupo.capacity} de cupo` : null}
+        >
+          <Boton onClick={() => setHoja('anotar')}>Anotar alumno</Boton>
+        </BarraAccion>
+      ) : (
+        <BarraAccion
+          dato={horarioDe(grupo) ?? 'Sin día fijo'}
+          bajoDato={horarioDe(grupo) ? 'se crean solas' : 'las cargás vos'}
+        >
+          {!horarioDe(grupo) && (
+            <BotonSecundario onClick={() => setHoja('fechas')}>Varias fechas</BotonSecundario>
+          )}
+          <Boton onClick={() => setHoja('clase')}>Agregar clase</Boton>
+        </BarraAccion>
       )}
 
     </Marco>
@@ -1350,7 +1366,7 @@ function FormularioCargo({
   }
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
       {esMensual && (
         <Campo etiqueta="Mes">
           <Texto
@@ -1464,7 +1480,7 @@ function FormularioFicha({
   const yaEntro = ficha.datos?.user_id != null;
 
   return (
-    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-xl border border-contorno bg-panel p-3.5 shadow-apoyo">
+    <form onSubmit={guardar} className="flex flex-col gap-3 rounded-2xl bg-fondo p-4">
       <p className="text-tinta">Ficha de {ficha.datos?.full_name}</p>
 
       <Campo etiqueta="Cómo lo anotás" ayuda="El nombre con el que aparece en tu lista.">

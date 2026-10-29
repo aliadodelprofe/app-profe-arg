@@ -21,7 +21,7 @@ import type {
 } from '../datos';
 
 type Cuenta = { saldo: number; pendiente: number };
-import { Marco, Encabezado, Aviso, Vacio, Tarjeta, Campo, Area, Boton, Avatar } from '../../comun/ui';
+import { Marco, Encabezado, Aviso, Vacio, Campo, Area, Boton, Avatar } from '../../comun/ui';
 
 const ESTADOS: EstadoAsistencia[] = ['present', 'absent', 'excused'];
 
@@ -117,15 +117,14 @@ export default function Asistencia({
         </p>
       )}
 
-      <ul className="flex flex-col gap-2">
+      <ul className="-mx-5 divide-y divide-linea sm:-mx-2">
         {inscriptos?.map((i) => {
           const alumno = i.alumno;
           const actual = marcas[alumno.id];
           const cuenta = cuentas[alumno.id];
           const debe = (cuenta?.saldo ?? 0) > 0;
           return (
-            <li key={alumno.id}>
-              <Tarjeta>
+            <li key={alumno.id} className="px-5 py-4 sm:px-2">
                 <div className="mb-2 flex items-start justify-between gap-3">
                   {/* La cara y no solo el nombre: tomando asistencia estás
                       mirando a la sala, no leyendo una planilla. Reconocer es
@@ -166,7 +165,6 @@ export default function Asistencia({
                     );
                   })}
                 </div>
-              </Tarjeta>
             </li>
           );
         })}

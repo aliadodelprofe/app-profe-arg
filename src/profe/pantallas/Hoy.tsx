@@ -21,7 +21,7 @@ import {
   fecha, plata, hoyISO, sumarDias,
 } from '../datos';
 import type { Espacio, ClaseDelEspacio } from '../datos';
-import { Marco, Aviso, Vacio, Tarjeta, Titulo, Seccion, Dato, useCarga } from '../../comun/ui';
+import { Marco, Aviso, Vacio, Titulo, Seccion, Dato, Lista, Fila, useCarga } from '../../comun/ui';
 
 export default function Hoy({
   espacio,
@@ -74,44 +74,40 @@ export default function Hoy({
             <Vacio>No hay clases cargadas en los próximos quince días.</Vacio>
           )}
 
-          <ul className="flex flex-col gap-2">
-            {(deHoy.length > 0 ? deHoy : siguientes).map((c) => (
-              <li key={c.id}>
-                <Tarjeta>
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium text-tinta">{c.grupo?.name ?? 'Clase'}</p>
-                      <p className="text-sm text-tenue">
-                        {c.date === hoy ? 'hoy' : fecha(c.date)}
-                        {c.start_time ? ` · ${c.start_time.slice(0, 5)}` : ''}
-                        {c.venue ? ` · ${c.venue}` : ''}
-                      </p>
-                    </div>
-                    {c.date === hoy && (
-                      <button
-                        onClick={() => alTomarAsistencia(c)}
-                        className="shrink-0 rounded-lg bg-acento px-3 py-1.5 text-sm font-medium text-sobre-acento"
-                      >
-                        Asistencia
-                      </button>
-                    )}
-                  </div>
-                </Tarjeta>
-              </li>
-            ))}
-          </ul>
+          {(deHoy.length > 0 ? deHoy : siguientes).length > 0 && (
+            <Lista>
+              {(deHoy.length > 0 ? deHoy : siguientes).map((c) => (
+                <Fila
+                  key={c.id}
+                  titulo={c.grupo?.name ?? 'Clase'}
+                  detalle={
+                    (c.date === hoy ? 'hoy' : fecha(c.date))
+                    + (c.start_time ? ` · ${c.start_time.slice(0, 5)}` : '')
+                    + (c.venue ? ` · ${c.venue}` : '')
+                  }
+                  valor={c.date === hoy ? (
+                    <button
+                      onClick={() => alTomarAsistencia(c)}
+                      className="shrink-0 rounded-full bg-acento px-3.5 py-1.5 text-sm font-medium text-sobre-acento transition active:scale-95"
+                    >
+                      Asistencia
+                    </button>
+                  ) : undefined}
+                />
+              ))}
+            </Lista>
+          )}
 
           {/* ------------------------------------------------ lo que espera decisión */}
           {porConfirmar.length > 0 && (
             <>
               <Seccion>Te están esperando</Seccion>
-              <button onClick={alVerCobros} className="block w-full text-left">
-                <Dato
-                  valor={plata(totalPorConfirmar)}
-                  al={`${porConfirmar.length} ${porConfirmar.length === 1 ? 'transferencia declarada' : 'transferencias declaradas'} · tocá para confirmarlas`}
-                  tono="ok"
-                />
-              </button>
+              <Dato
+                valor={plata(totalPorConfirmar)}
+                al={`${porConfirmar.length} ${porConfirmar.length === 1 ? 'transferencia declarada' : 'transferencias declaradas'}`}
+                tono="ok"
+                alTocar={alVerCobros}
+              />
             </>
           )}
 
@@ -119,13 +115,12 @@ export default function Hoy({
           {deudores.length > 0 && (
             <>
               <Seccion>Quién te debe</Seccion>
-              <button onClick={alVerCobros} className="block w-full text-left">
-                <Dato
-                  valor={plata(totalDeuda)}
-                  al={`${deudores.length} ${deudores.length === 1 ? 'alumno' : 'alumnos'}`}
-                  tono="alerta"
-                />
-              </button>
+              <Dato
+                valor={plata(totalDeuda)}
+                al={`${deudores.length} ${deudores.length === 1 ? 'alumno' : 'alumnos'}`}
+                tono="alerta"
+                alTocar={alVerCobros}
+              />
             </>
           )}
 
