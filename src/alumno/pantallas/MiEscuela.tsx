@@ -115,6 +115,7 @@ export default function MiEscuela({
       {tab === 'cuenta' && (
         <MiCuenta
           ficha={ficha}
+          clases={clases.datos ?? []}
           saldo={saldo.datos}
           errorSaldo={saldo.error}
           cargos={cargos.datos}
@@ -316,6 +317,7 @@ const PAGOS_DE_A = 5;
 
 function MiCuenta({
   ficha,
+  clases,
   saldo,
   errorSaldo,
   cargos,
@@ -327,6 +329,7 @@ function MiCuenta({
   alAvisar,
 }: {
   ficha: MiFicha;
+  clases: MiClase[];
   saldo: MiSaldo | null;
   errorSaldo: string | null;
   cargos: MiCargo[] | null;
@@ -339,6 +342,19 @@ function MiCuenta({
 }) {
   const [declarando, setDeclarando] = useState(false);
   const [cuantosPagos, setCuantosPagos] = useState(PAGOS_DE_A);
+
+  // LA HORA DE LA CLASE QUE SE COBRA
+  //
+  // Un cargo por clase vence el día de esa clase, pero el cargo no sabe de
+  // qué clase se trata: `charges` cuelga de la inscripción, no de la sesión.
+  // Lo que sí tenemos a mano son las clases del alumno, y la fecha alcanza
+  // para cruzarlas — salvo que ese día haya dos, y ahí no se dice la hora en
+  // vez de arriesgar la equivocada.
+  const horaPorDia = new Map<string, string | null>();
+  for (const c of clases) {
+    if (c.status !== 'scheduled') continue;
+    horaPorDia.set(c.date, horaPorDia.has(c.date) ? null : c.start_time);
+  }
 
   const declarados = pagos?.filter((p) => p.status === 'declared') ?? [];
   const totalDeclarado = declarados.reduce((s, p) => s + p.amount, 0);
@@ -448,7 +464,7 @@ function MiCuenta({
             Qué te falta pagar
           </Seccion>
           <Lista>
-            {vencidos.map((c) => <FilaCargo key={c.id} cargo={c} />)}
+            {vencidos.map((c) => <FilaCargo key={c.id} cargo={c} horas={horaPorDia} />)}
           </Lista>
         </>
       )}
@@ -462,7 +478,7 @@ function MiCuenta({
             Todavía no vencieron. Los ves acá para saber cuánto te va a salir.
           </p>
           <Lista>
-            {porVenir.map((c) => <FilaCargo key={c.id} cargo={c} />)}
+            {porVenir.map((c) => <FilaCargo key={c.id} cargo={c} horas={horaPorDia} />)}
           </Lista>
         </>
       )}
@@ -515,16 +531,45 @@ function MiCuenta({
 // lo vencido y lo que viene pesan lo mismo, y lo que pesa distinto es
 // justamente lo único que hay que hacer. Sin cajas que teñir, lo que marca la
 // diferencia es el color del número y el de la fecha.
-function FilaCargo({ cargo }: { cargo: MiCargo }) {
+function FilaCargo({
+  cargo,
+  horas,
+}: {
+  cargo: MiCargo;
+  horas: Map<string, string | null>;
+}) {
   const falta = cargo.amount - cargo.pagado;
-  // Sin fecha también cuenta como vencido: es lo mismo que hace la vista
-  // student_account en la base (migración 0031). Una regla sola, en los dos
-  // lados.
-  const vencido = !cargo.due_date || cargo.due_date <= hoyISO();
+  const hoy = hoyISO();
 
-  const cuando = cargo.due_date
-    ? `${vencido ? 'venció' : 'vence'} el ${fecha(cargo.due_date)}`
-    : null;
+  // TRES ESTADOS, NO DOS.
+  //
+  // "Venció el 29/10" el mismo 29 de octubre es falso y además suena a reto:
+  // el alumno todavía no llegó tarde a nada, la clase es en unas horas. Y
+  // "vence el 29/10" leído el 29 tampoco sirve, porque no dice que es HOY.
+  //
+  //   pasado  → venció el 20/10        rojo, es deuda
+  //   hoy     → vence hoy a las 20:00  color de marca, es un aviso
+  //   futuro  → vence el 5/11          gris, es información
+  //
+  // La hora sale de la clase de ese día, que es lo que el alumno tiene en la
+  // cabeza: "la de las ocho", no "el cargo del 29".
+  const atrasado = !cargo.due_date || cargo.due_date < hoy;
+  const esHoy = cargo.due_date === hoy;
+  const hora = esHoy ? horas.get(hoy) : null;
+
+  const cuando = !cargo.due_date
+    ? null
+    : atrasado
+      ? `venció el ${fecha(cargo.due_date)}`
+      : esHoy
+        ? `vence hoy${hora ? ` a las ${hora.slice(0, 5)}` : ''}`
+        : `vence el ${fecha(cargo.due_date)}`;
+
+  const colorFecha = atrasado
+    ? 'font-medium text-alerta'
+    : esHoy
+      ? 'font-medium text-acento'
+      : undefined;
 
   return (
     <Fila
@@ -535,15 +580,13 @@ function FilaCargo({ cargo }: { cargo: MiCargo }) {
             <span>pagaste {plata(cargo.pagado)} · falta {plata(falta)}</span>
           )}
           {cargo.pagado > 0 && cuando && <span aria-hidden="true">·</span>}
-          {cuando && (
-            <span className={vencido ? 'font-medium text-alerta' : undefined}>
-              {cuando}
-            </span>
-          )}
+          {cuando && <span className={colorFecha}>{cuando}</span>}
         </span>
       }
       valor={
-        <span className={vencido ? 'text-alerta' : undefined}>{plata(falta)}</span>
+        <span className={atrasado ? 'text-alerta' : esHoy ? 'text-acento' : undefined}>
+          {plata(falta)}
+        </span>
       }
     />
   );
