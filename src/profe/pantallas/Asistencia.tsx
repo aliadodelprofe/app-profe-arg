@@ -117,7 +117,7 @@ export default function Asistencia({
         </p>
       )}
 
-      <ul className="-mx-5 divide-y divide-linea border-y border-linea sm:-mx-2">
+      <ul className="-mx-5 divide-y divide-linea sm:-mx-2">
         {inscriptos?.map((i) => {
           const alumno = i.alumno;
           const actual = marcas[alumno.id];

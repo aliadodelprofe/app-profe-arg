@@ -457,25 +457,33 @@ export function Titulo({ children }: { children: ReactNode }) {
 export function Seccion({
   children,
   acotacion,
+  primera = false,
 }: {
   children: ReactNode;
   acotacion?: ReactNode;
+  // La primera sección de una pantalla no lleva línea: arriba de ella está el
+  // encabezado, y no hay nada que cerrar. Se pide a mano y no con `first:`
+  // porque `first:` agarra solo si la sección es el primer hijo de su padre,
+  // y en estas pantallas casi nunca lo es —hay un encabezado, un aviso, un
+  // número antes—: era una regla que se aplicaba al azar según cómo estuviera
+  // armado el JSX. Son cuatro pantallas; escribirlo es más barato que un
+  // mecanismo que adivine.
+  primera?: boolean;
 }) {
-  // Sin cajas, el título de sección es lo que divide la pantalla, y con el
-  // aire solo no alcanzaba: tres listas parecidas una abajo de la otra se
-  // leen como una sola lista larga y uno se pierde.
+  // UNA SOLA FAMILIA DE LÍNEAS, Y ES ESTA.
   //
-  // Así que va con línea, SIEMPRE. Lo intenté antes con `first:` para que la
-  // primera no la llevara, y no sirve: `first:` agarra solo si la sección es
-  // el primer hijo de su padre, y en estas pantallas casi nunca lo es —hay
-  // un encabezado, un aviso, un número antes—. Terminaba siendo una regla
-  // que se aplicaba al azar según cómo estuviera armado el JSX.
-  //
-  // Con el aire repartido parejo arriba y abajo, la línea de la primera
-  // sección queda como lo que es: la raya que cierra el encabezado de la
-  // pantalla. Es un patrón de toda la vida y no se lee como un error.
+  // El corte entre secciones lo hace esta línea y nada más. Las listas no
+  // llevan marco propio: si lo llevaran, entre la última fila de una lista y
+  // el título siguiente habría dos rayas paralelas separadas por un hueco, que
+  // es exactamente lo que se ve mal — dos sistemas de división discutiendo
+  // sobre la misma frontera.
   return (
-    <div className="mb-4 mt-10 flex items-baseline justify-between gap-3 border-t border-linea pt-9">
+    <div
+      className={
+        'mb-4 flex items-baseline justify-between gap-3 '
+        + (primera ? 'mt-8' : 'mt-11 border-t border-linea pt-10')
+      }
+    >
       <h2 className="text-xl font-bold tracking-[-0.02em] text-tinta">{children}</h2>
       {acotacion && (
         <span className="shrink-0 text-sm font-medium text-tenue">{acotacion}</span>
@@ -938,12 +946,14 @@ export function Avatar({
 // las líneas de adentro: dos separadores distintos diciendo lo mismo. Queda
 // solo el de adentro.
 //
-// Pero sí lleva línea arriba y abajo —la misma de las filas, no un marco—,
-// porque sin eso la primera y la última fila flotan: no se sabe dónde empieza
-// la lista ni dónde termina, y dos listas seguidas se leen como una sola.
+// Y tampoco lleva línea arriba ni abajo. Se la puse un rato para que la
+// primera y la última fila no flotaran, y el remedio fue peor: justo arriba
+// de cada título de sección quedaban dos rayas paralelas separadas por un
+// hueco, una cerrando la lista y otra abriendo la sección. Quien enmarca la
+// lista es el título que tiene encima y el que viene después, no un borde.
 export function Lista({ children }: { children: ReactNode }) {
   return (
-    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-linea sm:-mx-2">
+    <ul className="anim-escalera -mx-5 divide-y divide-linea sm:-mx-2">
       {children}
     </ul>
   );
@@ -975,7 +985,11 @@ export function Fila({
       <div className="flex items-center gap-3">
         {principal ?? (avatar !== undefined ? <Avatar nombre={avatar} foto={foto} /> : null)}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium leading-snug text-tinta">{titulo}</div>
+          {/* Hasta dos renglones, y recién ahí corta. Un grupo que se llama
+              "Bachata Influence – Regulares – Jueves" entraba cortado en
+              "Bachata Influence – Regulares – Juev…", que es justo donde
+              estaba el dato que lo distingue de los otros tres grupos. */}
+          <div className="line-clamp-2 font-medium leading-snug text-tinta">{titulo}</div>
           {detalle && (
             <div className="truncate text-sm leading-snug text-tenue">{detalle}</div>
           )}
@@ -1236,7 +1250,7 @@ const brillo =
 
 export function Esqueleto({ filas = 3 }: { filas?: number }) {
   return (
-    <div className="-mx-5 divide-y divide-linea border-y border-linea sm:-mx-2">
+    <div className="-mx-5 divide-y divide-linea sm:-mx-2">
       {Array.from({ length: filas }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-5 py-4 sm:px-2">
           <div className={`h-10 w-10 shrink-0 rounded-full ${brillo}`} />

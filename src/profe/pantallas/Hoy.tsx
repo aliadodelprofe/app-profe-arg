@@ -66,7 +66,7 @@ export default function Hoy({
       {!cargando && !error && (
         <>
           {/* ------------------------------------------------- la clase que viene */}
-          <Seccion acotacion={deHoy.length > 0 ? fecha(hoy) : undefined}>
+          <Seccion primera acotacion={deHoy.length > 0 ? fecha(hoy) : undefined}>
             {deHoy.length > 0 ? 'Tu clase de hoy' : 'Lo que viene'}
           </Seccion>
 
