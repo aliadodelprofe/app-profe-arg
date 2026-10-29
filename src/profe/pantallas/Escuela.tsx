@@ -17,7 +17,7 @@ import {
   editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_MAX_MB,
   traerDisciplinas, guardarDisciplinas,
 } from '../datos';
-import type { Espacio } from '../datos';
+import type { Espacio, ActividadDelEspacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
   Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema,
@@ -124,14 +124,16 @@ function Datos({
   // El catálogo, para armar el menú. Y lo elegido, como un conjunto: el orden
   // en el que las tocaste no es información.
   const catalogo = useCarga(() => traerDisciplinas(), []);
-  const [elegidas, setElegidas] = useState<string[]>(espacio.disciplinas);
+  const [elegidas, setElegidas] = useState<ActividadDelEspacio[]>(espacio.disciplinas);
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
 
   const mismas =
     elegidas.length === espacio.disciplinas.length
-    && elegidas.every((d) => espacio.disciplinas.includes(d));
+    && elegidas.every((a) => espacio.disciplinas.some(
+      (b) => b.slug === a.slug && (b.nota ?? '') === (a.nota ?? ''),
+    ));
   const cambio = nombre.trim() !== espacio.name || !mismas;
 
   async function guardar(e: FormEvent) {
@@ -197,7 +199,7 @@ function Datos({
         {catalogo.datos && (
           <div className="flex flex-wrap gap-2">
             {catalogo.datos.map((d) => {
-              const puesta = elegidas.includes(d.slug);
+              const puesta = elegidas.some((x) => x.slug === d.slug);
               return (
                 <button
                   key={d.slug}
@@ -205,7 +207,9 @@ function Datos({
                   aria-pressed={puesta}
                   onClick={() =>
                     setElegidas((xs) =>
-                      puesta ? xs.filter((x) => x !== d.slug) : [...xs, d.slug],
+                      puesta
+                        ? xs.filter((x) => x.slug !== d.slug)
+                        : [...xs, { slug: d.slug, nota: null }],
                     )
                   }
                   className={
@@ -225,6 +229,45 @@ function Datos({
           Marcá todas las que des. Es lo que ven tus alumnos debajo del nombre, y
           lo que algún día va a servirle a alguien para encontrarte.
         </p>
+
+        {/* ----------------------------------------------------------------
+            LA ACLARACIÓN
+
+            "Bachata Influence" no es una actividad distinta de "Bachata": es
+            bachata con un estilo. Si cada estilo fuera su propia categoría, el
+            día del buscador el alumno que escribe "bachata" no encontraría a
+            ninguno de los que la dan.
+
+            Así que la categoría es del catálogo —la misma para todos, la que
+            se busca— y el estilo es tuyo, en tus palabras, al lado.
+           ---------------------------------------------------------------- */}
+        {catalogo.datos && elegidas.length > 0 && (
+          <div className="mt-2 flex flex-col gap-2">
+            {elegidas.map((a) => {
+              const nombre = catalogo.datos?.find((d) => d.slug === a.slug)?.name ?? a.slug;
+              return (
+                <div key={a.slug} className="flex items-center gap-3">
+                  <span className="w-28 shrink-0 text-sm text-tenue">{nombre}</span>
+                  <Texto
+                    value={a.nota ?? ''}
+                    maxLength={40}
+                    placeholder="estilo (opcional)"
+                    onChange={(e) =>
+                      setElegidas((xs) => xs.map((x) =>
+                        x.slug === a.slug ? { ...x, nota: e.target.value } : x,
+                      ))
+                    }
+                  />
+                </div>
+              );
+            })}
+            <p className="text-xs leading-relaxed text-tenue">
+              Para el estilo, en tus palabras: "Influence", "On2", "Hatha". Se
+              muestra al lado y no es una categoría aparte, así que el que busque
+              "bachata" te va a encontrar igual.
+            </p>
+          </div>
+        )}
       </div>
 
       {error && <Aviso>{error}</Aviso>}

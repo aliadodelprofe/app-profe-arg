@@ -19,7 +19,10 @@ export type MiFicha = {
     avatar_url: string | null;
     // Qué enseña (migración 0037). Vienen con el nombre para mostrar listo:
     // la app del alumno no tiene por qué conocer el catálogo.
-    disciplinas: { disciplina: { name: string; orden: number } | null }[];
+    disciplinas: {
+      nota: string | null;
+      disciplina: { name: string; orden: number } | null;
+    }[];
   } | null;
 };
 
@@ -114,7 +117,7 @@ export async function misFichas(): Promise<MiFicha[]> {
     .select(
       'id, full_name, avatar_url, tenant_id, ' +
       'escuela:tenants(name, avatar_url, ' +
-      'disciplinas:tenant_disciplines(disciplina:disciplines(name, orden)))',
+      'disciplinas:tenant_disciplines(nota, disciplina:disciplines(name, orden)))',
     );
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiFicha[];
@@ -125,10 +128,13 @@ export async function misFichas(): Promise<MiFicha[]> {
 // en blanco.
 export function queEnsena(ficha: MiFicha): string | null {
   const ds = (ficha.escuela?.disciplinas ?? [])
-    .map((x) => x.disciplina)
-    .filter((d): d is { name: string; orden: number } => d !== null)
-    .sort((a, b) => a.orden - b.orden || a.name.localeCompare(b.name))
-    .map((d) => d.name);
+    .filter((x) => x.disciplina !== null)
+    .sort((a, b) =>
+      a.disciplina!.orden - b.disciplina!.orden
+      || a.disciplina!.name.localeCompare(b.disciplina!.name))
+    // "Bachata Influence": la actividad y, si el profe la aclaró, su estilo.
+    // Se leen como una sola cosa porque para el alumno lo son.
+    .map((x) => x.disciplina!.name + (x.nota ? ` ${x.nota}` : ''));
   return ds.length > 0 ? ds.join(' · ') : null;
 }
 

@@ -25,7 +25,14 @@ export type Espacio = {
   plan: string;
   // Qué enseña (migración 0037). Son varias: el que da bachata también da
   // salsa. Vienen de tenant_disciplines, no de una columna del espacio.
-  disciplinas: string[];      // los slugs
+  disciplinas: ActividadDelEspacio[];
+};
+
+// La actividad es del catálogo y es la misma para todos; la nota es del
+// profesor y aclara el estilo (migración 0038). "Bachata" + "Influence".
+export type ActividadDelEspacio = {
+  slug: string;
+  nota: string | null;
 };
 
 // Una entrada del catálogo: lo que llena el menú.
@@ -157,7 +164,7 @@ export type Clase = {
 export async function traerEspacios(): Promise<Espacio[]> {
   const { data, error } = await supabase
     .from('tenant_members')
-    .select('espacio:tenants(id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug))');
+    .select('espacio:tenants(id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug, nota))');
   if (error) throw new Error(error.message);
   const filas = (data ?? []) as unknown as { espacio: unknown }[];
   return filas
@@ -1284,7 +1291,7 @@ export async function editarEspacio(
     .from('tenants')
     .update(datos)
     .eq('id', espacioId)
-    .select('id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug)')
+    .select('id, name, avatar_url, plan, disciplinas:tenant_disciplines(slug, nota)')
     .single();
   if (error) throw new Error(error.message);
   return normalizarEspacio(data);
@@ -1315,7 +1322,7 @@ export async function traerDisciplinas(): Promise<Disciplina[]> {
 // dos consultas sobre una tabla de cinco filas.
 export async function guardarDisciplinas(
   espacioId: string,
-  slugs: string[],
+  actividades: ActividadDelEspacio[],
 ): Promise<void> {
   const { error: borrado } = await supabase
     .from('tenant_disciplines')
@@ -1323,11 +1330,16 @@ export async function guardarDisciplinas(
     .eq('tenant_id', espacioId);
   if (borrado) throw new Error(borrado.message);
 
-  if (slugs.length === 0) return;
+  if (actividades.length === 0) return;
 
   const { error } = await supabase
     .from('tenant_disciplines')
-    .insert(slugs.map((slug) => ({ tenant_id: espacioId, slug })));
+    .insert(actividades.map((a) => ({
+      tenant_id: espacioId,
+      slug: a.slug,
+      // La base rechaza una nota vacía con espacios: o hay algo o es nula.
+      nota: a.nota?.trim() || null,
+    })));
   if (error) throw new Error(error.message);
 }
 
@@ -1335,13 +1347,16 @@ export async function guardarDisciplinas(
 // que ninguna pantalla tenga que saber cómo viene armada la consulta.
 export function normalizarEspacio(fila: unknown): Espacio {
   const r = (fila ?? {}) as Record<string, unknown>;
-  const ds = (r.disciplinas ?? []) as { slug: unknown }[];
+  const ds = (r.disciplinas ?? []) as { slug: unknown; nota: unknown }[];
   return {
     id: String(r.id),
     name: String(r.name),
     avatar_url: (r.avatar_url as string) ?? null,
     plan: String(r.plan ?? 'free'),
-    disciplinas: ds.map((d) => String(d.slug)),
+    disciplinas: ds.map((d) => ({
+      slug: String(d.slug),
+      nota: (d.nota as string) ?? null,
+    })),
   };
 }
 

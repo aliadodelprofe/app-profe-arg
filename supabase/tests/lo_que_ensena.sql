@@ -36,9 +36,9 @@ delete from public.tenant_disciplines
  where tenant_id = nullif(current_setting('prueba.escuela', true), '')::uuid
    and slug in ('zumba', 'pilates');
 
-insert into public.tenant_disciplines (tenant_id, slug)
-select nullif(current_setting('prueba.escuela', true), '')::uuid, s
-  from (values ('zumba'), ('pilates')) as v(s);
+insert into public.tenant_disciplines (tenant_id, slug, nota)
+select nullif(current_setting('prueba.escuela', true), '')::uuid, s, n
+  from (values ('zumba', null::text), ('pilates', 'Reformer')) as v(s, n);
 
 do $$
 declare
@@ -74,6 +74,25 @@ begin
     perform set_config('prueba.v4', 'FALLA - acepto una que no esta en el catalogo', false);
   exception when others then
     perform set_config('prueba.v4', 'PASA - la base lo rechazo', false);
+  end;
+
+  -- 4b. La aclaración se guarda al lado de la actividad, no en vez de ella
+  --     (migración 0038). Es lo que evita que "Bachata Influence" tenga que
+  --     ser una categoría propia.
+  perform set_config('prueba.v4b',
+    case when exists (
+      select 1 from public.tenant_disciplines
+       where tenant_id = v_escuela and slug = 'pilates' and nota = 'Reformer')
+     then 'PASA' else 'FALLA - no guardo la aclaracion' end, false);
+
+  -- 4c. Y tiene tope: sin eso termina la biografía del profesor ahí adentro.
+  begin
+    update public.tenant_disciplines
+       set nota = repeat('x', 41)
+     where tenant_id = v_escuela and slug = 'zumba';
+    perform set_config('prueba.v4c', 'FALLA - acepto una aclaracion de 41 letras', false);
+  exception when others then
+    perform set_config('prueba.v4c', 'PASA - la base lo rechazo', false);
   end;
 
   -- 5. Nadie escribe el catálogo desde la app: no hay politica de insert, y
@@ -161,6 +180,12 @@ select 'La misma actividad dos veces no se apila',
 union all
 select 'Una actividad fuera del catalogo no entra',
        coalesce(current_setting('prueba.v4', true), 'NO SE EJECUTO')
+union all
+select 'La aclaracion se guarda al lado de la actividad',
+       coalesce(current_setting('prueba.v4b', true), 'NO SE EJECUTO')
+union all
+select 'Una aclaracion mas larga que el tope no entra',
+       coalesce(current_setting('prueba.v4c', true), 'NO SE EJECUTO')
 union all
 select 'Nadie escribe el catalogo desde la app',
        coalesce(current_setting('prueba.v5', true), 'NO SE EJECUTO')
