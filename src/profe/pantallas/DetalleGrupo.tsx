@@ -6,6 +6,7 @@ import {
   sumarDias, diaSemana, mesDe, asegurarClases, asegurarImputaciones, primerHorario,
   hoyISO, horarioDe,
   darDeBaja, volverAAnotar, quitarInscripcion, crearCargo, cobrarCuotaDelGrupo,
+  dejarLaEscuela, volverALaEscuela,
   traerFicha, editarFicha,
   mesEnPalabras, inicioDelMes, precioDe, precioDelGrupo, asegurarCargos,
   inscribirConArranqueDiferido, mesSiguiente,
@@ -1173,8 +1174,13 @@ function FilaAlumno({
   // La hoja del alumno. Las acciones viven adentro: en la fila eran cuatro
   // botones por persona, y seis personas hacían veinticuatro botones iguales.
   const [abierto, setAbierto] = useState(false);
+  // La baja de la escuela entera tiene su propia confirmación. No comparte la
+  // de "quitar" porque no son lo mismo ni de lejos: una borra un error de
+  // carga, la otra dice que esa persona dejó de venir.
+  const [confirmandoEscuela, setConfirmandoEscuela] = useState(false);
 
   const activa = persona.activo;
+  const enLaEscuela = persona.alumno.status !== 'inactive';
 
   async function hacer(accion: () => Promise<void>) {
     setTrabajando(true);
@@ -1183,12 +1189,14 @@ function FilaAlumno({
       await accion();
       setAbierto(false);
       setConfirmando(false);
+      setConfirmandoEscuela(false);
       setTrabajando(false);
       alCambiar();
     } catch (e) {
       setError((e as Error).message);
       setTrabajando(false);
       setConfirmando(false);
+      setConfirmandoEscuela(false);
     }
   }
 
@@ -1199,7 +1207,8 @@ function FilaAlumno({
   // mes que viene. Ya NO repite la forma de pago actual: esa está dos
   // centímetros a la derecha, debajo del precio.
   const detalles = [
-    !activa && (inscripcion.end_date ? `ya no cursa · hasta el ${fecha(inscripcion.end_date)}` : 'ya no cursa'),
+    !enLaEscuela && 'dejó la escuela',
+    enLaEscuela && !activa && (inscripcion.end_date ? `ya no cursa · hasta el ${fecha(inscripcion.end_date)}` : 'ya no cursa'),
     activa && !persona.alumno.email && 'sin correo: no va a poder entrar a la app',
     activa && persona.alumno.email && !persona.alumno.user_id && !persona.alumno.invite_rejected_at &&
       `invitado a ${persona.alumno.email} · todavía no aceptó`,
@@ -1262,7 +1271,26 @@ function FilaAlumno({
               </p>
             )}
 
-            {confirmando ? (
+            {confirmandoEscuela ? (
+              <div>
+                <p className="mb-3 text-sm text-tenue">
+                  Sale de <span className="text-tinta">todos</span> los grupos de la
+                  escuela, no solo de este, y dejan de generársele cargos. Lo que ya
+                  debe lo sigue debiendo: irse no borra una deuda.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Boton
+                    type="button" disabled={trabajando}
+                    onClick={() => hacer(async () => { await dejarLaEscuela(persona.alumno.id); })}
+                  >
+                    Sí, dejó la escuela
+                  </Boton>
+                  <BotonSecundario type="button" onClick={() => setConfirmandoEscuela(false)}>
+                    No
+                  </BotonSecundario>
+                </div>
+              </div>
+            ) : confirmando ? (
               <div>
                 <p className="mb-3 text-sm text-tenue">
                   Quitar borra la inscripción como si nunca hubiera existido. Si el
@@ -1335,6 +1363,31 @@ function FilaAlumno({
                 >
                   Quitar del grupo
                 </BotonSecundario>
+
+                {/* SE FUE DE LA ESCUELA, NO DE ESTE GRUPO.
+
+                    Separado con una línea y al final porque es de otra
+                    categoría: las tres de arriba son cosas que le hacés a
+                    esta inscripción; esta se lleva puestas todas, incluidas
+                    las de los otros grupos. Mezclada entre las demás, un
+                    toque distraído da de baja a alguien de todos lados. */}
+                <div className="mt-2 border-t border-linea pt-4">
+                  {enLaEscuela ? (
+                    <BotonSecundario
+                      type="button" className="w-full"
+                      onClick={() => setConfirmandoEscuela(true)}
+                    >
+                      Dejó la escuela
+                    </BotonSecundario>
+                  ) : (
+                    <BotonSecundario
+                      type="button" disabled={trabajando} className="w-full"
+                      onClick={() => hacer(() => volverALaEscuela(persona.alumno.id))}
+                    >
+                      Volvió a la escuela
+                    </BotonSecundario>
+                  )}
+                </div>
               </div>
             )}
           </div>

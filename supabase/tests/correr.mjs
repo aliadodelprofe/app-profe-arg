@@ -49,6 +49,8 @@ const PRUEBAS = [
   'avatares.sql',
   'mi_correo.sql',
   'lo_que_ensena.sql',
+  'grupo_online.sql',
+  'dejar_la_escuela.sql',
   'control_general.sql',
 ];
 

@@ -142,6 +142,9 @@ export type Inscripcion = {
     email: string | null;
     user_id: string | null;
     invite_rejected_at: string | null;
+    // 'active' o 'inactive' (migración 0040). Inactivo es alguien que dejó la
+    // escuela entera, no un grupo.
+    status: string;
   } | null;
 };
 
@@ -206,7 +209,7 @@ export async function traerInscripciones(grupoId: string): Promise<Inscripcion[]
     .from('enrollments')
     .select(
       'id, billing_mode, status, start_date, end_date, ' +
-      'alumno:students(id, full_name, avatar_url, email, user_id, invite_rejected_at)',
+      'alumno:students(id, full_name, avatar_url, email, user_id, invite_rejected_at, status)',
     )
     .eq('group_id', grupoId);
   if (error) throw new Error(error.message);
@@ -418,11 +421,17 @@ export type PagoPendiente = {
 // Los pasamos a número una sola vez, acá, y no en cada pantalla.
 const num = (v: unknown): number => Number(v ?? 0);
 
+// Los de la escuela, para elegir a quién anotar en un grupo.
+//
+// Solo los ACTIVOS (migración 0040). Alguien que dejó la escuela no tiene por
+// qué aparecer en el menú de "elegí un alumno": si volvió, primero se lo
+// marca como que volvió, y eso es una decisión, no un descuido en una lista.
 export async function traerAlumnos(espacioId: string): Promise<Alumno[]> {
   const { data, error } = await supabase
     .from('students')
     .select('id, full_name, avatar_url, status')
     .eq('tenant_id', espacioId)
+    .eq('status', 'active')
     .order('full_name');
   if (error) throw new Error(error.message);
   return (data ?? []) as Alumno[];
@@ -888,6 +897,28 @@ export async function darDeBaja(tramos: Inscripcion[], hasta: string): Promise<v
       .eq('id', t.id);
     if (error) throw new Error(error.message);
   }
+}
+
+// ---------------------------------------------------------------------------
+// DEJAR LA ESCUELA, NO UN GRUPO  (migración 0040)
+//
+// Va por una función de la base y no por un update, y el motivo importa: desde
+// la 0023 el profesor solo puede modificar una ficha que nadie reclamó. Esa
+// regla es correcta —el nombre y la foto son de la persona— pero el ESTADO no
+// es parte de la identidad del alumno: es la relación de la escuela con él.
+// La función separa las dos cosas y deja cambiar el estado y nada más.
+//
+// Devuelve cuántas inscripciones cerró, para poder decirlo.
+// ---------------------------------------------------------------------------
+export async function dejarLaEscuela(alumnoId: string): Promise<number> {
+  const { data, error } = await supabase.rpc('dejar_la_escuela', { p_alumno: alumnoId });
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+export async function volverALaEscuela(alumnoId: string): Promise<void> {
+  const { error } = await supabase.rpc('volver_a_la_escuela', { p_alumno: alumnoId });
+  if (error) throw new Error(error.message);
 }
 
 // Se reabre UNO solo: el último. Dar de baja borró o cerró los tramos que
