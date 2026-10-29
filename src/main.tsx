@@ -26,11 +26,42 @@ function montar(Componente: ComponentType, nueva: boolean) {
 // Tres apps conviviendo en el mismo proyecto:
 //   /profe...   → la app del profesor, contra Supabase
 //   /alumno...  → el portal del alumno, contra Supabase
-//   cualquier otra dirección → la app de la comunidad, contra Firebase
+//   la raíz     → la puerta de entrada del producto nuevo
 //
-// La carga es dinámica a propósito: entrando por /profe o /alumno el código de
-// Firebase no se descarga y no hay manera de tocar la base de producción.
+// La carga es dinámica a propósito: entrando por cualquiera de esas tres, el
+// código de Firebase no se descarga y no hay manera de tocar la base de
+// producción de la comunidad.
+//
+// QUIÉN SE QUEDA CON LA RAÍZ, Y POR QUÉ SE DECIDE POR DOMINIO.
+//
+// Hasta hoy la raíz servía la app de la comunidad, que es otro producto
+// contra otra base. Eso no era solo desprolijo: cuando Supabase rechazó una
+// redirección de autenticación y cayó a su destino de respaldo, dejó al
+// usuario adentro del producto equivocado, con el token colgando en la
+// dirección. La raíz tiene que ser de una sola app.
+//
+// Se decide por DOMINIO y no por una variable de entorno a propósito. Una
+// variable hay que acordarse de ponerla en cada despliegue, y el día que uno
+// se olvide, el dominio nuevo serviría la app de la comunidad contra el
+// Firebase de producción — exactamente el accidente que esto viene a evitar.
+// Con el dominio, el que tiene que acordarse de algo es el que publica la app
+// VIEJA, que está congelada y vive en un lugar que ya existe.
 const ruta = window.location.pathname;
+
+// Los dominios donde vive la app de la comunidad. El `.web.app` y el
+// `.firebaseapp.com` son los que Firebase Hosting da solos, además del
+// dominio propio.
+const DOMINIOS_COMUNIDAD = [
+  'tabachata-academy.com',
+  'www.tabachata-academy.com',
+  'ta-bachata-academy.web.app',
+  'ta-bachata-academy.firebaseapp.com',
+];
+
+// `/comunidad` es la puerta de servicio: sirve para abrirla en localhost el
+// día que haya que arreglarle un bug, sin tener que tocar esta lista.
+const esComunidad =
+  DOMINIOS_COMUNIDAD.includes(window.location.hostname) || ruta.startsWith('/comunidad');
 
 // Marca el documento como "Sala" antes de montar nada. De eso cuelga el
 // fondo de la página en index.css, que es la única hoja de estilos y la
@@ -59,12 +90,15 @@ function marcarAppNueva() {
   document.head.appendChild(fuente);
 }
 
-if (ruta.startsWith('/profe')) {
+if (esComunidad) {
+  import('./App').then((m) => montar(m.default, false));
+} else if (ruta.startsWith('/profe')) {
   marcarAppNueva();
   import('./profe/AppProfe').then((m) => montar(m.default, true));
 } else if (ruta.startsWith('/alumno')) {
   marcarAppNueva();
   import('./alumno/AppAlumno').then((m) => montar(m.default, true));
 } else {
-  import('./App').then((m) => montar(m.default, false));
+  marcarAppNueva();
+  import('./inicio/Inicio').then((m) => montar(m.default, true));
 }

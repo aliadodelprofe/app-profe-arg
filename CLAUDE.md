@@ -159,6 +159,19 @@ El límite es **alumnos activos** = alumnos con actividad en los últimos 30 dí
 - Antes de un cambio estructural, explicar en dos líneas qué se rompe y qué hay que volver a probar.
 - Si una política de RLS se está volviendo enredada, es señal de que el modelo está mal. Frenar y revisar el modelo.
 
+## Dos apps, dos despliegues
+
+En este repo conviven dos productos. **No comparten raíz, ni dominio, ni archivo de configuración.**
+
+| | Dónde vive | Config | Contra qué base |
+|---|---|---|---|
+| App de la comunidad (congelada) | tabachata-academy.com, Firebase Hosting | `firebase.json` | Firebase, producción |
+| App nueva | Vercel, dominio propio | `vercel.json` | Supabase |
+
+`src/main.tsx` decide cuál monta **por dominio**, no por una variable de entorno: una variable hay que acordarse de ponerla en cada despliegue, y el día que alguien se olvide, un dominio nuevo serviría la app de la comunidad contra el Firebase de producción. La lista de dominios de la comunidad está en `main.tsx`; `/comunidad` la abre a mano en localhost para arreglarle un bug.
+
+**La política de seguridad de contenido (CSP) de `vercel.json` lista a qué servidores puede hablarle la app nueva.** Si algún día habla con uno nuevo, hay que agregarlo ahí. Un dominio que falta no rompe el build: rompe la app en producción, y el navegador bloquea las consultas sin que la app pueda hacer nada.
+
 ## Contexto del autor
 
 Tomás no es desarrollador profesional: viene de consultoría y real estate corporativo, y construyó la primera versión con vibe coding. Está estudiando Data Analytics (SQL).
