@@ -15,9 +15,27 @@
 begin;
 
 -- ----------------------------------------------------------------------------
--- Preparación, como Profe 2: el grupo con los dos precios, y Alumno Portal
--- pagando por clase, sin fecha de fin.
+-- LA FICHA SE BUSCA CON LA MISMA REGLA QUE USA LA FUNCIÓN
+--
+-- Esta preparación ya falló dos veces, las dos por lo mismo: buscaba la ficha
+-- por el NOMBRE ("Alumno Portal") mientras que cambiar_forma_de_pago la busca
+-- por el USUARIO y el espacio. Mientras hubo una sola ficha de alumno1 en esa
+-- escuela, las dos reglas daban lo mismo y la prueba pasaba por casualidad. El
+-- día que apareció otra ficha, la función tocó una y la prueba midió la otra.
+--
+-- La forma de que no vuelva a pasar no es afinar el nombre: es preguntar lo
+-- mismo que pregunta la función. Si algún día la función cambia de criterio, la
+-- prueba va a fallar — que es exactamente lo que tiene que hacer.
+--
+-- Y después la prueba se arma SU inscripción: cierra las que haya y abre una,
+-- así lo que mide es una fila que puso ella y no la que quedó de otra corrida.
 -- ----------------------------------------------------------------------------
+
+-- El usuario, capturado ANTES de ponerse el disfraz: auth.users no se lee con
+-- el rol de la aplicación.
+select set_config('prueba.usuario',
+  (select id::text from auth.users where email = 'alumno1@prueba.com'), false);
+
 select set_config('request.jwt.claims',
   json_build_object(
     'sub', (select id from auth.users where email = 'profe2@prueba.com'),
@@ -28,27 +46,37 @@ update public.groups
    set price_per_session = 5000, price_per_period = 18000
  where name = 'Grupo de Prueba';
 
-update public.enrollments e
-   set billing_mode = 'per_session', status = 'active',
-       end_date = null, start_date = current_date - 30
-  from public.students s
- where s.id = e.student_id and s.full_name = 'Alumno Portal';
-
 select set_config('prueba.grupo',
   (select id::text from public.groups where name = 'Grupo de Prueba'), false);
 
--- La ficha que acabamos de tocar, anotada ahora que la tenemos a la vista.
--- Antes el bloque de abajo la buscaba con "la primera ficha de este usuario":
--- alumno1 tiene varias (una por escuela) y "la primera" es la que el motor
--- devuelva ese día. Alcanzó con reescribir una fila para que cambiara el orden
--- y la prueba midiera una ficha que no era la del grupo.
 select set_config('prueba.ficha',
   (select s.id::text
      from public.students s
-     join public.enrollments e on e.student_id = s.id
-    where s.full_name = 'Alumno Portal'
-      and e.group_id = (select id from public.groups where name = 'Grupo de Prueba')
+    where s.user_id = nullif(current_setting('prueba.usuario', true), '')::uuid
+      and s.tenant_id = (select tenant_id from public.groups where name = 'Grupo de Prueba')
     limit 1), false);
+
+do $$
+declare
+  v_grupo uuid := nullif(current_setting('prueba.grupo', true), '')::uuid;
+  v_ficha uuid := nullif(current_setting('prueba.ficha', true), '')::uuid;
+  v_tenant uuid := (select tenant_id from public.groups
+                     where id = nullif(current_setting('prueba.grupo', true), '')::uuid);
+begin
+  if v_ficha is null then
+    raise exception 'alumno1 no tiene ficha en la escuela de ese grupo';
+  end if;
+
+  -- Lo que haya quedado de antes se cierra lejos, para que no compita con la
+  -- que abre esta prueba.
+  update public.enrollments
+     set status = 'ended', end_date = current_date - 31
+   where group_id = v_grupo and student_id = v_ficha;
+
+  insert into public.enrollments
+    (tenant_id, group_id, student_id, billing_mode, status, start_date, end_date)
+  values (v_tenant, v_grupo, v_ficha, 'per_session', 'active', current_date - 30, null);
+end $$;
 
 -- ----------------------------------------------------------------------------
 -- Como el alumno.
@@ -73,7 +101,7 @@ declare
 begin
   v_ficha := nullif(current_setting('prueba.ficha', true), '')::uuid;
   if v_ficha is null then
-    raise exception 'La preparacion no encontro la ficha de Alumno Portal en el grupo';
+    raise exception 'La preparacion no encontro la ficha de alumno1 en esa escuela';
   end if;
 
   -- 1. Cambiar a mensual: vale desde el 1 del mes que viene.
@@ -83,11 +111,12 @@ begin
          else 'FALLA - dijo que vale desde ' || v_desde || ' y deberia ser ' || v_inicio end,
     false);
 
-  -- 2. La inscripción de ahora queda cerrada a fin de mes.
+  -- 2. La inscripción de ahora queda cerrada a fin de mes. Es la que abrió la
+  --    preparación: la más nueva de las de por clase.
   select end_date into v_hasta
     from public.enrollments
    where group_id = v_grupo and student_id = v_ficha and billing_mode = 'per_session'
-   order by start_date limit 1;
+   order by start_date desc limit 1;
   perform set_config('prueba.v2',
     case when v_hasta = v_fin then 'PASA'
          else 'FALLA - la de por clase termina el ' || coalesce(v_hasta::text,'nunca') end,
