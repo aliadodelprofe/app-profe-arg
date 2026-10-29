@@ -208,7 +208,7 @@ function Bloque({
   primario: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col gap-4 rounded-3xl bg-fondo p-6">
+    <div className="flex h-full flex-col gap-4 rounded-3xl bg-fondo p-5">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.08em] text-acento">
           {para}
@@ -258,9 +258,22 @@ export default function Inicio() {
           <div className="flota-a absolute -left-24 -top-28 h-80 w-80 rounded-full bg-acento/25 blur-3xl" />
           <div className="flota-b absolute -right-28 top-16 h-72 w-72 rounded-full bg-ok/20 blur-3xl" />
           <div className="flota-c absolute left-1/4 top-72 h-64 w-64 rounded-full bg-acento/15 blur-3xl" />
+
+          {/* EL CORTE DE ABAJO, QUE SE VEÍA COMO UNA RAYA.
+
+              Las manchas viven adentro de una caja que las recorta, porque si
+              no se desbordarían a los costados y aparecería una barra de
+              scroll horizontal. Pero recortar un difuminado deja un borde
+              recto: justo lo que un difuminado no tiene, y por eso saltaba a
+              la vista como una línea cruzando la pantalla.
+
+              Este degradado disuelve el color contra el fondo antes de llegar
+              al final de la franja. Donde la caja corta, ya no hay nada que
+              cortar. */}
+          <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-b from-transparent to-fondo" />
         </div>
 
-        <div className="relative mx-auto w-full max-w-2xl px-5 pb-20 pt-8">
+        <div className="relative mx-auto w-full max-w-2xl px-5 pb-24 pt-8">
           {/* El encabezado entra escalonado: marca, título, bajada, botones.
               Cada pieza un pelito después que la anterior, así la página se
               arma a la vista en vez de aparecer entera de golpe. */}
@@ -305,7 +318,7 @@ export default function Inicio() {
           Gemelos: mismo tamaño, misma forma, misma cantidad de renglones. Que
           uno fuera más grande diría que el otro es el invitado. */}
       <section className="bg-panel">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-20">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-24">
           <Aparece>
             <div className="flex flex-col gap-4 sm:flex-row sm:gap-5 [&>*]:flex-1">
               <Bloque
@@ -346,7 +359,7 @@ export default function Inicio() {
           marcha, porque esta persona ya migró datos a algo una vez y le llevó
           un fin de semana. Tres pasos, y ninguno dice "importá". */}
       <section className="bg-fondo">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-20">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-24">
           <Aparece>
             <div>
               <h2 className="text-2xl font-bold tracking-[-0.02em] text-tinta">
@@ -361,7 +374,7 @@ export default function Inicio() {
                 ].map(([titulo, bajada], i) => (
                   <li
                     key={titulo}
-                    className="anim-entrar flex items-center gap-4 rounded-2xl bg-panel px-5 py-4 shadow-apoyo"
+                    className="anim-entrar flex items-center gap-4 rounded-2xl bg-panel p-5 shadow-apoyo"
                     style={{ animationDelay: `${i * 90}ms` }}
                   >
                     <span className="plata flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-acento-suave text-base font-bold text-acento">
@@ -392,7 +405,7 @@ export default function Inicio() {
           producto donde el acento ocupa una pantalla entera — funciona porque
           es lo último: cierra la página con color en vez de desvanecerse. */}
       <section className="bg-acento">
-        <div className="mx-auto w-full max-w-2xl px-5 pb-12 pt-4 text-center">
+        <div className="mx-auto w-full max-w-2xl px-5 pb-14 text-center">
           <Aparece>
             <div>
               <p className="text-pretty text-3xl font-bold leading-tight tracking-[-0.03em] text-sobre-acento">
