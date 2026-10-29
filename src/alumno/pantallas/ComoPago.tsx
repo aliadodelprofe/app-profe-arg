@@ -71,9 +71,12 @@ export default function ComoPago({
               key={grupo.id}
               titulo={grupo.name}
               detalle={
-                futuro && futuro.start_date
-                  ? `pasás a ${nombre(futuro.billing_mode)} el ${fecha(futuro.start_date)}`
-                  : 'tocá para ver o cambiar'
+                [
+                  grupo.disciplina?.name,
+                  futuro && futuro.start_date
+                    ? `pasás a ${nombre(futuro.billing_mode)} el ${fecha(futuro.start_date)}`
+                    : 'tocá para ver o cambiar',
+                ].filter(Boolean).join(' · ')
               }
               valor={plata(precio)}
               bajoValor={modo ? nombre(modo) : undefined}

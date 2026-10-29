@@ -682,8 +682,11 @@ function MisClases({
             {proxima.start_time ? ` · ${proxima.start_time.slice(0, 5)}` : ''}
           </p>
           <p className="mt-0.5 truncate text-sm text-tenue">
-            {proxima.grupo?.name ?? 'Clase'}
-            {lugarDe(proxima) ? ` · ${lugarDe(proxima)}` : ''}
+            {/* De qué es, adelante del nombre del grupo: en una escuela que
+                da bachata y salsa, "Regulares martes" no dice a cuál vas. */}
+            {[proxima.grupo?.disciplina?.name, proxima.grupo?.name ?? 'Clase', lugarDe(proxima)]
+              .filter(Boolean)
+              .join(' · ')}
           </p>
         </button>
       )}
@@ -755,6 +758,11 @@ function MisClases({
 
       {abierta && (
         <Hoja titulo={abierta.grupo?.name ?? 'Clase'} alCerrar={() => setAbierta(null)}>
+          {abierta.grupo?.disciplina && (
+            <div className="mb-3">
+              <Etiqueta tono="acento">{abierta.grupo.disciplina.name}</Etiqueta>
+            </div>
+          )}
           <DetalleClase clase={abierta} />
         </Hoja>
       )}

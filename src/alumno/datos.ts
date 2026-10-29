@@ -42,6 +42,9 @@ export type MiClase = {
     // Migración 0032. Si es online no hay mapa: hay un enlace.
     online: boolean;
     meeting_url: string | null;
+    // De qué es (migración 0039). Con el nombre ya traducido: la app del
+    // alumno no conoce el catálogo ni tiene por qué.
+    disciplina: { name: string } | null;
   } | null;
 };
 
@@ -141,7 +144,11 @@ export function queEnsena(ficha: MiFicha): string | null {
 export async function misClases(tenantId: string): Promise<MiClase[]> {
   const { data, error } = await supabase
     .from('sessions')
-    .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address, online, meeting_url)')
+    .select(
+      'id, date, start_time, title, recap, status, venue, address, ' +
+      'grupo:groups(name, venue, address, online, meeting_url, ' +
+      'disciplina:disciplines(name))',
+    )
     .eq('tenant_id', tenantId)
     .order('date', { ascending: false });
   if (error) throw new Error(error.message);
@@ -286,6 +293,7 @@ export type MiArreglo = {
   grupo: {
     id: string;
     name: string;
+    disciplina: { name: string } | null;
     price_per_session: number | null;
     price_per_period: number | null;
     // Solo para contarlos: cuántas veces por semana se junta el grupo. Es lo
@@ -300,7 +308,8 @@ export async function misArreglos(tenantId: string): Promise<MiArreglo[]> {
     .from('enrollments')
     .select(
       'id, billing_mode, start_date, end_date, ' +
-      'grupo:groups(id, name, price_per_session, price_per_period, ' +
+      'grupo:groups(id, name, disciplina:disciplines(name), ' +
+      'price_per_session, price_per_period, ' +
       'horarios:group_schedule(id, por_mes))',
     )
     .eq('tenant_id', tenantId)
