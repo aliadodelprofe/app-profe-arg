@@ -25,10 +25,20 @@ set local role authenticated;
 select set_config('prueba.escuela',
   (select id::text from public.tenants where name = 'Escuela de Prueba 2'), false);
 
+-- LAS DOS QUE PONE ESTA PRUEBA, Y NINGUNA OTRA.
+--
+-- La escuela puede tener ya alguna cargada —la mudanza de la 0037 le pasó lo
+-- que tuviera escrito a mano— así que contar cuántas tiene en total mide la
+-- suerte de los datos, no la regla. Se borran estas dos primero por si ya
+-- estaban, se ponen, y después se cuentan ESTAS DOS. La transacción se
+-- deshace al final, así que lo que la escuela tuviera queda como estaba.
+delete from public.tenant_disciplines
+ where tenant_id = nullif(current_setting('prueba.escuela', true), '')::uuid
+   and slug in ('zumba', 'pilates');
+
 insert into public.tenant_disciplines (tenant_id, slug)
 select nullif(current_setting('prueba.escuela', true), '')::uuid, s
-  from (values ('bachata'), ('salsa')) as v(s)
-on conflict do nothing;
+  from (values ('zumba'), ('pilates')) as v(s);
 
 do $$
 declare
@@ -41,15 +51,17 @@ begin
     case when v_n >= 20 then 'PASA - ' || v_n || ' actividades en el catalogo'
          else 'FALLA - solo ' || v_n || ' actividades' end, false);
 
-  -- 2. Ve las suyas.
+  -- 2. Ve las dos que acaba de poner.
   select count(*) into v_n
-    from public.tenant_disciplines where tenant_id = v_escuela;
+    from public.tenant_disciplines
+   where tenant_id = v_escuela and slug in ('zumba', 'pilates');
   perform set_config('prueba.v2',
-    case when v_n = 2 then 'PASA' else 'FALLA - ve ' || v_n end, false);
+    case when v_n = 2 then 'PASA' else 'FALLA - ve ' || v_n || ' de las 2 que puso' end,
+    false);
 
   -- 3. La misma actividad dos veces no se apila.
   begin
-    insert into public.tenant_disciplines (tenant_id, slug) values (v_escuela, 'bachata');
+    insert into public.tenant_disciplines (tenant_id, slug) values (v_escuela, 'zumba');
     perform set_config('prueba.v3', 'FALLA - la cargo dos veces', false);
   exception when unique_violation then
     perform set_config('prueba.v3', 'PASA - la base lo rechazo', false);
@@ -94,6 +106,8 @@ begin
   perform set_config('prueba.v6',
     case when v_n = 0 then 'PASA' else 'FALLA - ve ' || v_n || ' de una escuela ajena' end,
     false);
+  -- Acá sí se cuentan TODAS a propósito: lo que se verifica es que no vea
+  -- ninguna, y cualquier fila que aparezca es una de más.
 
   begin
     insert into public.tenant_disciplines (tenant_id, slug) values (v_escuela, 'yoga');
@@ -119,13 +133,14 @@ declare
   v_n int;
 begin
   select count(*) into v_n
-    from public.tenant_disciplines where tenant_id = v_escuela;
+    from public.tenant_disciplines
+   where tenant_id = v_escuela and slug in ('zumba', 'pilates');
   perform set_config('prueba.v8',
-    case when v_n = 2 then 'PASA' else 'FALLA - ve ' || v_n || ' en vez de 2' end, false);
+    case when v_n = 2 then 'PASA' else 'FALLA - ve ' || v_n || ' de las 2' end, false);
 
   begin
     delete from public.tenant_disciplines
-     where tenant_id = v_escuela and slug = 'salsa';
+     where tenant_id = v_escuela and slug = 'pilates';
     get diagnostics v_n = row_count;
     perform set_config('prueba.v9',
       case when v_n = 0 then 'PASA - no borro ninguna'

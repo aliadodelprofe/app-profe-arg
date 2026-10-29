@@ -22,7 +22,7 @@ begin;
       'sub', (select id from auth.users where email = 'profe1@prueba.com'),
       'role','authenticated')::text, true);
   set local role authenticated;
-  select public.create_tenant('Escuela de Prueba 1', 'bachata') as espacio_de_profe1
+  select public.create_tenant('Escuela de Prueba 1') as espacio_de_profe1
    where not exists (select 1 from public.tenants where name = 'Escuela de Prueba 1');
 commit;
 
@@ -32,7 +32,7 @@ begin;
       'sub', (select id from auth.users where email = 'profe2@prueba.com'),
       'role','authenticated')::text, true);
   set local role authenticated;
-  select public.create_tenant('Escuela de Prueba 2', 'yoga') as espacio_de_profe2
+  select public.create_tenant('Escuela de Prueba 2') as espacio_de_profe2
    where not exists (select 1 from public.tenants where name = 'Escuela de Prueba 2');
 commit;
 
