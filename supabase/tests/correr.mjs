@@ -51,6 +51,7 @@ const PRUEBAS = [
   'lo_que_ensena.sql',
   'grupo_online.sql',
   'dejar_la_escuela.sql',
+  'archivos_sueltos.sql',
   'control_general.sql',
 ];
 
