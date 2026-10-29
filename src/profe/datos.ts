@@ -48,6 +48,10 @@ export type Grupo = {
   id: string;
   name: string;
   format: Formato;
+  discipline_slug: string | null;
+  // El nombre, traído de una: así ninguna pantalla que solo lo muestra tiene
+  // que cargarse el catálogo entero para traducir un slug.
+  disciplina: { name: string } | null;
   level: string | null;
   capacity: number | null;
   start_date: string | null;
@@ -92,6 +96,9 @@ export type DatosHorario = {
 export type DatosGrupo = {
   name: string;
   format: Formato;
+  // De qué actividad es (migración 0039). Null = la de la escuela, que casi
+  // siempre es una sola.
+  discipline_slug: string | null;
   level: string | null;
   capacity: number | null;
   start_date: string | null;
@@ -175,7 +182,8 @@ export async function traerEspacios(): Promise<Espacio[]> {
 }
 
 const COLUMNAS_GRUPO =
-  'id, name, format, level, capacity, start_date, end_date, status, venue, address, ' +
+  'id, name, format, discipline_slug, disciplina:disciplines(name), ' +
+  'level, capacity, start_date, end_date, status, venue, address, ' +
   'price_per_session, price_per_period, price_one_time, online, meeting_url, ' +
   'horarios:group_schedule(id, weekday, start_time, duration_min, por_mes)';
 

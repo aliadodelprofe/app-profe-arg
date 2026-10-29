@@ -9,7 +9,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import {
   crearGrupo, editarGrupo, NOMBRE_DIA, plata,
-  traerAlumnos, crearAlumno, inscribir, precioDelGrupo, crearClases,
+  traerAlumnos, crearAlumno, inscribir, precioDelGrupo, crearClases, traerDisciplinas,
 } from '../datos';
 import type { Espacio, Grupo, Formato, DatosGrupo, DatosHorario, ModoCobro } from '../datos';
 import { Aviso, Campo, Texto, Opciones, Boton, BotonSecundario, useCarga } from '../../comun/ui';
@@ -31,6 +31,15 @@ export default function FormularioGrupo({
   const [nombre, setNombre] = useState(grupo?.name ?? '');
   const [formato, setFormato] = useState<Formato>(grupo?.format ?? 'regular');
   const [nivel, setNivel] = useState(grupo?.level ?? '');
+  // De qué es este grupo. Solo se pregunta si la escuela da más de una cosa:
+  // al que da bachata y nada más, preguntárselo en cada grupo es hacerle
+  // repetir lo que ya dijo una vez.
+  const catalogo = useCarga(() => traerDisciplinas(), []);
+  const deLaEscuela = (catalogo.datos ?? []).filter((d) =>
+    espacio.disciplinas.some((a) => a.slug === d.slug));
+  const [actividad, setActividad] = useState(
+    grupo?.discipline_slug ?? (espacio.disciplinas.length === 1 ? espacio.disciplinas[0].slug : ''),
+  );
   const [estudio, setEstudio] = useState(grupo?.venue ?? '');
   const [direccion, setDireccion] = useState(grupo?.address ?? '');
   const [cupo, setCupo] = useState(grupo?.capacity?.toString() ?? '');
@@ -279,6 +288,7 @@ export default function FormularioGrupo({
     const datos: DatosGrupo = {
       name: nombre.trim(),
       format: formato,
+      discipline_slug: actividad || null,
       level: esParticular ? null : (nivel.trim() || null),
       // En una particular el cupo ES la gente que estás anotando. Al editar
       // no se vuelve a preguntar, así que se respeta el que ya tenía.
@@ -421,6 +431,35 @@ export default function FormularioGrupo({
           onChange={(e) => setNombre(e.target.value)}
         />
       </Campo>
+
+      {/* Antes del formato: lo primero que define un grupo es de qué es.
+          Con una sola actividad en la escuela no aparece — ya está respondido
+          y el valor se guarda igual. */}
+      {deLaEscuela.length > 1 && (
+        <Campo etiqueta="De qué es" ayuda="Lo que ven tus alumnos al anotarse.">
+          <div className="flex flex-wrap gap-2">
+            {deLaEscuela.map((d) => {
+              const puesta = actividad === d.slug;
+              return (
+                <button
+                  key={d.slug}
+                  type="button"
+                  aria-pressed={puesta}
+                  onClick={() => setActividad(puesta ? '' : d.slug)}
+                  className={
+                    'rounded-full px-3.5 py-2 text-sm font-medium transition active:scale-95 '
+                    + (puesta
+                      ? 'bg-acento text-sobre-acento'
+                      : 'bg-linea/50 text-tenue hover:text-tinta')
+                  }
+                >
+                  {d.name}
+                </button>
+              );
+            })}
+          </div>
+        </Campo>
+      )}
 
       <Campo
         etiqueta="Formato"

@@ -125,7 +125,12 @@ export default function DetalleGrupo({
         <div className="min-w-0">
           <Titulo>{grupo.name}</Titulo>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <Etiqueta tono="acento">{nombreFormato[grupo.format]}</Etiqueta>
+            {/* De qué es, primero: un profe que da bachata y salsa quiere
+                saber en qué grupo está parado antes que nada. */}
+            {grupo.disciplina && (
+              <Etiqueta tono="acento">{grupo.disciplina.name}</Etiqueta>
+            )}
+            <Etiqueta>{nombreFormato[grupo.format]}</Etiqueta>
             {periodoDe(grupo, hoyISO()) && <Etiqueta>{periodoDe(grupo, hoyISO())}</Etiqueta>}
             {horarioDe(grupo) && <Etiqueta>{horarioDe(grupo)}</Etiqueta>}
             {grupo.level && <Etiqueta>{grupo.level}</Etiqueta>}
@@ -1158,6 +1163,9 @@ function FilaAlumno({
   const [cobrado, setCobrado] = useState<string | null>(null);
   const [cobrando, setCobrando] = useState(false);
   const [editandoFicha, setEditandoFicha] = useState(false);
+  // La hoja del alumno. Las acciones viven adentro: en la fila eran cuatro
+  // botones por persona, y seis personas hacían veinticuatro botones iguales.
+  const [abierto, setAbierto] = useState(false);
 
   const activa = persona.activo;
 
@@ -1166,6 +1174,9 @@ function FilaAlumno({
     setError(null);
     try {
       await accion();
+      setAbierto(false);
+      setConfirmando(false);
+      setTrabajando(false);
       alCambiar();
     } catch (e) {
       setError((e as Error).message);
@@ -1192,43 +1203,152 @@ function FilaAlumno({
   ].filter(Boolean) as string[];
 
   return (
-    <Fila
-      avatar={nombre}
-      foto={persona.alumno.avatar_url}
-      titulo={nombre}
-      detalle={detalles.length > 0 ? detalles.join(' · ') : null}
-      valor={plata(precioDe(grupo, inscripcion))}
-      bajoValor={nombreCobro[inscripcion.billing_mode]}
-    >
-      <div className={activa ? undefined : 'opacity-60'}>
-        {activa && persona.alumno.invite_rejected_at && !persona.alumno.user_id && (
-          <p className="mb-2 text-sm text-alerta">
-            Alguien entró con {persona.alumno.email} y dijo que no es esta persona.
-            Revisá el correo en "Editar ficha".
-          </p>
-        )}
-      </div>
+    <>
+      {/* LA FILA NO TRAE BOTONES.
 
-      {error && <div className="mt-2"><Aviso>{error}</Aviso></div>}
+          Antes cada alumno arrastraba cuatro: corregir la ficha, cobrar algo
+          aparte, dar de baja y quitar. Con seis alumnos eso son veinticuatro
+          botones en la pantalla, todos del mismo color y del mismo tamaño, y
+          ninguno es lo que vas a hacer. La lista dejaba de ser una lista de
+          personas para ser una grilla de acciones.
 
-      {cobrado && (
-        <p className="mt-2 rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm text-acento">
-          {cobrado}
-        </p>
+          Ahora la fila dice lo que tiene que decir —quién, cuánto, cómo paga,
+          y si hay algo raro— y las acciones viven adentro, a un toque. Es lo
+          que hace cualquier lista de contactos: ves la lista, tocás a uno,
+          hacés lo que ibas a hacer. */}
+      <Fila
+        avatar={nombre}
+        foto={persona.alumno.avatar_url}
+        titulo={nombre}
+        detalle={detalles.length > 0 ? detalles.join(' · ') : null}
+        valor={plata(precioDe(grupo, inscripcion))}
+        bajoValor={nombreCobro[inscripcion.billing_mode]}
+        alTocar={() => { setAbierto(true); setConfirmando(false); }}
+      />
+
+      {abierto && (
+        <Hoja titulo={nombre} alCerrar={() => setAbierto(false)}>
+          <div className="flex flex-col gap-4">
+            {/* Lo que la fila no entra a decir, acá entra entero. */}
+            <div>
+              <p className="plata text-2xl font-bold text-tinta">
+                {plata(precioDe(grupo, inscripcion))}
+              </p>
+              <p className="text-sm text-tenue">
+                {nombreCobro[inscripcion.billing_mode]}
+                {!activa && ' · ya no cursa'}
+              </p>
+            </div>
+
+            {activa && persona.alumno.invite_rejected_at && !persona.alumno.user_id && (
+              <Aviso>
+                Alguien entró con {persona.alumno.email} y dijo que no es esta
+                persona. Revisá el correo en "Corregir la ficha".
+              </Aviso>
+            )}
+
+            {error && <Aviso>{error}</Aviso>}
+
+            {cobrado && (
+              <p className="rounded-lg border border-acento/25 bg-acento-suave px-3 py-2 text-sm text-acento">
+                {cobrado}
+              </p>
+            )}
+
+            {confirmando ? (
+              <div>
+                <p className="mb-3 text-sm text-tenue">
+                  Quitar borra la inscripción como si nunca hubiera existido. Si el
+                  alumno cursó, lo que corresponde es darlo de baja.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Boton
+                    type="button" disabled={trabajando}
+                    onClick={() => hacer(() => quitarInscripcion(persona.tramos))}
+                  >
+                    Sí, quitar
+                  </Boton>
+                  <BotonSecundario type="button" onClick={() => setConfirmando(false)}>
+                    No
+                  </BotonSecundario>
+                </div>
+              </div>
+            ) : (
+              /* Una debajo de la otra y a lo ancho: son cuatro cosas distintas
+                 y en fila se leen como una botonera donde ninguna se distingue.
+                 Acá cada una es un renglón que se lee. */
+              <div className="flex flex-col gap-2">
+                {/* Solo mientras nadie la reclamó. Una vez que el alumno entró,
+                    el nombre y la foto son suyos (migración 0023) y la base
+                    rechaza el cambio igual: esconder el botón es para no
+                    ofrecer algo que no se puede hacer. El período sirve para
+                    corregir un correo mal tipeado, que es lo único que impide
+                    que el alumno entre. */}
+                {!persona.alumno.user_id && (
+                  <BotonSecundario
+                    type="button" className="w-full"
+                    onClick={() => setEditandoFicha(true)}
+                  >
+                    Corregir la ficha
+                  </BotonSecundario>
+                )}
+                {/* "Cobrar algo aparte" y no "Agregar un cargo". El nombre
+                    viejo competía con lo que la app ya hace sola —la cuota del
+                    mes y la próxima clase las genera asegurar_cargos() todas
+                    las noches— y leído rápido parecía la forma de cobrar eso,
+                    que es cobrarlo dos veces. Esto es para lo único que el
+                    automatismo no puede saber: una clase particular, un pack,
+                    materiales, un recupero. */}
+                {activa && (
+                  <BotonSecundario
+                    type="button" className="w-full"
+                    onClick={() => setCobrando(true)}
+                  >
+                    Cobrar algo aparte
+                  </BotonSecundario>
+                )}
+                {activa ? (
+                  <BotonSecundario
+                    type="button" disabled={trabajando} className="w-full"
+                    onClick={() => hacer(() => darDeBaja(persona.tramos, hoyISO()))}
+                  >
+                    Dar de baja
+                  </BotonSecundario>
+                ) : (
+                  <BotonSecundario
+                    type="button" disabled={trabajando} className="w-full"
+                    onClick={() => hacer(() => volverAAnotar(persona.tramos))}
+                  >
+                    Volver a anotar
+                  </BotonSecundario>
+                )}
+                <BotonSecundario
+                  type="button" className="w-full"
+                  onClick={() => setConfirmando(true)}
+                >
+                  Quitar del grupo
+                </BotonSecundario>
+              </div>
+            )}
+          </div>
+        </Hoja>
       )}
 
+      {/* Las dos hojas que abre el menú de arriba. Van afuera de la hoja del
+          alumno y no adentro: una hoja dentro de otra deja dos capas oscuras
+          encima de la pantalla y un "cerrar" que no se sabe qué cierra. */}
       {editandoFicha && (
         <Hoja titulo="Corregir la ficha" alCerrar={() => setEditandoFicha(false)}>
           <FormularioFicha
             alumnoId={persona.alumno.id}
             alCerrar={() => setEditandoFicha(false)}
-            alGuardar={() => { setEditandoFicha(false); alCambiar(); }}
+            alGuardar={() => { setEditandoFicha(false); setAbierto(false); alCambiar(); }}
           />
         </Hoja>
       )}
 
       {cobrando && (
-        <Hoja titulo="Agregar un cargo" alCerrar={() => setCobrando(false)}>
+        <Hoja titulo="Cobrar algo aparte" alCerrar={() => setCobrando(false)}>
           <FormularioCargo
             espacio={espacio}
             grupo={grupo}
@@ -1238,69 +1358,7 @@ function FilaAlumno({
           />
         </Hoja>
       )}
-
-      {confirmando ? (
-        <div className="mt-3">
-          <p className="mb-2 text-sm text-tenue">
-            Quitar borra la inscripción como si nunca hubiera existido. Si el alumno
-            cursó, lo que corresponde es darlo de baja.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <BotonSecundario
-              type="button" disabled={trabajando}
-              onClick={() => hacer(() => quitarInscripcion(persona.tramos))}
-            >
-              Sí, quitar
-            </BotonSecundario>
-            <BotonSecundario type="button" onClick={() => setConfirmando(false)}>
-              No
-            </BotonSecundario>
-          </div>
-        </div>
-      ) : (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {/* Solo mientras nadie la reclamó. Una vez que el alumno entró, el
-              nombre y la foto son suyos (migración 0023) y la base rechaza el
-              cambio igual: esconder el botón es para no ofrecer algo que no se
-              puede hacer. El período sirve para corregir un correo mal
-              tipeado, que es lo único que impide que el alumno entre. */}
-          {!editandoFicha && !persona.alumno.user_id && (
-            <BotonSecundario type="button" onClick={() => setEditandoFicha(true)}>
-              Corregir la ficha
-            </BotonSecundario>
-          )}
-          {/* "Cobrar algo aparte" y no "Agregar un cargo". El nombre viejo
-              competía con lo que la app ya hace sola —la cuota del mes y la
-              próxima clase las genera asegurar_cargos() todas las noches— y
-              leído rápido parecía la forma de cobrar eso, que es cobrarlo dos
-              veces. Esto es para lo único que el automatismo no puede saber:
-              una clase particular, un pack, materiales, un recupero. */}
-          {activa && !cobrando && (
-            <BotonSecundario type="button" onClick={() => setCobrando(true)}>
-              Cobrar algo aparte
-            </BotonSecundario>
-          )}
-          {activa ? (
-            <BotonSecundario
-              type="button" disabled={trabajando}
-              onClick={() => hacer(() => darDeBaja(persona.tramos, hoyISO()))}
-            >
-              Dar de baja
-            </BotonSecundario>
-          ) : (
-            <BotonSecundario
-              type="button" disabled={trabajando}
-              onClick={() => hacer(() => volverAAnotar(persona.tramos))}
-            >
-              Volver a anotar
-            </BotonSecundario>
-          )}
-          <BotonSecundario type="button" onClick={() => setConfirmando(true)}>
-            Quitar
-          </BotonSecundario>
-        </div>
-      )}
-    </Fila>
+    </>
   );
 }
 

@@ -95,6 +95,28 @@ begin
     perform set_config('prueba.v4c', 'PASA - la base lo rechazo', false);
   end;
 
+  -- 4d. Un grupo puede decir de qué es, y solo con algo del catálogo
+  --     (migración 0039). Es lo que separa "mi grupo de bachata" de "mi
+  --     grupo de los martes" cuando el profe da dos cosas.
+  update public.groups
+     set discipline_slug = 'zumba'
+   where tenant_id = v_escuela and name = 'Grupo de Prueba';
+  perform set_config('prueba.v4d',
+    case when exists (
+      select 1 from public.groups
+       where tenant_id = v_escuela and name = 'Grupo de Prueba'
+         and discipline_slug = 'zumba')
+     then 'PASA' else 'FALLA - no guardo la actividad del grupo' end, false);
+
+  begin
+    update public.groups
+       set discipline_slug = 'malambo-espacial'
+     where tenant_id = v_escuela and name = 'Grupo de Prueba';
+    perform set_config('prueba.v4e', 'FALLA - acepto una que no esta en el catalogo', false);
+  exception when others then
+    perform set_config('prueba.v4e', 'PASA - la base lo rechazo', false);
+  end;
+
   -- 5. Nadie escribe el catálogo desde la app: no hay politica de insert, y
   --    sin politica RLS no deja pasar.
   begin
@@ -186,6 +208,12 @@ select 'La aclaracion se guarda al lado de la actividad',
 union all
 select 'Una aclaracion mas larga que el tope no entra',
        coalesce(current_setting('prueba.v4c', true), 'NO SE EJECUTO')
+union all
+select 'Un grupo puede decir de que actividad es',
+       coalesce(current_setting('prueba.v4d', true), 'NO SE EJECUTO')
+union all
+select 'Y no una que no exista en el catalogo',
+       coalesce(current_setting('prueba.v4e', true), 'NO SE EJECUTO')
 union all
 select 'Nadie escribe el catalogo desde la app',
        coalesce(current_setting('prueba.v5', true), 'NO SE EJECUTO')

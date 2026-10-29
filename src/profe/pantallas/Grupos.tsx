@@ -61,7 +61,8 @@ export default function Grupos({
               avatar={g.name}
               titulo={g.name}
               detalle={
-                [horarioDe(g), g.level, g.venue, g.capacity ? `cupo ${g.capacity}` : null]
+                [g.disciplina?.name, horarioDe(g), g.level, g.venue,
+                 g.capacity ? `cupo ${g.capacity}` : null]
                   .filter(Boolean)
                   .join(' · ') || 'sin horario fijo'
               }
