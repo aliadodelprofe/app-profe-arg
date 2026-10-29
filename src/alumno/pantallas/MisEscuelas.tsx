@@ -71,7 +71,15 @@ export default function MisEscuelas({
             {error && <Aviso>{error}</Aviso>}
             {!resumenes && !error && <Esqueleto />}
             {resumenes && resumenes.length === 0 && (
-              <Vacio>Todavía no tenés ninguna escuela.</Vacio>
+              <Vacio
+                pasos={[
+                  ['Pedile a tu profe que te anote', 'Con el correo con el que entraste.'],
+                  ['Te va a llegar una invitación', 'La vas a ver acá mismo.'],
+                  ['Aceptás y listo', 'Ahí aparecen tus clases y tu cuenta.'],
+                ]}
+              >
+                Todavía no tenés ninguna escuela.
+              </Vacio>
             )}
 
             {resumenes && resumenes.length > 0 && (

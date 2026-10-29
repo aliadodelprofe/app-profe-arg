@@ -19,8 +19,9 @@ import type { Pestana } from '../../comun/ui';
 import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, useCarga, Campo, Texto, Boton, BotonSecundario,
-  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar,
+  Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar, Portada,
   Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato, BarraAccion,
+  Celebracion,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Perfil from './Perfil';
@@ -68,7 +69,6 @@ export default function MiEscuela({
     <>
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
-      <Marco conBarra conAccion={tab === 'cuenta' && hayQuePagar(saldo.datos)}>
       {/* A la izquierda la escuela, a la derecha vos. Antes estaban las dos
           caras del mismo lado: al lado del nombre de la escuela iba la foto
           DEL ALUMNO, y abajo la misma foto otra vez en el perfil.
@@ -76,30 +76,18 @@ export default function MiEscuela({
           Y como la escuela está a la izquierda, tocarla es cambiar de
           escuela. Es donde lo busca cualquiera que haya usado una app con
           varias cuentas: se toca el lugar que dice dónde estás parado. */}
-      <div className="mb-4 flex items-center gap-3">
-        {alCambiarEscuela ? (
-          <button
-            onClick={alCambiarEscuela}
-            className="flex min-w-0 items-center gap-3 rounded-xl text-left transition active:opacity-70"
-          >
-            <Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />
-            <div className="min-w-0">
-              <Titulo>{escuela}</Titulo>
-              <p className="truncate text-xs text-tenue">tocá para cambiar de escuela</p>
-            </div>
-          </button>
-        ) : (
-          <div className="flex min-w-0 items-center gap-3">
-            <Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />
-            <div className="min-w-0">
-              <Titulo>{escuela}</Titulo>
-              {queEnsena(ficha) && (
-                <p className="truncate text-sm text-tenue">{queEnsena(ficha)}</p>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <Marco
+        conBarra
+        conAccion={tab === 'cuenta' && hayQuePagar(saldo.datos)}
+        portada={
+          <Portada
+            titulo={escuela}
+            bajada={alCambiarEscuela ? 'tocá para cambiar de escuela' : queEnsena(ficha)}
+            principal={<Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />}
+            alTocar={alCambiarEscuela}
+          />
+        }
+      >
 
       {tab === 'clases' && (
         <MisClases
@@ -381,7 +369,19 @@ function MiCuenta({
           todavía no venció se dice abajo, en gris y en otra frase: el alumno
           tiene que poder ver lo que se le viene, pero no leerlo como una
           deuda. Antes la app le decía "$45.000, es lo que debés" sumando
-          clases que no habían pasado. */}
+          clases que no habían pasado.
+
+          Y cuando no debe nada, no es un número: es una buena noticia. Un
+          "Al día" en gris sobre el mismo papel que la deuda se lee igual que
+          la deuda, y esta es la única pantalla donde el alumno viene con algo
+          de miedo. */}
+      {saldo !== null && saldo.debe === 0 && saldo.aFavor === 0 ? (
+        <Celebracion titulo="Al día">
+          No tenés nada vencido.
+          {saldo.porVencer > 0
+            && ` Lo próximo que te va a vencer son ${plata(saldo.porVencer)}.`}
+        </Celebracion>
+      ) : (
       <Dato
         valor={
           saldo === null
@@ -415,6 +415,7 @@ function MiCuenta({
           </p>
         )}
       </Dato>
+      )}
 
       {/* "Ya transferí" colgaba del número y, apenas scrolleabas la lista de
           cargos, desaparecía. Es LA acción de esta pantalla: ahora queda

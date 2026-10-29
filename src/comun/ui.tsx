@@ -18,10 +18,15 @@ export function Marco({
   children,
   conBarra = false,
   conAccion = false,
+  portada,
 }: {
   children: ReactNode;
   conBarra?: boolean;
   conAccion?: boolean;
+  // La franja de arriba, a todo el ancho. Va afuera del contenedor que
+  // centra el contenido, porque una franja que no llega a los bordes no es
+  // una franja: es otra tarjeta.
+  portada?: ReactNode;
 }) {
   const abajo = conBarra && conAccion
     ? 'pb-48 sm:pb-28'
@@ -31,8 +36,133 @@ export function Marco({
         ? 'pb-28 sm:pb-12'
         : 'pb-12';
   return (
-    <div className={'min-h-screen bg-fondo px-5 pt-7 ' + abajo}>
-      <div className="mx-auto w-full max-w-2xl">{children}</div>
+    <div className={'min-h-screen bg-fondo ' + abajo}>
+      {portada}
+      <div className={'mx-auto w-full max-w-2xl px-5 ' + (portada ? 'pt-6' : 'pt-7')}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================================
+// LA PORTADA
+//
+// El título de una pantalla que se abre en frío —la de Hoy, la del alumno—
+// sobre una franja propia, con las formas en movimiento atrás y una onda
+// abajo. Es lo único que se trajo de la página de entrada, y solo a esas dos
+// pantallas.
+//
+// POR QUÉ NO EN TODAS.
+//
+// Porque no hacen el mismo trabajo. La página de entrada la mirás una vez y
+// tiene que gustarte; una pantalla de la app la abrís todos los días, apurado,
+// entre dos clases, para ver un número. Lo que ahí es encanto, acá repetido
+// cuatrocientas veces es un estorbo. Estas dos son la excepción: son las que
+// se abren sin que vengas de ningún lado, y ahí un poco de vida no interrumpe
+// nada porque todavía no estabas haciendo nada.
+// ============================================================================
+export function Portada({
+  titulo,
+  bajada,
+  derecha,
+  principal,
+  alTocar,
+}: {
+  titulo: ReactNode;
+  bajada?: ReactNode;
+  derecha?: ReactNode;
+  // Lo que va a la izquierda del título: el logo de la escuela, en la app del
+  // alumno. Y si el encabezado entero lleva a algún lado —tocar la escuela es
+  // cambiar de escuela— el bloque se vuelve un botón.
+  principal?: ReactNode;
+  alTocar?: () => void;
+}) {
+  return (
+    <div className="relative bg-panel">
+      {/* Las formas. Misma idea que en la entrada: no dibujan nada, le sacan
+          a la pantalla el aire de planilla. Difuminadas y no nítidas porque
+          una forma nítida compite con el título.
+
+          El degradado de abajo disuelve el color contra la franja antes de
+          que la caja las recorte: recortar un difuminado deja un borde recto,
+          que es justo lo que un difuminado no tiene. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="flota-a absolute -left-20 -top-24 h-64 w-64 rounded-full bg-acento/20 blur-3xl" />
+        <div className="flota-b absolute -right-16 -top-10 h-52 w-52 rounded-full bg-ok/15 blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-b from-transparent to-panel" />
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 pb-2 pt-7">
+        {alTocar ? (
+          <button
+            onClick={alTocar}
+            className="flex min-w-0 items-center gap-3 text-left transition active:opacity-70"
+          >
+            {principal}
+            <span className="min-w-0">
+              <Titulo>{titulo}</Titulo>
+              {bajada && <span className="mt-1 block truncate text-sm text-tenue">{bajada}</span>}
+            </span>
+          </button>
+        ) : (
+          <div className="flex min-w-0 items-center gap-3">
+            {principal}
+            <div className="min-w-0">
+              <Titulo>{titulo}</Titulo>
+              {bajada && <p className="mt-1 truncate text-sm text-tenue">{bajada}</p>}
+            </div>
+          </div>
+        )}
+        {derecha}
+      </div>
+
+      <Onda desde="var(--color-panel)" hasta="var(--color-fondo)" />
+    </div>
+  );
+}
+
+
+// ============================================================================
+// LA ONDA QUE SEPARA DOS FRANJAS
+//
+// Hacen falta LOS DOS colores: el dibujo se pinta del color que viene, pero la
+// franja donde vive el dibujo tiene que llevar el color que termina. Si no, lo
+// que queda alrededor de la curva es el fondo de la página —que suele ser uno
+// de los dos— y la onda directamente no se ve.
+//
+// `preserveAspectRatio="none"` la deja estirarse a lo ancho sin importar la
+// pantalla: una onda tiene que ocupar todo el ancho siempre, y que se achate o
+// se estire no se nota. El `-mb-px` tapa la rayita que algunos navegadores
+// dejan entre el borde del SVG y lo que sigue, por redondeo.
+//
+// `espejada` la da vuelta en horizontal, no en vertical: en vertical cambiaría
+// de lugar el relleno y la curva apuntaría para el lado equivocado.
+// ============================================================================
+export function Onda({
+  desde,
+  hasta,
+  espejada = false,
+  alto = 'h-10 sm:h-14',
+}: {
+  desde: string;
+  hasta: string;
+  espejada?: boolean;
+  alto?: string;
+}) {
+  return (
+    <div aria-hidden="true" className="-mb-px block leading-[0]" style={{ background: desde }}>
+      <svg
+        viewBox="0 0 1440 110"
+        preserveAspectRatio="none"
+        className={'block w-full ' + alto + (espejada ? ' scale-x-[-1]' : '')}
+      >
+        <path
+          d="M0,42 C180,100 340,4 600,34 C860,64 1040,106 1240,74 C1330,60 1390,44 1440,28 L1440,110 L0,110 Z"
+          fill={hasta}
+        />
+      </svg>
     </div>
   );
 }
@@ -108,9 +238,14 @@ export function Aviso({ children }: { children: ReactNode }) {
 export function Vacio({
   children,
   accion,
+  pasos,
 }: {
   children: ReactNode;
   accion?: ReactNode;
+  // Qué hacer, en orden. Una pantalla vacía que solo dice que está vacía le
+  // deja al usuario el trabajo de averiguar qué sigue; con los pasos, el
+  // vacío pasa de ser un problema a ser el primer renglón de una receta.
+  pasos?: [string, string][];
 }) {
   // Sin recuadro punteado. El recuadro decía "acá iba una caja que no está",
   // que es describir el hueco en vez de llenarlo. El aire y el ícono alcanzan.
@@ -126,7 +261,65 @@ export function Vacio({
         </svg>
       </span>
       <p className="max-w-sm text-sm leading-relaxed text-tenue">{children}</p>
+
+      {pasos && pasos.length > 0 && (
+        <ol className="mt-2 flex w-full max-w-sm flex-col gap-2 text-left">
+          {pasos.map(([titulo, bajada], i) => (
+            <li
+              key={titulo}
+              className="anim-entrar flex items-center gap-3.5 rounded-2xl bg-panel p-4 shadow-apoyo"
+              style={{ animationDelay: `${i * 90}ms` }}
+            >
+              <span className="plata flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-acento-suave text-sm font-bold text-acento">
+                {i + 1}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold leading-snug text-tinta">{titulo}</span>
+                <span className="block text-xs leading-snug text-tenue">{bajada}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+
       {accion}
+    </div>
+  );
+}
+
+
+// ============================================================================
+// LA CELEBRACIÓN
+//
+// Para el único momento bueno de una pantalla de plata: no te debe nadie, o no
+// debés nada.
+//
+// Hasta ahora eso se veía igual que lo malo —un número grande sobre el mismo
+// papel, con el color apenas distinto— y es el error de tono más fácil de
+// cometer: la app trata la buena noticia con la misma cara con la que te dice
+// que te deben cuatrocientos mil pesos. El acento lleno es lo que la distingue
+// sin tener que leer.
+//
+// Se usa POCO a propósito. Es la única superficie de color pleno de toda la
+// app: si apareciera en tres lugares, dejaría de significar nada.
+// ============================================================================
+export function Celebracion({
+  titulo,
+  children,
+}: {
+  titulo: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="anim-entrar rounded-3xl bg-acento px-6 py-8 text-center shadow-flota">
+      <p className="text-2xl font-bold leading-tight tracking-[-0.02em] text-sobre-acento">
+        {titulo}
+      </p>
+      {children && (
+        <p className="mx-auto mt-2 max-w-xs text-[0.9375rem] leading-snug text-sobre-acento/80">
+          {children}
+        </p>
+      )}
     </div>
   );
 }

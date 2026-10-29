@@ -48,7 +48,17 @@ export default function Grupos({
 
       {error && <Aviso>{error}</Aviso>}
       {!datos && !error && <Esqueleto />}
-      {datos?.length === 0 && <Vacio>Todavía no hay grupos en este espacio.</Vacio>}
+      {datos?.length === 0 && (
+        <Vacio
+          pasos={[
+            ['Ponele nombre', '"Bachata principiantes, martes".'],
+            ['Elegí el día y la hora', 'Las clases del mes se crean solas.'],
+            ['Poné el precio', 'Por clase, por mes, o los dos.'],
+          ]}
+        >
+          Todavía no hay grupos en este espacio.
+        </Vacio>
+      )}
 
       {datos && datos.length > 0 && (
         <Lista>

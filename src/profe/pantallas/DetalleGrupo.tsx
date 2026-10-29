@@ -173,7 +173,15 @@ export default function DetalleGrupo({
           {inscripciones.error && <Aviso>{inscripciones.error}</Aviso>}
           {!inscripciones.datos && !inscripciones.error && <Esqueleto />}
           {inscripciones.datos && gente.length === 0 && (
-            <Vacio>Todavía no hay nadie inscripto en este grupo.</Vacio>
+            <Vacio
+              pasos={[
+                ['Tocá "Anotar alumno"', 'Abajo de todo.'],
+                ['Nombre y correo', 'Con el correo le llega su acceso.'],
+                ['Elegí cómo paga', 'Y el primer cargo se genera solo.'],
+              ]}
+            >
+              Todavía no hay nadie inscripto en este grupo.
+            </Vacio>
           )}
 
           {gente.length > 0 && (

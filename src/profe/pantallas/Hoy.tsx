@@ -21,7 +21,9 @@ import {
   fecha, plata, hoyISO, sumarDias,
 } from '../datos';
 import type { Espacio, ClaseDelEspacio } from '../datos';
-import { Marco, Aviso, Vacio, Titulo, Seccion, Dato, Lista, Fila, useCarga } from '../../comun/ui';
+import {
+  Marco, Portada, Aviso, Vacio, Seccion, Dato, Celebracion, Lista, Fila, useCarga,
+} from '../../comun/ui';
 
 export default function Hoy({
   espacio,
@@ -56,10 +58,7 @@ export default function Hoy({
   const error = clases.error ?? deudas.error ?? pagos.error;
 
   return (
-    <Marco conBarra>
-      <Titulo>Hoy</Titulo>
-      <p className="mb-2 text-sm text-tenue">{espacio.name}</p>
-
+    <Marco conBarra portada={<Portada titulo="Hoy" bajada={espacio.name} />}>
       {error && <div className="mt-4"><Aviso>{error}</Aviso></div>}
       {cargando && !error && <div className="mt-4"><Vacio>Buscando…</Vacio></div>}
 
@@ -71,7 +70,15 @@ export default function Hoy({
           </Seccion>
 
           {deHoy.length === 0 && siguientes.length === 0 && (
-            <Vacio>No hay clases cargadas en los próximos quince días.</Vacio>
+            <Vacio
+              pasos={[
+                ['Creá un grupo', 'Con su día y su hora.'],
+                ['Las clases aparecen solas', 'Hasta fin del mes que viene.'],
+                ['Anotá a tus alumnos', 'Los cobros se generan con eso.'],
+              ]}
+            >
+              No hay clases cargadas en los próximos quince días.
+            </Vacio>
           )}
 
           {(deHoy.length > 0 ? deHoy : siguientes).length > 0 && (
@@ -127,7 +134,9 @@ export default function Hoy({
           {porConfirmar.length === 0 && deudores.length === 0 && (
             <>
               <Seccion>La plata</Seccion>
-              <Dato valor="Al día" al="nadie te debe y no hay nada esperando que confirmes" tono="ok" />
+              <Celebracion titulo="Al día">
+                Nadie te debe y no hay nada esperando que confirmes.
+              </Celebracion>
             </>
           )}
         </>

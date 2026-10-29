@@ -29,7 +29,7 @@
 // ============================================================================
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Boton, BotonSecundario } from '../comun/ui';
+import { Boton, BotonSecundario, Onda } from '../comun/ui';
 import { NOMBRE } from '../comun/marca';
 
 function ir(donde: string) {
@@ -129,57 +129,6 @@ const IconoCopiar = (
     <path d="M5 15V5a2 2 0 0 1 2-2h8" strokeLinecap="round" />
   </svg>
 );
-
-// ----------------------------------------------------------------------------
-// LA ONDA QUE SEPARA DOS FRANJAS
-//
-// La página pasa por cuatro colores: el papel del encabezado, el blanco de los
-// dos bloques, el papel otra vez, y el terracota del cierre. Cortados en
-// recto, esos cuatro se leen como cuatro pantallas pegadas con cinta. La onda
-// los hace pasar de uno al otro.
-//
-// CÓMO FUNCIONA, QUE NO ES OBVIO.
-//
-// Hacen falta LOS DOS colores, y esto es lo que se me pasó la primera vez: el
-// dibujo se pinta del color que viene, pero la franja donde vive el dibujo
-// tiene que llevar el color que termina. Si no, lo que queda alrededor de la
-// curva es el fondo de la página, que suele ser uno de los dos, y entonces la
-// onda directamente no se ve.
-//
-// `preserveAspectRatio="none"` la deja estirarse a lo ancho sin importar la
-// pantalla: una onda tiene que ocupar todo el ancho siempre, y que se achate o
-// se estire no se nota. Y el `-mb-px` tapa la rayita que algunos navegadores
-// dejan entre el borde del SVG y lo que sigue, por redondeo.
-//
-// `espejada` la da vuelta en horizontal, no en vertical. En vertical cambiaría
-// de lugar el relleno y la curva apuntaría para el lado equivocado; en
-// horizontal es la misma onda con otra cara, que es lo único que se busca:
-// que las tres de la página no sean el mismo dibujo tres veces.
-// ----------------------------------------------------------------------------
-function Onda({
-  desde,
-  hasta,
-  espejada = false,
-}: {
-  desde: string;   // el color de la franja que termina
-  hasta: string;   // el de la que empieza
-  espejada?: boolean;
-}) {
-  return (
-    <div aria-hidden="true" className="-mb-px block leading-[0]" style={{ background: desde }}>
-      <svg
-        viewBox="0 0 1440 110"
-        preserveAspectRatio="none"
-        className={'block h-14 w-full sm:h-20 ' + (espejada ? 'scale-x-[-1]' : '')}
-      >
-        <path
-          d="M0,42 C180,100 340,4 600,34 C860,64 1040,106 1240,74 C1330,60 1390,44 1440,28 L1440,110 L0,110 Z"
-          fill={hasta}
-        />
-      </svg>
-    </div>
-  );
-}
 
 // Un renglón de un bloque. Ícono, y una frase que entra de una pasada.
 function Renglon({ icono: ic, children }: { icono: ReactNode; children: ReactNode }) {
@@ -311,7 +260,7 @@ export default function Inicio() {
         </div>
       </section>
 
-      <Onda desde="var(--color-fondo)" hasta="var(--color-panel)" />
+      <Onda desde="var(--color-fondo)" hasta="var(--color-panel)" alto="h-14 sm:h-20" />
 
       {/* ------------------------------------------------ 2. LOS DOS BLOQUES
 
@@ -351,7 +300,7 @@ export default function Inicio() {
         </div>
       </section>
 
-      <Onda desde="var(--color-panel)" hasta="var(--color-fondo)" espejada />
+      <Onda desde="var(--color-panel)" hasta="var(--color-fondo)" espejada alto="h-14 sm:h-20" />
 
       {/* -------------------------------------------------- 3. CÓMO ARRANCA
 
@@ -396,7 +345,7 @@ export default function Inicio() {
         </div>
       </section>
 
-      <Onda desde="var(--color-fondo)" hasta="var(--color-acento)" />
+      <Onda desde="var(--color-fondo)" hasta="var(--color-acento)" alto="h-14 sm:h-20" />
 
       {/* ------------------------------------------------------ 4. EL CIERRE
 
