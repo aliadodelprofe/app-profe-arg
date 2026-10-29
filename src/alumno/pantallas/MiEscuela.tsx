@@ -68,7 +68,7 @@ export default function MiEscuela({
     <>
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
-      <Marco conBarra conAccion={tab === 'cuenta'}>
+      <Marco conBarra conAccion={tab === 'cuenta' && hayQuePagar(saldo.datos)}>
       {/* A la izquierda la escuela, a la derecha vos. Antes estaban las dos
           caras del mismo lado: al lado del nombre de la escuela iba la foto
           DEL ALUMNO, y abajo la misma foto otra vez en el perfil.
@@ -421,6 +421,7 @@ function MiCuenta({
           pegada abajo con lo que debe a la izquierda, como el precio y el
           botón de reservar de cualquier app de turnos. Lo que tenés que
           saber y lo que tenés que hacer, juntos y siempre a la vista. */}
+      {hayQuePagar(saldo) && (
       <BarraAccion
         conBarra
         dato={saldo === null
@@ -438,8 +439,11 @@ function MiCuenta({
               ? 'a favor tuyo'
               : 'no debés nada'}
       >
-        <Boton onClick={() => setDeclarando(true)}>Ya transferí</Boton>
+        <Boton onClick={() => setDeclarando(true)}>
+          {saldo && saldo.debe > 0 ? 'Ya transferí' : 'Pagar por adelantado'}
+        </Boton>
       </BarraAccion>
+      )}
 
       {declarando && (
         <Hoja titulo="Avisar que transferí" alCerrar={() => setDeclarando(false)}>
@@ -516,6 +520,25 @@ function MiCuenta({
       <ComoPago arreglos={arreglos} alCambiar={alCambiarArreglo} />
     </>
   );
+}
+
+// ¿TIENE SENTIDO OFRECERLE PAGAR?
+//
+// No siempre. Un alumno con $7.000 a favor y nada vencido no tiene nada que
+// transferir: esa plata se va a ir descontando sola de lo que venga. Ponerle
+// "Ya transferí" adelante es pedirle que pague algo que ya pagó, y lo primero
+// que va a hacer es escribirle al profe para preguntar si se equivocó.
+//
+// Sí tiene sentido en dos casos: debe algo ahora, o no debe nada pero tiene
+// cargos por vencer y ningún saldo a favor que los cubra — ahí pagar por
+// adelantado es una decisión suya, no una confusión.
+//
+// Vive acá arriba porque la saben dos lugares: la barra que muestra el botón
+// y el Marco que le hace lugar abajo.
+function hayQuePagar(saldo: MiSaldo | null): boolean {
+  if (saldo === null) return false;
+  if (saldo.debe > 0) return true;
+  return saldo.aFavor === 0 && saldo.porVencer > 0;
 }
 
 // Un cargo, en una fila. Sale aparte porque ahora se dibuja en dos listas.

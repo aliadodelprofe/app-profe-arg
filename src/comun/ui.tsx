@@ -461,17 +461,21 @@ export function Seccion({
   children: ReactNode;
   acotacion?: ReactNode;
 }) {
-  // Sin cajas, el título de sección es lo único que divide la pantalla, así
-  // que tiene que pesar: bien grande, bien negro, y con mucho aire arriba.
+  // Sin cajas, el título de sección es lo que divide la pantalla, y con el
+  // aire solo no alcanzaba: tres listas parecidas una abajo de la otra se
+  // leen como una sola lista larga y uno se pierde.
   //
-  // Probé poniéndole además una línea arriba y la saqué: `first:` solo agarra
-  // si la sección es el primer hijo de su padre, y en estas pantallas casi
-  // nunca lo es —hay un título, un aviso, un número antes—, así que la
-  // primera sección de cada pantalla se comía una raya suelta debajo del
-  // encabezado. El aire solo alcanza, que es lo que hace la página que
-  // miramos de referencia.
+  // Así que va con línea, SIEMPRE. Lo intenté antes con `first:` para que la
+  // primera no la llevara, y no sirve: `first:` agarra solo si la sección es
+  // el primer hijo de su padre, y en estas pantallas casi nunca lo es —hay
+  // un encabezado, un aviso, un número antes—. Terminaba siendo una regla
+  // que se aplicaba al azar según cómo estuviera armado el JSX.
+  //
+  // Con el aire repartido parejo arriba y abajo, la línea de la primera
+  // sección queda como lo que es: la raya que cierra el encabezado de la
+  // pantalla. Es un patrón de toda la vida y no se lee como un error.
   return (
-    <div className="mb-4 mt-12 flex items-baseline justify-between gap-3 first:mt-0">
+    <div className="mb-4 mt-10 flex items-baseline justify-between gap-3 border-t border-linea pt-9">
       <h2 className="text-xl font-bold tracking-[-0.02em] text-tinta">{children}</h2>
       {acotacion && (
         <span className="shrink-0 text-sm font-medium text-tenue">{acotacion}</span>
@@ -932,11 +936,14 @@ export function Avatar({
 //
 // El contenedor tenía borde, fondo propio y sombra, y ese marco competía con
 // las líneas de adentro: dos separadores distintos diciendo lo mismo. Queda
-// solo el de adentro, que es el que hace falta, y las filas se apoyan sobre
-// la página como el resto del contenido.
+// solo el de adentro.
+//
+// Pero sí lleva línea arriba y abajo —la misma de las filas, no un marco—,
+// porque sin eso la primera y la última fila flotan: no se sabe dónde empieza
+// la lista ni dónde termina, y dos listas seguidas se leen como una sola.
 export function Lista({ children }: { children: ReactNode }) {
   return (
-    <ul className="anim-escalera -mx-5 divide-y divide-linea sm:-mx-2">
+    <ul className="anim-escalera -mx-5 divide-y divide-linea border-y border-linea sm:-mx-2">
       {children}
     </ul>
   );
@@ -1229,7 +1236,7 @@ const brillo =
 
 export function Esqueleto({ filas = 3 }: { filas?: number }) {
   return (
-    <div className="-mx-5 divide-y divide-linea sm:-mx-2">
+    <div className="-mx-5 divide-y divide-linea border-y border-linea sm:-mx-2">
       {Array.from({ length: filas }).map((_, i) => (
         <div key={i} className="flex items-center gap-3 px-5 py-4 sm:px-2">
           <div className={`h-10 w-10 shrink-0 rounded-full ${brillo}`} />
