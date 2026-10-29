@@ -217,10 +217,14 @@ export default function FormularioGrupo({
     setHora('');
   }
 
-  // Dónde se da. Una particular online no tiene sala; las demás sí, y es un
-  // dato que el alumno necesita para llegar.
-  const pideLugar = !esParticular || !online;
-  const lugarObligatorio = esRegular || esFormacion;
+  // Dónde se da. Un grupo online no tiene sala —de cualquier formato: una
+  // regular por videollamada es tan común como una particular, y un taller
+  // puede darse entero a distancia—. La base ya lo permitía desde la 0032; lo
+  // que faltaba era que el formulario lo preguntara.
+  const pideLugar = !online;
+  // La sala es obligatoria cuando es presencial y hay varios alumnos: ahí el
+  // dato no es un detalle, es cómo llegan.
+  const lugarObligatorio = (esRegular || esFormacion) && !online;
 
   async function guardar(e: FormEvent) {
     e.preventDefault();
@@ -308,8 +312,8 @@ export default function FormularioGrupo({
       // ofrecerle al alumno una forma de pago que la pantalla no muestra.
       price_per_period: !pidePaquete && porMes ? Number(porMes) : null,
       price_one_time: pidePaquete && pagoUnico ? Number(pagoUnico) : null,
-      online: esParticular && online,
-      meeting_url: esParticular && online ? (enlace.trim() || null) : null,
+      online,
+      meeting_url: online ? (enlace.trim() || null) : null,
     };
 
     try {
@@ -961,30 +965,32 @@ export default function FormularioGrupo({
       )}
 
       {/* ------------------------------------------------------------------
-          DÓNDE. Una particular puede ser online y entonces no hay sala que
-          poner: la base rechaza una clase online con dirección (migración
-          0032), así que el formulario deja de pedirla en vez de pedir algo
-          que no va a entrar.
-         ------------------------------------------------------------------ */}
-      {esParticular && (
-        <Campo
-          etiqueta="Dónde se da"
-          ayuda={online
-            ? 'Tu alumno va a ver el enlace en vez del mapa.'
-            : 'Tu alumno va a ver la dirección y el mapa.'}
-        >
-          <Opciones<'sala' | 'online'>
-            valor={online ? 'online' : 'sala'}
-            alElegir={(v) => setOnline(v === 'online')}
-            opciones={[
-              { valor: 'sala', texto: 'En una sala' },
-              { valor: 'online', texto: 'Online' },
-            ]}
-          />
-        </Campo>
-      )}
+          DÓNDE. Cualquier grupo puede ser online, no solo una particular: una
+          regular por videollamada es tan común como una particular, y un
+          taller puede darse entero a distancia. La base lo permitía desde la
+          0032 y era el formulario el que no lo preguntaba.
 
-      {esParticular && online && (
+          Online no hay sala que poner: la base rechaza una clase online con
+          dirección, así que el formulario deja de pedirla en vez de pedir
+          algo que no va a entrar.
+         ------------------------------------------------------------------ */}
+      <Campo
+        etiqueta="Dónde se da"
+        ayuda={online
+          ? 'Tus alumnos van a ver el enlace en vez del mapa.'
+          : 'Tus alumnos van a ver la dirección y el mapa.'}
+      >
+        <Opciones<'sala' | 'online'>
+          valor={online ? 'online' : 'sala'}
+          alElegir={(v) => setOnline(v === 'online')}
+          opciones={[
+            { valor: 'sala', texto: 'En una sala' },
+            { valor: 'online', texto: 'Online' },
+          ]}
+        />
+      </Campo>
+
+      {online && (
         <Campo etiqueta="Enlace de la clase (opcional)" ayuda="Meet, Zoom, lo que uses. Podés ponerlo después.">
           <Texto
             type="url" value={enlace} placeholder="https://meet.google.com/…"

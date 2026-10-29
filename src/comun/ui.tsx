@@ -80,45 +80,57 @@ export function Portada({
   alTocar?: () => void;
 }) {
   return (
-    <div className="relative bg-panel">
-      {/* Las formas. Misma idea que en la entrada: no dibujan nada, le sacan
-          a la pantalla el aire de planilla. Difuminadas y no nítidas porque
-          una forma nítida compite con el título.
+    <div className="bg-panel">
+      {/* LA CAPA DE LAS FORMAS TERMINA DONDE EMPIEZA LA ONDA.
 
-          El degradado de abajo disuelve el color contra la franja antes de
-          que la caja las recorte: recortar un difuminado deja un borde recto,
-          que es justo lo que un difuminado no tiene. */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="flota-a absolute -left-20 -top-24 h-64 w-64 rounded-full bg-acento/20 blur-3xl" />
-        <div className="flota-b absolute -right-16 -top-10 h-52 w-52 rounded-full bg-ok/15 blur-3xl" />
-        <div className="absolute inset-x-0 bottom-0 h-20 bg-linear-to-b from-transparent to-panel" />
-      </div>
+          Esto me lo comí la primera vez y es lo que hacía que la onda no se
+          viera: la capa iba del borde de arriba al de abajo de TODA la
+          portada, y el degradado que disuelve las manchas —sólido en su
+          extremo— quedaba pintado encima de la onda. La onda estaba; la
+          tapaba una franja de color plano, y por eso lo que se veía era una
+          línea recta.
 
-      <div className="relative mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 pb-2 pt-7">
-        {alTocar ? (
-          <button
-            onClick={alTocar}
-            className="flex min-w-0 items-center gap-3 text-left transition active:opacity-70"
-          >
-            {principal}
-            <span className="min-w-0">
-              <Titulo>{titulo}</Titulo>
-              {bajada && <span className="mt-1 block truncate text-sm text-tenue">{bajada}</span>}
-            </span>
-          </button>
-        ) : (
-          <div className="flex min-w-0 items-center gap-3">
-            {principal}
-            <div className="min-w-0">
-              <Titulo>{titulo}</Titulo>
-              {bajada && <p className="mt-1 truncate text-sm text-tenue">{bajada}</p>}
+          Ahora la capa cubre solo la parte del título. La onda queda afuera,
+          abajo, con la franja ya limpia detrás. */}
+      <div className="relative overflow-hidden">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="flota-a absolute -left-20 -top-24 h-64 w-64 rounded-full bg-acento/20 blur-3xl" />
+          <div className="flota-b absolute -right-16 -top-10 h-52 w-52 rounded-full bg-ok/15 blur-3xl" />
+          {/* Disuelve el color contra la franja antes de que la caja lo
+              recorte: recortar un difuminado deja un borde recto, que es
+              justo lo que un difuminado no tiene. */}
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-linear-to-b from-transparent to-panel" />
+        </div>
+
+        <div className="relative mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 pb-6 pt-7">
+          {alTocar ? (
+            <button
+              onClick={alTocar}
+              className="flex min-w-0 items-center gap-3 text-left transition active:opacity-70"
+            >
+              {principal}
+              <span className="min-w-0">
+                <Titulo>{titulo}</Titulo>
+                {bajada && <span className="mt-1 block truncate text-sm text-tenue">{bajada}</span>}
+              </span>
+            </button>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              {principal}
+              <div className="min-w-0">
+                <Titulo>{titulo}</Titulo>
+                {bajada && <p className="mt-1 truncate text-sm text-tenue">{bajada}</p>}
+              </div>
             </div>
-          </div>
-        )}
-        {derecha}
+          )}
+          {derecha}
+        </div>
       </div>
 
-      <Onda desde="var(--color-panel)" hasta="var(--color-fondo)" />
+      {/* Más alta que las de la página de entrada no, pero sí lo suficiente
+          para que la curva se lea: a 40px el dibujo queda tan aplastado que
+          parece una raya. */}
+      <Onda desde="var(--color-panel)" hasta="var(--color-fondo)" alto="h-12 sm:h-16" />
     </div>
   );
 }
@@ -283,6 +295,63 @@ export function Vacio({
       )}
 
       {accion}
+    </div>
+  );
+}
+
+
+// ============================================================================
+// LO QUE SE ABRE SI LO PEDÍS
+//
+// Una pantalla no puede mostrar tres listas largas una abajo de la otra. No es
+// que sea fea: es que obliga a scrollear por encima de cosas que no se estaban
+// buscando para llegar a la que sí. Y cuanto más usa la app el alumno, más
+// larga se hace la de "lo que pagaste" — la pantalla empeora con el uso, que
+// es lo peor que le puede pasar a una.
+//
+// Así que lo urgente queda a la vista y el resto se abre si lo pedís. El
+// encabezado cerrado tiene que decir lo suficiente para no tener que abrirlo:
+// cuántos son y cuánto suman. Un "Ver más" que no dice qué hay adentro obliga
+// a abrir para averiguar si hacía falta abrir.
+// ============================================================================
+export function Desplegable({
+  titulo,
+  resumen,
+  abiertoAlPrincipio = false,
+  children,
+}: {
+  titulo: string;
+  resumen?: ReactNode;
+  abiertoAlPrincipio?: boolean;
+  children: ReactNode;
+}) {
+  const [abierto, setAbierto] = useState(abiertoAlPrincipio);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setAbierto((x) => !x)}
+        aria-expanded={abierto}
+        className="group mb-4 mt-12 flex w-full items-baseline justify-between gap-3 border-t border-linea pt-10 text-left"
+      >
+        <span className="flex min-w-0 items-baseline gap-2">
+          <span className="text-xl font-bold tracking-[-0.02em] text-tinta">{titulo}</span>
+          <svg
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+            aria-hidden="true"
+            className={
+              'h-4 w-4 shrink-0 self-center text-tenue transition-transform duration-200 '
+              + (abierto ? 'rotate-180' : '')
+            }
+          >
+            <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        {resumen && (
+          <span className="shrink-0 text-sm font-medium text-tenue">{resumen}</span>
+        )}
+      </button>
+      {abierto && <div className="anim-aparecer">{children}</div>}
     </div>
   );
 }

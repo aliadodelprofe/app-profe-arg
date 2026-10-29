@@ -21,7 +21,7 @@ import {
   Marco, Aviso, Vacio, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar, Portada,
   Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato, BarraAccion,
-  Celebracion,
+  Celebracion, Desplegable,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Perfil from './Perfil';
@@ -474,24 +474,33 @@ function MiCuenta({
         </>
       )}
 
+      {/* Esta y la de abajo arrancan CERRADAS, y la de arriba no.
+          
+          Lo que venció es lo único que hay que hacer algo al respecto; el
+          resto es consulta. Tres listas largas una abajo de la otra obligan a
+          scrollear por encima de lo que no se estaba buscando, y la de "lo
+          que pagaste" crece con cada pago: la pantalla empeoraría cuanto más
+          usás la app. */}
       {porVenir.length > 0 && (
-        <>
-          <Seccion acotacion={plata(porVenir.reduce((s, c) => s + (c.amount - c.pagado), 0))}>
-            Lo que viene
-          </Seccion>
+        <Desplegable
+          titulo="Lo que viene"
+          resumen={`${porVenir.length} · ${plata(porVenir.reduce((s, c) => s + (c.amount - c.pagado), 0))}`}
+        >
           <p className="mb-3 text-sm text-tenue">
             Todavía no vencieron. Los ves acá para saber cuánto te va a salir.
           </p>
           <Lista>
             {porVenir.map((c) => <FilaCargo key={c.id} cargo={c} horas={horaPorDia} />)}
           </Lista>
-        </>
+        </Desplegable>
       )}
 
       {/* ------------------------------------------------------ lo que pagué */}
       {confirmados.length > 0 && (
-        <>
-          <Seccion>Lo que pagaste</Seccion>
+        <Desplegable
+          titulo="Lo que pagaste"
+          resumen={`${confirmados.length} · ${plata(confirmados.reduce((s, p) => s + p.amount, 0))}`}
+        >
           <Lista>
             {confirmados.slice(0, cuantosPagos).map((p) => (
               <Fila
@@ -513,7 +522,7 @@ function MiCuenta({
               </BotonSecundario>
             </div>
           )}
-        </>
+        </Desplegable>
       )}
 
       {/* --------------------------------------------------------- cómo pago */}
