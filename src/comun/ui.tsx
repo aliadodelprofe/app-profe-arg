@@ -601,10 +601,18 @@ export function Navegacion<T extends string>({
   activa: T;
   alElegir: (id: T) => void;
 }) {
-  // En el celular, la pestaña activa se marca con una PASTILLA detrás del
-  // ícono, no solo con color. Es lo que hace que de un vistazo —sin leer, sin
-  // comparar tonos— sepas dónde estás parado. Un ícono naranja al lado de dos
-  // grises obliga a mirar los tres para decidir cuál es el distinto.
+  // LA PASTILLA SE FUE.
+  //
+  // El ícono activo vivía adentro de una cápsula rellena. Era un recurso
+  // prestado de otro sistema de diseño y, en una barra de tres ítems, la
+  // cápsula era lo primero que se veía de la pantalla entera: un bloque de
+  // color abajo de todo compitiendo con el contenido. Es la misma cosa que
+  // sacamos de las tarjetas, en chiquito.
+  //
+  // Lo que marca dónde estás parado ahora es el color y el peso: el activo en
+  // el color de la marca y en semibold, los otros en gris. Las apps que
+  // miramos de referencia no hacen nada más que eso, y se entiende igual —
+  // porque además de los tres colores está la pantalla que estás mirando.
   const boton = (p: Pestana<T>, vertical: boolean) => {
     const activo = p.id === activa;
     if (vertical) {
@@ -613,34 +621,50 @@ export function Navegacion<T extends string>({
           key={p.id}
           onClick={() => alElegir(p.id)}
           aria-current={activo ? 'page' : undefined}
-          className="flex flex-1 flex-col items-center gap-1 py-2 text-[11px] font-medium transition active:scale-95"
+          className={
+            'flex flex-1 flex-col items-center gap-1.5 py-2.5 text-[11px] transition active:scale-95 '
+            + (activo ? 'font-semibold text-acento' : 'font-medium text-tenue')
+          }
         >
+          {/* El ícono se agranda apenas al activarse. Son dos píxeles y es lo
+              que hace que el cambio de pestaña se sienta, en vez de que un
+              gris pase a naranja sin que pase nada. */}
           <span
             className={
-              'flex h-8 w-14 items-center justify-center rounded-full transition-colors duration-150 ' +
-              (activo ? 'bg-acento-suave text-acento' : 'text-tenue')
+              'flex items-center justify-center transition-transform duration-200 '
+              + (activo ? 'scale-110' : '')
             }
           >
             {p.icono}
           </span>
-          <span className={activo ? 'text-acento' : 'text-tenue'}>{p.texto}</span>
+          {p.texto}
         </button>
       );
     }
+    // En la computadora, el activo se subraya. Es lo que hace cualquier barra
+    // superior y lo que el ojo ya sabe leer; la cápsula rellena ahí arriba
+    // parecía un botón apretado, no una sección.
     return (
       <button
         key={p.id}
         onClick={() => alElegir(p.id)}
         aria-current={activo ? 'page' : undefined}
         className={
-          'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium transition-colors duration-150 ' +
-          (activo
-            ? 'bg-acento-suave text-acento'
-            : 'text-tenue hover:bg-linea/50 hover:text-tinta')
+          'relative flex items-center gap-2 px-3 py-3 text-sm transition-colors duration-150 '
+          + (activo
+            ? 'font-semibold text-tinta'
+            : 'font-medium text-tenue hover:text-tinta')
         }
       >
         {p.icono}
         {p.texto}
+        <span
+          aria-hidden="true"
+          className={
+            'absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-acento transition-opacity duration-150 '
+            + (activo ? 'opacity-100' : 'opacity-0')
+          }
+        />
       </button>
     );
   };
@@ -661,8 +685,8 @@ export function Navegacion<T extends string>({
         className="sticky top-0 z-40 hidden border-b border-linea bg-fondo/80 backdrop-blur-xl sm:block"
         aria-label="Secciones"
       >
-        <div className="mx-auto flex max-w-2xl items-center gap-1 px-5 py-2.5">
-          <span className="mr-4 flex items-center gap-2">
+        <div className="mx-auto flex max-w-2xl items-center gap-1 px-5">
+          <span className="mr-5 flex items-center gap-2 py-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-acento text-sm font-bold text-sobre-acento">
               {NOMBRE.slice(0, 1)}
             </span>
@@ -676,7 +700,15 @@ export function Navegacion<T extends string>({
           esté en el documento no cambia dónde se dibuja. El padding de abajo
           respeta la zona del gesto de inicio en los iPhone sin botón. */}
       <nav
-        className="fixed inset-x-0 bottom-0 z-40 flex border-t border-linea bg-panel/85 px-2 pt-1 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl sm:hidden"
+        className={
+          'fixed inset-x-0 bottom-0 z-40 flex items-center border-t border-linea'
+          + ' bg-fondo/90 px-2 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-xl sm:hidden'
+          // Alto fijo, y no "el que salga": la barra de acción se apoya justo
+          // encima con ese mismo número (ALTO_NAV). Si el alto dependiera del
+          // contenido, cualquier cambio en el ícono o la letra abriría una
+          // ranura entre las dos barras por la que se vería pasar la página.
+          + ' h-[calc(var(--alto-nav)+env(safe-area-inset-bottom,0px))]'
+        }
         aria-label="Secciones"
       >
         {pestanas.map((p) => boton(p, true))}
@@ -720,7 +752,7 @@ export function BarraAccion({
         'fixed inset-x-0 z-30 border-t border-linea bg-fondo/90 backdrop-blur-xl'
         + ' shadow-barra'
         + (conBarra
-          ? ' bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] sm:bottom-0'
+          ? ' bottom-[calc(var(--alto-nav)+env(safe-area-inset-bottom,0px))] sm:bottom-0'
           : ' bottom-0')
       }
     >

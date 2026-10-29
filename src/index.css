@@ -86,6 +86,12 @@
   /* La barra de acción fija. Apenas se despega de la página: tiene que
      decir "esto está por encima", no tapar lo que hay abajo. */
   --shadow-barra: 0 -1px 24px rgb(43 36 32 / 0.07);
+
+  /* El alto de la navegación del celular. Lo saben dos componentes —la barra
+     en sí y la barra de acción, que se apoya justo encima— y por eso vive
+     acá: dos números que tienen que ser iguales y están escritos en dos
+     archivos distintos es un número que en algún momento va a dejar de serlo. */
+  --alto-nav: 4rem;
 }
 
 /* ----------------------------------------------------------------------

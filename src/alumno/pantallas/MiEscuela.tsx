@@ -503,20 +503,48 @@ function MiCuenta({
 }
 
 // Un cargo, en una fila. Sale aparte porque ahora se dibuja en dos listas.
+//
+// DOS COSAS QUE PARECEN UNA.
+//
+// La primera es el tiempo verbal. "Vence el 20/10/2026" en un cargo del 20 de
+// octubre que ya pasó está diciendo que todavía falta: el alumno lee que tiene
+// tiempo cuando en realidad está atrasado. Un cargo que venció habla en
+// pasado, como cualquiera que cuente lo que pasó.
+//
+// La segunda es que se note. En una lista donde todas las filas se ven igual,
+// lo vencido y lo que viene pesan lo mismo, y lo que pesa distinto es
+// justamente lo único que hay que hacer. Sin cajas que teñir, lo que marca la
+// diferencia es el color del número y el de la fecha.
 function FilaCargo({ cargo }: { cargo: MiCargo }) {
   const falta = cargo.amount - cargo.pagado;
+  // Sin fecha también cuenta como vencido: es lo mismo que hace la vista
+  // student_account en la base (migración 0031). Una regla sola, en los dos
+  // lados.
+  const vencido = !cargo.due_date || cargo.due_date <= hoyISO();
+
+  const cuando = cargo.due_date
+    ? `${vencido ? 'venció' : 'vence'} el ${fecha(cargo.due_date)}`
+    : null;
+
   return (
     <Fila
       titulo={cargo.concept}
       detalle={
-        cargo.pagado > 0
-          ? `pagaste ${plata(cargo.pagado)} · falta ${plata(falta)}` +
-            (cargo.due_date ? ` · vence el ${fecha(cargo.due_date)}` : '')
-          : cargo.due_date
-            ? `vence el ${fecha(cargo.due_date)}`
-            : null
+        <span className="flex items-baseline gap-1.5">
+          {cargo.pagado > 0 && (
+            <span>pagaste {plata(cargo.pagado)} · falta {plata(falta)}</span>
+          )}
+          {cargo.pagado > 0 && cuando && <span aria-hidden="true">·</span>}
+          {cuando && (
+            <span className={vencido ? 'font-medium text-alerta' : undefined}>
+              {cuando}
+            </span>
+          )}
+        </span>
       }
-      valor={plata(falta)}
+      valor={
+        <span className={vencido ? 'text-alerta' : undefined}>{plata(falta)}</span>
+      }
     />
   );
 }
