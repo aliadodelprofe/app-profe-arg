@@ -103,15 +103,38 @@ export function Portada({
         </div>
 
         <div className="relative mx-auto flex w-full max-w-2xl items-center justify-between gap-4 px-5 pb-6 pt-7">
+          {/* CUANDO EL ENCABEZADO LLEVA A ALGÚN LADO, TIENE QUE DECIRLO.
+
+              La bajada era gris chiquito —el mismo gris con el que la app
+              escribe fechas y aclaraciones— y decía "tocá para cambiar de
+              escuela". O sea: la única forma de descubrir que se podía tocar
+              era leer, en el tamaño más chico de la pantalla, un texto que
+              parecía una nota al pie.
+
+              Ahora es una pastilla en color de acento con una flecha. No hace
+              falta leerla para saber que es un botón: la forma ya lo dice, y
+              es la misma forma que usan las etiquetas tocables del resto de
+              la app. */}
           {alTocar ? (
             <button
               onClick={alTocar}
-              className="flex min-w-0 items-center gap-3 text-left transition active:opacity-70"
+              className="group flex min-w-0 items-center gap-3 text-left transition active:scale-[0.99] active:opacity-80"
             >
               {principal}
               <span className="min-w-0">
                 <Titulo>{titulo}</Titulo>
-                {bajada && <span className="mt-1 block truncate text-sm text-tenue">{bajada}</span>}
+                {bajada && (
+                  <span className="mt-1.5 inline-flex max-w-full items-center gap-1 rounded-full bg-acento-suave py-1 pl-2.5 pr-1.5 text-xs font-semibold text-acento">
+                    <span className="truncate">{bajada}</span>
+                    <svg
+                      viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                      aria-hidden="true"
+                      className="h-3.5 w-3.5 shrink-0 transition-transform duration-150 group-hover:translate-x-0.5"
+                    >
+                      <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                )}
               </span>
             </button>
           ) : (
@@ -236,6 +259,46 @@ export function Aviso({ children }: { children: ReactNode }) {
       </svg>
       <span className="min-w-0">{children}</span>
     </p>
+  );
+}
+
+// ----------------------------------------------------------------------------
+// LO QUE ESTÁ EN CAMINO
+//
+// Ni un error ni un logro: algo que la persona ya hizo y que todavía depende
+// de otro. El alumno avisó que transfirió y su profe tiene que confirmarlo.
+//
+// Antes esto era una línea de 14px colgada abajo del número, del mismo color
+// que los enlaces. Quedaba tapada entre la cifra grande y la lista de cargos,
+// y es justo lo que la persona viene a buscar: "¿llegó lo que mandé?". Si no
+// lo encuentra, vuelve a avisar el mismo pago, o le escribe al profe.
+//
+// Lleva ícono por el mismo motivo que el Aviso: el reloj dice "esto está en
+// curso" antes de que empieces a leer, y lo distingue de un número en rojo.
+// ----------------------------------------------------------------------------
+export function EnEspera({
+  titulo,
+  children,
+}: {
+  titulo: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="anim-aparecer flex items-start gap-3 rounded-2xl border border-acento/25 bg-acento-suave px-4 py-3.5">
+      <svg
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-acento"
+      >
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <div className="min-w-0">
+        <p className="text-[0.9375rem] font-semibold leading-snug text-acento">{titulo}</p>
+        {children && (
+          <p className="mt-0.5 text-sm leading-snug text-tenue">{children}</p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -525,6 +588,21 @@ export function Selector({
     </select>
   );
 }
+
+// LA ACCIÓN DE SEGUNDA.
+//
+// Se lee, se toca, y no le disputa la atención a la de al lado. Mismo alto
+// táctil que una pastilla (min-h-9) pero sin fondo: el peso lo da el color.
+//
+// Existe porque había dos lugares —la foto del alumno y el logo de la
+// escuela— donde "cambiar" y "sacar" se dibujaban con el MISMO botón, y no
+// son lo mismo: cambiar la foto lo hace todo el mundo, sacarla uno de cada
+// veinte. Dos acciones del mismo peso visual obligan a leer las dos para
+// saber cuál es la que buscabas.
+export const claseAccionTenue =
+  'inline-flex min-h-9 items-center justify-center rounded-full px-3 py-1.5 text-sm ' +
+  'font-medium text-tenue transition hover:text-tinta active:scale-[0.97] ' +
+  'disabled:pointer-events-none disabled:opacity-45';
 
 // El aspecto de una opción que se elige tocándola. Vive afuera de `Opciones`
 // porque hay dos lugares que necesitan la misma pinta con otro comportamiento:
@@ -1188,7 +1266,12 @@ export function Avatar({
   foto?: string | null;
   // 'nav' es el de la barra de secciones, donde reemplaza al ícono: la cara
   // de uno es mejor señal de "acá estoy yo" que cualquier dibujo.
-  tam?: 'nav' | 'chico' | 'normal';
+  // 'grande' es el del perfil, el único lugar donde la foto es el tema de la
+  // pantalla y no un acompañamiento. Antes ese tamaño se conseguía con un
+  // scale-150 encima del normal: la foto se agrandaba pero el aro de 1px
+  // también, y el círculo quedaba con un borde grueso que ninguno de los
+  // otros tiene.
+  tam?: 'nav' | 'chico' | 'normal' | 'grande';
 }) {
   const h = tonoDe(nombre);
   // Si la dirección de la foto no carga, se cae a las iniciales. Se reinicia
@@ -1197,7 +1280,10 @@ export function Avatar({
   useEffect(() => { setRoto(false); }, [foto]);
 
   const medida =
-    tam === 'nav' ? 'h-5 w-5 sm:h-4 sm:w-4' : tam === 'chico' ? 'h-8 w-8' : 'h-10 w-10';
+    tam === 'nav' ? 'h-5 w-5 sm:h-4 sm:w-4'
+      : tam === 'chico' ? 'h-8 w-8'
+        : tam === 'grande' ? 'h-20 w-20'
+          : 'h-10 w-10';
 
   // Con foto, la foto. Las iniciales son el plan B, no el plan.
   //
@@ -1232,7 +1318,12 @@ export function Avatar({
       className={
         'flex shrink-0 items-center justify-center rounded-full font-semibold ' +
         'ring-1 ring-tinta/5 ring-inset ' +
-        medida + (tam === 'normal' ? ' text-sm' : tam === 'chico' ? ' text-xs' : ' text-[8px]')
+        medida + (
+          tam === 'normal' ? ' text-sm'
+            : tam === 'chico' ? ' text-xs'
+              : tam === 'grande' ? ' text-2xl'
+                : ' text-[8px]'
+        )
       }
     >
       {inicialesDe(nombre)}

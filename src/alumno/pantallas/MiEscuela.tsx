@@ -21,7 +21,7 @@ import {
   Marco, Aviso, Vacio, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar, Portada,
   Lista, Fila, Segmentos, ChipFecha, Etiqueta, CorteDeMes, Dato, CopiarDato, BarraAccion,
-  Celebracion, Desplegable,
+  Celebracion, Desplegable, EnEspera,
 } from '../../comun/ui';
 import ComoPago from './ComoPago';
 import Perfil from './Perfil';
@@ -82,7 +82,7 @@ export default function MiEscuela({
         portada={
           <Portada
             titulo={escuela}
-            bajada={alCambiarEscuela ? 'tocá para cambiar de escuela' : queEnsena(ficha)}
+            bajada={alCambiarEscuela ? 'Cambiar de escuela' : queEnsena(ficha)}
             principal={<Avatar nombre={escuela} foto={ficha.escuela?.avatar_url} />}
             alTocar={alCambiarEscuela}
           />
@@ -409,12 +409,26 @@ function MiCuenta({
             vencieron.
           </p>
         )}
-        {declarados.length > 0 && (
-          <p className="mt-2 text-sm text-acento">
-            Avisaste {plata(totalDeclarado)}. Tu profe lo tiene que confirmar.
-          </p>
-        )}
       </Dato>
+      )}
+
+      {/* EL PAGO QUE MANDASTE, DONDE SE VE.
+
+          Esto vivía adentro del Dato, en 14px y en color de enlace, apretado
+          entre la cifra y la lista de cargos. Es la pregunta con la que el
+          alumno abre esta pantalla después de transferir —"¿le llegó?"— y era
+          lo más difícil de encontrar de la pantalla.
+
+          Va afuera del Dato y afuera del "Al día", porque vale en los dos
+          casos: podés haber avisado un pago y no deber nada vencido. */}
+      {declarados.length > 0 && (
+        <div className="mt-5">
+          <EnEspera titulo={`Avisaste ${plata(totalDeclarado)}: tu profe lo está revisando`}>
+            {declarados.length === 1
+              ? `Lo avisaste el ${fecha(declarados[0].declared_at)}. Cuando lo confirme, se descuenta de lo que debés.`
+              : `Son ${declarados.length} avisos sin confirmar. Cuando los confirme, se descuentan de lo que debés.`}
+          </EnEspera>
+        </div>
       )}
 
       {/* "Ya transferí" colgaba del número y, apenas scrolleabas la lista de

@@ -20,7 +20,7 @@ import {
 import type { Espacio, ActividadDelEspacio } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
-  Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema, claseOpcion,
+  Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema, claseOpcion, claseAccionTenue,
 } from '../../comun/ui';
 import ComoMePagan from './ComoMePagan';
 import Recorte from '../../comun/Recorte';
@@ -329,46 +329,56 @@ function Logo({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-4">
-        <div className="scale-150 pl-3">
-          <Avatar nombre={espacio.name} foto={espacio.avatar_url} />
-        </div>
-        <div className="flex flex-col gap-2 pl-3">
-          {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
-              sus hijos en un <label>, y un input de archivo adentro de su
-              propio label recibe dos clics y se cierra solo. */}
-          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-acento-suave px-4 py-2.5 text-sm font-medium text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
-            {subiendo ? 'Subiendo…' : espacio.avatar_url ? 'Cambiar el logo' : 'Subir un logo'}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={subiendo}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
-                if (!f) return;
-                if (f.size > LOGO_MAX_MB * 1024 * 1024) {
-                  setError(`La imagen pesa más de ${LOGO_MAX_MB} MB. Probá con otra.`);
-                  return;
-                }
-                setError(null);
-                setARecortar(f);
-              }}
-            />
-          </label>
-          {espacio.avatar_url && (
-            <BotonSecundario type="button" onClick={quitar} disabled={subiendo}>
-              Quitar
-            </BotonSecundario>
-          )}
+      {/* La misma forma que la foto del alumno en su perfil, y a propósito:
+          son la misma operación con otro archivo. Antes acá había dos botones
+          del mismo peso apilados al lado de un avatar con scale-150, y allá
+          otros dos iguales — dos lugares, un solo problema. */}
+      <div className="flex items-center gap-5">
+        <Avatar nombre={espacio.name} foto={espacio.avatar_url} tam="grande" />
+
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
+                sus hijos en un <label>, y un input de archivo adentro de su
+                propio label recibe dos clics y se cierra solo. */}
+            <label className="inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full bg-acento-suave px-3.5 py-1.5 text-sm font-semibold text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
+              {subiendo ? 'Subiendo…' : espacio.avatar_url ? 'Cambiar' : 'Subir un logo'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={subiendo}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  if (f.size > LOGO_MAX_MB * 1024 * 1024) {
+                    setError(`La imagen pesa más de ${LOGO_MAX_MB} MB. Probá con otra.`);
+                    return;
+                  }
+                  setError(null);
+                  setARecortar(f);
+                }}
+              />
+            </label>
+            {espacio.avatar_url && (
+              <button
+                type="button"
+                onClick={quitar}
+                disabled={subiendo}
+                className={claseAccionTenue}
+              >
+                Quitar
+              </button>
+            )}
+          </div>
+
+          <p className="text-sm leading-snug text-tenue">
+            Lo ven tus alumnos arriba de todo. Sin logo se usan las iniciales.
+            Hasta {LOGO_MAX_MB} MB.
+          </p>
         </div>
       </div>
-
-      <p className="text-xs text-tenue">
-        Lo ven tus alumnos arriba de todo. Sin logo se usan las iniciales. Hasta{' '}
-        {LOGO_MAX_MB} MB.
-      </p>
 
       {error && <Aviso>{error}</Aviso>}
 

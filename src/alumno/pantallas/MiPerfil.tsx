@@ -13,7 +13,9 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { guardarMiPerfil, subirMiFoto, FOTO_MAX_MB } from '../datos';
 import type { MiFicha } from '../datos';
-import { Aviso, Campo, Texto, Boton, BotonSecundario, Avatar, Hoja } from '../../comun/ui';
+import {
+  Aviso, Campo, Texto, Boton, BotonSecundario, Avatar, Hoja, claseAccionTenue,
+} from '../../comun/ui';
 import Recorte from '../../comun/Recorte';
 
 export default function MiPerfil({
@@ -99,60 +101,85 @@ export default function MiPerfil({
 
   return (
     <form onSubmit={guardar} className="flex flex-col gap-4">
-      <div className="flex items-center gap-4">
-        <div className="scale-150 pl-3">
-          <Avatar nombre={nombre || ficha.full_name} foto={foto} />
-        </div>
-        <div className="flex flex-col items-start gap-2 pl-3">
-          {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
-              sus hijos en un <label>, y un input de archivo adentro de su
-              propio label recibe dos clics y se cierra solo. Acá el label ES
-              el botón, que es distinto: hay un solo label. */}
-          <label className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-acento-suave px-4 py-2.5 text-sm font-medium text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
-            {subiendo ? 'Subiendo…' : foto ? 'Cambiar la foto' : 'Subir una foto'}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              disabled={subiendo}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = '';
-                if (!f) return;
-                if (f.size > FOTO_MAX_MB * 1024 * 1024) {
-                  setError(`La imagen pesa más de ${FOTO_MAX_MB} MB. Probá con otra.`);
-                  return;
-                }
-                setError(null);
-                setARecortar(f);
-              }}
-            />
-          </label>
+      {/* LA FOTO Y LO QUE SE PUEDE HACER CON ELLA.
 
-          {fotoSugerida && foto !== fotoSugerida && (
-            <BotonSecundario
-              type="button"
-              disabled={subiendo}
-              onClick={() => void aplicarFoto(fotoSugerida)}
-            >
-              Usar mi foto de Google
-            </BotonSecundario>
-          )}
-          {foto && (
-            <BotonSecundario
-              type="button"
-              disabled={subiendo}
-              onClick={() => void aplicarFoto(null)}
-            >
-              Sacar la foto
-            </BotonSecundario>
-          )}
-          {!foto && !errorFoto && (
-            <p className="text-sm text-tenue">Sin foto se usan tus iniciales.</p>
-          )}
-          {errorFoto && <Aviso>{errorFoto}</Aviso>}
+          Antes eran dos bloques rosas apilados del mismo tamaño y del mismo
+          peso —"Cambiar la foto" y "Sacar la foto"— al lado de un avatar
+          agrandado con scale-150. Tres problemas en una esquina:
+
+          · Las dos acciones pesaban igual, y no lo son: cambiarla es lo que
+            hace todo el mundo, sacarla es lo que hace uno de cada veinte.
+          · Apiladas ocupaban más alto que la foto, así que lo primero que se
+            leía del perfil eran dos botones y no la cara.
+          · El scale-150 agrandaba también el aro de 1px del avatar, que
+            quedaba el doble de grueso que en el resto de la app.
+
+          Ahora la foto es grande de verdad (tam="grande"), la acción común es
+          una pastilla, y las otras dos son texto al lado: se encuentran si se
+          las busca y no compiten con nada. */}
+      <div className="flex items-center gap-5">
+        <Avatar nombre={nombre || ficha.full_name} foto={foto} tam="grande" />
+
+        <div className="flex min-w-0 flex-col items-start gap-2">
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+            {/* El input de archivo no va adentro de <Campo>: Campo envuelve a
+                sus hijos en un <label>, y un input de archivo adentro de su
+                propio label recibe dos clics y se cierra solo. Acá el label ES
+                el botón, que es distinto: hay un solo label. */}
+            <label className="inline-flex min-h-9 cursor-pointer items-center justify-center rounded-full bg-acento-suave px-3.5 py-1.5 text-sm font-semibold text-acento transition hover:brightness-[0.97] active:scale-[0.97]">
+              {subiendo ? 'Subiendo…' : foto ? 'Cambiar' : 'Subir una foto'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={subiendo}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  e.target.value = '';
+                  if (!f) return;
+                  if (f.size > FOTO_MAX_MB * 1024 * 1024) {
+                    setError(`La imagen pesa más de ${FOTO_MAX_MB} MB. Probá con otra.`);
+                    return;
+                  }
+                  setError(null);
+                  setARecortar(f);
+                }}
+              />
+            </label>
+
+            {fotoSugerida && foto !== fotoSugerida && (
+              <button
+                type="button"
+                disabled={subiendo}
+                onClick={() => void aplicarFoto(fotoSugerida)}
+                className={claseAccionTenue}
+              >
+                Usar la de Google
+              </button>
+            )}
+            {foto && (
+              <button
+                type="button"
+                disabled={subiendo}
+                onClick={() => void aplicarFoto(null)}
+                className={claseAccionTenue}
+              >
+                Sacar
+              </button>
+            )}
+          </div>
+
+          <p className="text-sm leading-snug text-tenue">
+            {foto
+              ? 'Es lo que ve tu profesor al lado de tu nombre.'
+              : 'Sin foto se usan tus iniciales.'}
+          </p>
         </div>
       </div>
+
+      {/* El error va a lo ancho del formulario y no apretado en la columna de
+          los botones, donde un mensaje de dos renglones empujaba la foto. */}
+      {errorFoto && <Aviso>{errorFoto}</Aviso>}
 
       {aRecortar && (
         <Hoja titulo="Acomodá tu foto" alCerrar={() => setARecortar(null)}>
