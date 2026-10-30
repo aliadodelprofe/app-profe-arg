@@ -13,7 +13,7 @@
 import { supabase } from '../lib/supabase';
 import { idUnico } from '../comun/id';
 import {
-  NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente, fecha,
+  NOMBRE_DIA, hoyISO, finDelMes, inicioDelMes, mesSiguiente, fecha, diaLocal,
 } from '../comun/fechas';
 
 // Re-exportado para que las pantallas sigan pidiendo todo a datos.ts.
@@ -1255,7 +1255,7 @@ export async function traerCobros(espacioId: string): Promise<Cobro[]> {
       alumno: nombre.get(String(r.student_id)) ?? 'Alumno',
       foto: foto.get(String(r.student_id)) ?? null,
       amount: num(r.amount),
-      fecha: (r.paid_on as string) ?? String(r.confirmed_at).slice(0, 10),
+      fecha: (r.paid_on as string) ?? diaLocal(String(r.confirmed_at)),
       note: (r.note as string) ?? null,
       comprobante_borrado: r.receipt_deleted_at != null,
     };

@@ -16,7 +16,7 @@ import type {
   MiFicha, MiClase, MiCargo, MiPago, MiSaldo, MiArreglo, DondeTransferir as TipoDestino,
 } from '../datos';
 import type { Pestana } from '../../comun/ui';
-import { fecha, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
+import { fecha, diaLocal, plata, hoyISO, linkMapaDe, mesDeCorte, porMes } from '../formato';
 import {
   Marco, Aviso, Vacio, useCarga, Campo, Texto, Boton, BotonSecundario,
   Titulo, Seccion, Navegacion, IconoClases, IconoCobros, Hoja, Esqueleto, Avatar, Portada,
@@ -350,7 +350,10 @@ function MiCuenta({
   // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
   // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
   const confirmados = (pagos?.filter((p) => p.status === 'confirmed') ?? [])
-    .map((p) => ({ ...p, cuando: p.paid_on ?? p.confirmed_at?.slice(0, 10) ?? p.declared_at.slice(0, 10) }))
+    .map((p) => ({
+      ...p,
+      cuando: p.paid_on ?? diaLocal(p.confirmed_at ?? p.declared_at),
+    }))
     .sort((a, b) => (a.cuando < b.cuando ? 1 : -1));
 
   const hoy = hoyISO();

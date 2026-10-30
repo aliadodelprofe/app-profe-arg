@@ -91,7 +91,7 @@ export default function ParaConfirmar({
               foto={p.foto}
               titulo={p.alumno}
               detalle={
-                `declaró el ${fecha(p.declared_at.slice(0, 10))}` +
+                `declaró el ${fecha(p.declared_at)}` +
                 (p.paid_on ? ` · transfirió el ${fecha(p.paid_on)}` : '')
               }
               valor={plata(p.amount)}

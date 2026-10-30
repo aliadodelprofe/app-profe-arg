@@ -116,8 +116,45 @@ export function mesSiguiente(period: string): string {
 // Formato para mostrar. Viven acá porque las usan las dos apps, la del
 // profesor y la del alumno.
 // ---------------------------------------------------------------------------
+// UNA MARCA DE TIEMPO NO ES UNA FECHA, Y EL DÍA QUE LE TOCA DEPENDE DE DÓNDE
+// ESTÁS PARADO.
+//
+// La base guarda dos cosas distintas con la misma pinta de texto: una fecha
+// sola ('2026-10-30', como due_date o paid_on) y una marca de tiempo con huso
+// ('2026-10-30T22:43:56.720398+00:00', como declared_at o confirmed_at).
+//
+// Esto devuelve el día que le corresponde a la marca de tiempo SEGÚN EL RELOJ
+// DE QUIEN MIRA, igual que hoyISO(). Un pago avisado a las 21:30 del 31 en
+// Buenos Aires son las 00:30 del 1 en UTC: recortar el texto a los primeros
+// diez caracteres —que es lo que hacían tres pantallas por su cuenta— le
+// cambia el día al alumno, y de paso lo manda al mes siguiente cuando la
+// lista se agrupa por mes.
+export function diaLocal(iso: string): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return iso;
+  const mm = String(t.getMonth() + 1).padStart(2, '0');
+  const dd = String(t.getDate()).padStart(2, '0');
+  return `${t.getFullYear()}-${mm}-${dd}`;
+}
+
+// '2026-10-30' -> '30/10/2026'
+//
+// Acepta las dos formas, y no por comodidad: la versión anterior partía el
+// texto por los guiones y nada más, así que una marca de tiempo salía impresa
+// como "30T22:43:56.720398+00:00/10/2026". No fallaba: dibujaba basura, que
+// es peor, porque no hay nada que avise.
+//
+// La fecha sola se sigue partiendo a mano A PROPÓSITO. new Date('2026-10-30')
+// se lee como medianoche UTC, y en Buenos Aires eso es el 29 a las 21: pasar
+// una fecha sola por Date es cómo una app te muestra el día anterior al que
+// dice la base.
 export function fecha(iso: string): string {
-  const [a, m, d] = iso.split('-');
+  // El ' ' es por las dudas: Postgres por PostgREST siempre manda la T, pero
+  // la forma con espacio existe y no la parsean todos los navegadores igual.
+  // Mejor tratarla como marca de tiempo y que Date decida, que partirla por
+  // los guiones y escupir "30 22:43:56+00/10/2026".
+  const soloFecha = !iso.includes('T') && !iso.includes(' ');
+  const [a, m, d] = (soloFecha ? iso : diaLocal(iso)).split('-');
   return `${d}/${m}/${a}`;
 }
 

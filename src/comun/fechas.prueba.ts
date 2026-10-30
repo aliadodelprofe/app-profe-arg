@@ -11,6 +11,7 @@
 import {
   sumarDias, diaSemana, mesDe, fechasSemanales,
   mesEnPalabras, finDelMes, inicioDelMes, mesSiguiente, duracionEnPalabras,
+  fecha, diaLocal,
 } from './fechas';
 import { compararFormas, porClaseDentroDeLaCuota, clasesPorAnioDe } from './precios';
 import { idUnico } from './id';
@@ -120,6 +121,33 @@ esperar('el singular del minuto suelto', duracionEnPalabras(61), '1 hora y 1 min
 esperar('vacio no dice nada', duracionEnPalabras(null), null);
 esperar('cero tampoco', duracionEnPalabras(0), null);
 esperar('ni la basura', duracionEnPalabras(Number('abc')), null);
+
+// Una marca de tiempo entraba a fecha() y salía impresa como
+// "30T22:43:56.720398+00:00/10/2026". No fallaba: dibujaba basura.
+//
+// El huso de quien corre la prueba no se puede elegir, así que las dos filas
+// del día local no comparan contra un texto fijo —eso solo pasaría en
+// Argentina— sino contra lo que dice el reloj del navegador para ese mismo
+// instante. Lo que se prueba es que las dos funciones coincidan con Date y
+// entre ellas, que es lo que estaba roto.
+console.log('\nFechas sueltas y marcas de tiempo, que no son lo mismo');
+esperar('una fecha sola se parte a mano', fecha('2026-10-30'), '30/10/2026');
+esperar('una fecha sola NO pasa por Date (si no, muestra el dia anterior)',
+  fecha('2026-01-01'), '01/01/2026');
+{
+  const marca = '2026-10-30T22:43:56.720398+00:00';
+  const d = new Date(marca);
+  const esperado = `${String(d.getDate()).padStart(2, '0')}/`
+    + `${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+  esperar('una marca de tiempo sale como fecha, no como texto crudo',
+    fecha(marca), esperado);
+  esperar('diaLocal devuelve el dia del reloj de quien mira',
+    diaLocal(marca),
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-`
+      + `${String(d.getDate()).padStart(2, '0')}`);
+  esperar('y las dos coinciden entre si', fecha(diaLocal(marca)), fecha(marca));
+}
+esperar('la basura se devuelve como vino, sin romper nada', diaLocal('cualquier cosa'), 'cualquier cosa');
 
 console.log('\nEl nombre unico de los archivos que se suben');
 // Lo que se verifica no es el azar —eso lo pone el navegador— sino que el
