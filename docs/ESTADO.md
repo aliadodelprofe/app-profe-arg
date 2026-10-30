@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-> Actualizado: 4 de septiembre de 2026
+> Actualizado: 30 de octubre de 2026
 
 Este archivo dice **dónde estamos parados y cuál es el próximo paso**.
 El contexto del producto (qué es, precios, modelo de datos, reglas de seguridad)
@@ -15,6 +15,7 @@ está en `CLAUDE.md`, en la raíz.
 | Repositorio | `github.com/aliadodelprofe/app-profe-arg` (privado) |
 | Base de datos | Supabase, org propia, proyectos `aliado-dev` y `aliado-prod`, región São Paulo |
 | App vieja (en producción) | tabachata-academy.com — Firebase. **Congelada**, solo bugs críticos |
+| App nueva (sin publicar) | Vercel, dominio propio a definir. `vercel.json` es su configuración |
 
 **Seguridad de los proyectos Supabase:** Data API, expose new tables y automatic RLS activados en ambos. La integración con GitHub NO está conectada, a propósito.
 
@@ -31,19 +32,72 @@ npm run dev
 
 | Dirección | Qué carga |
 |---|---|
+| `localhost:3000/` | La landing del producto nuevo |
 | `localhost:3000/profe` | La app del profesor, contra Supabase |
 | `localhost:3000/alumno` | El portal del alumno, contra Supabase |
-| cualquier otra | La app de la comunidad, contra Firebase (producción) |
+| `localhost:3000/comunidad` | La app de la comunidad, contra Firebase (producción) |
 
-`src/main.tsx` decide cuál montar según la dirección, con import dinámico: entrando
-por `/profe` el código de Firebase **no se descarga**, así que no hay forma de tocar
-la base de producción mientras se desarrolla.
+`src/main.tsx` decide cuál montar con import dinámico: entrando por `/profe` el código
+de Firebase **no se descarga**, así que no hay forma de tocar la base de producción
+mientras se desarrolla.
+
+**La raíz es del producto nuevo desde el 29/10/2026**, y la app de la comunidad se
+reconoce **por dominio**, no por una variable de entorno. El porqué está en la sección
+siguiente.
 
 Las credenciales viven en `.env.local` (fuera de git). Vite las lee **una sola vez al
 arrancar**: si se tocan, hay que cortar con `Ctrl+C` y volver a levantar.
 
 Node.js LTS instalado y `@supabase/supabase-js` como dependencia. El proyecto usa
 npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
+
+---
+
+## Dos apps, dos despliegues (29/10/2026)
+
+El repositorio tiene dos productos adentro, y hasta el 29/10 compartían la raíz. Eso no
+era solo desprolijo: cuando Supabase rechazó una redirección de autenticación y cayó a su
+destino de respaldo, dejó al alumno **adentro del producto equivocado**, con el token
+colgando en la dirección. Una raíz es de una sola app.
+
+| | App de la comunidad | App nueva |
+|---|---|---|
+| Dominio | `tabachata-academy.com` + los `.web.app` de Firebase | el dominio nuevo, a definir |
+| Hosting | Firebase Hosting | Vercel |
+| Configuración | `firebase.json` | `vercel.json` |
+| Base | Firebase (producción, congelada) | Supabase |
+
+**Se decide por dominio y no por una variable de entorno, a propósito.** Una variable hay
+que acordarse de ponerla en cada despliegue, y el día que uno se olvide, el dominio nuevo
+serviría la app de la comunidad contra el Firebase de producción — exactamente el accidente
+que esto viene a evitar. Con el dominio, el que tiene que acordarse de algo es el que
+publica la app **vieja**, que está congelada y vive en un lugar que ya existe.
+
+La lista está en `DOMINIOS_COMUNIDAD`, en `src/main.tsx`. `/comunidad` es la puerta de
+servicio: sirve para abrirla en localhost el día que haya que arreglarle un bug.
+
+**`vercel.json` traía una bomba.** Su CSP nombraba un proyecto de Supabase que no es este.
+Publicado así, el navegador habría bloqueado **todas** las llamadas a la base y la app
+nueva no habría cargado un solo dato — sin un error que lo explique, porque un bloqueo de
+CSP no dice "te falta el dominio en la política", dice que la conexión falló. Quedó
+corregido y apuntando a `umyqsvbctvalfivyfjas.supabase.co`.
+
+**La regla:** cada vez que cambie el proyecto de Supabase, hay que cambiar también el
+`connect-src` del `vercel.json`. Son dos lugares y el segundo no se rompe hasta que se
+publica.
+
+### Lo que falta para publicar
+
+| Paso | Dónde |
+|---|---|
+| Conectar el repo y desplegar | Vercel |
+| Apuntar el dominio nuevo | el registrador + Vercel |
+| Agregar `https://<dominio>/alumno` a las *Redirect URLs* | Supabase → Authentication → URL Configuration |
+| Poner el Site URL en el dominio nuevo | Supabase, mismo lugar |
+| Agregar `https://<dominio>` a *Authorized JavaScript origins* | Google Cloud → Clients |
+| **Sacar `http://localhost:3000`** de esos orígenes | Google Cloud, mismo lugar |
+| Correr las migraciones 0001 → 0042 en `aliado-prod` | SQL Editor |
+| Encender `Confirm email` en `aliado-prod` | Supabase → Authentication |
 
 ---
 
@@ -85,6 +139,14 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `0032_una_clase_puede_ser_online.sql` | `groups.online` y `groups.meeting_url`. Una clase online no tiene sala, y un check impide que convivan con una dirección | Aplicada |
 | `0033_el_pago_unico_se_cobra.sql` | `asegurar_cargos()` gana la rama de pago único. Existía la forma de pago pero nunca generaba un cargo: el alumno figuraba al día debiendo el taller entero | Aplicada |
 | `0034_un_grupo_puede_tener_dos_dias.sql` | El horario pasa de tres columnas en `groups` a la tabla `group_schedule`: un grupo puede juntarse martes y jueves, con horas distintas. Las columnas viejas se borran | Aplicada |
+| `0035_una_ficha_sin_correo_no_sirve.sql` | `students.email` pasa a ser obligatorio. Una ficha sin correo no se puede reclamar nunca: el alumno no tiene forma de llegar a ella | Aplicada |
+| `0036_no_todas_las_semanas.sql` | `group_schedule.por_mes`: cada día del horario dice si es todas las semanas (nulo) o 1, 2, 3 o 4 veces por mes. `asegurar_clases()` lo respeta | Aplicada |
+| `0037_lo_que_ensena_cada_escuela.sql` | Catálogo `disciplines` (32 actividades) y `tenant_disciplines`: la escuela dice qué enseña, y puede enseñar más de una cosa. `tenants.discipline` se borra | Aplicada |
+| `0038_la_aclaracion_del_estilo.sql` | `tenant_disciplines.nota`: "Bachata" + "Influence" en vez de una categoría "Bachata Influence". Parte lo que el backfill había pegado junto | Aplicada |
+| `0039_de_que_es_este_grupo.sql` | `groups.discipline_slug`: una escuela de Bachata puede tener un grupo de Salsa, y el alumno ve de qué es cada grupo | Aplicada |
+| `0040_dejar_la_escuela.sql` | `dejar_la_escuela()` y `volver_a_la_escuela()`: archivar a un alumno de la escuela entera, distinto de darlo de baja de un grupo. Más el check de `students.status` | Aplicada |
+| `0041_fotos_que_no_usa_nadie.sql` | `archivos_sueltos` y `limpiar_archivos_sueltos()`: las fotos que nadie usa se anotan todas las noches, y se borran solo después de siete días seguidos de no usarse. **Arranca en modo mirar, sin borrar** | Aplicada |
+| `0042_las_tareas_son_de_la_noche.sql` | Les quita el `execute` a `anon` y `authenticated` sobre las tres tareas nocturnas. Supabase se lo da solo a toda función nueva de `public`, y `revoke … from public` **no** lo saca | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -124,10 +186,15 @@ npm; `bun.lock` fue eliminado para no tener dos archivos de candado.
 | `supabase/tests/pago_unico.sql` | El pago único (0033): que el taller con precio total genere su cargo, que venza el día de la inscripción, que no se cobre dos veces, y que un cargo suelto no lo tape. En una transacción que se deshace. Repetible |
 | `supabase/tests/lo_que_vencio.sql` | La frontera entre vencido y por vencer (0031): que un cargo de mañana no entre en el saldo, que uno sin fecha sí, y que pagar por adelantado no mueva lo vencido. En una transacción que se deshace. Repetible |
 | `supabase/tests/mi_correo.sql` | `sincronizar_mi_correo()` (0030): que copie el correo **del JWT**, que sea idempotente, y que otra persona con ese mismo correo en su token no se lleve las fichas. En una transacción que se deshace. Repetible |
-| `npm run prueba:fechas` | Las cuentas de fechas del horario fijo (`src/profe/fechas.ts`). No toca la base ni el navegador. Correr después de cualquier cambio ahí |
-| **`npm run prueba:base`** | **Corre las diecisiete de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
+| `supabase/tests/clases_cada_tanto.sql` | `por_mes` (0036): que un día "2 por mes" genere la 1ª y la 3ª semana y no dos seguidas, que "todas las semanas" siga generando las cinco cuando el mes tiene cinco, y que dos días del mismo grupo puedan tener frecuencias distintas. En una transacción que se deshace. Repetible |
+| `supabase/tests/lo_que_ensena.sql` | Las actividades (0037, 0038, 0039): que el catálogo se lea y no se escriba, que cada escuela solo toque las suyas, que el alumno vea las de su escuela y no las de otra, que la nota no entre vacía ni larga, y que un grupo no apunte a una actividad que no existe. En una transacción que se deshace. Repetible |
+| `supabase/tests/grupo_online.sql` | Una clase online (0032) en cualquier formato: que el enlace y la dirección no convivan, y que el alumno vea el enlace de su grupo y no el de otro. En una transacción que se deshace. Repetible |
+| `supabase/tests/dejar_la_escuela.sql` | `dejar_la_escuela()` (0040): que cierre todas las inscripciones activas, que no toque las ya cerradas, que el alumno archivado no aparezca en el listado, que volver **no** reabra las inscripciones, y que nadie archive una ficha de un espacio ajeno. En una transacción que se deshace. Repetible |
+| `supabase/tests/archivos_sueltos.sql` | El barrido de fotos (0041): que anote la huérfana, que no anote la que está en uso, que contar de nuevo sume sin duplicar la fila, que no borre antes de los siete días, y que ningún profesor pueda ejecutarla. Correr como `postgres`. Repetible |
+| `npm run prueba:fechas` | Las cuentas de fechas y de precios del front (`src/comun/fechas.ts`, `src/comun/precios.ts`). **49 casos.** No toca la base ni el navegador. Correr después de cualquier cambio ahí |
+| **`npm run prueba:base`** | **Corre las veinticuatro de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
-Últimos resultados (28 de octubre de 2026) — **la batería completa, 19 de 19 en verde**,
+Últimos resultados (30 de octubre de 2026) — **la batería completa, 24 de 24 en verde**,
 corrida de una con `npm run prueba:base`.
 
 Esa corrida fue la primera que se hizo entera de una sola vez, y destapó cuatro pruebas
@@ -149,6 +216,49 @@ pedir totales o buscar "el primero que cumpla" son todas formas de escribir una 
 depende del azar de los datos — y que el día que falla no dice nada útil, porque no falló
 por lo que decía probar.
 
+### La variante: filtrar bien no alcanza si después elegís con un empate (30/10/2026)
+
+`forma_de_pago.sql` falló tres veces seguidas, y las tres por la misma raíz con distinto
+disfraz. Primero buscaba la ficha del alumno con `limit 1` sobre todas sus fichas, y cuando
+apareció una cuarta eligió la equivocada. Después la buscaba por el nombre de la escuela,
+que no es como la busca la función que está probando — así que la prueba y la función
+miraban dos filas distintas. Y una vez arreglado eso, la última fila seguía leyendo
+`order by start_date desc limit 1`, que **empataba** con una inscripción vieja de la misma
+fecha: el orden entre dos filas empatadas lo decide Postgres, o sea el azar.
+
+Dos reglas, entonces:
+
+1. **La prueba tiene que buscar su objeto igual que lo busca la función.** Si la función
+   usa `user_id` + `tenant_id`, la prueba no puede usar el nombre: en el momento en que
+   difieran, la prueba va a estar afirmando sobre otra fila.
+2. **Guardá el `id` de lo que creaste y leé por ese `id`.** Un `order by` sobre un campo
+   que puede repetirse no es una forma de elegir una fila, es una forma de elegir
+   *alguna* fila.
+
+### Una prueba que aceptaba cualquier error (30/10/2026)
+
+Las tres pruebas de tareas nocturnas tienen una fila que dice "un profesor NO puede
+ejecutarla". Las tres la verificaban así: intentar ejecutarla, y si salta **cualquier**
+excepción, dar por buena la fila.
+
+Cuando se escribió `archivos_sueltos.sql` esa fila falló — "un profesor pudo ejecutarla" —
+y al investigar apareció que el problema no era de la prueba nueva, sino de las dos viejas:
+**Supabase le da `execute` a `anon` y `authenticated` sobre toda función nueva de `public`**,
+y `revoke all … from public` no saca esos permisos, porque son concesiones nombradas a esos
+dos roles. O sea que cualquier usuario logueado podía llamar a las tres tareas de
+mantenimiento. No pasaba nada visible porque la función fallaba más adentro — por RLS o por
+no poder leer Vault — y la prueba aceptaba ese error como si fuera el candado.
+
+Las tres pruebas **venían pasando en verde desde hacía meses por el motivo equivocado.** El
+candado no existía; lo que existía era un tropiezo más abajo que daba un error parecido.
+
+Lo que cambió: la migración 0042 revoca el `execute` de verdad, y las tres filas ahora
+exigen el error específico (`insufficient_privilege`, SQLSTATE `42501`) en vez de cualquiera.
+
+**La regla:** una prueba que afirma que algo está prohibido tiene que exigir **el** error de
+permisos, no un error. "Falló" y "falló por lo que yo quería probar" son dos cosas
+distintas, y la diferencia entre las dos es justamente la que la prueba existe para medir.
+
 ---
 
 ## Próximo paso exacto
@@ -160,12 +270,16 @@ se registra con su correo, ve sus clases con el lugar y el mapa, lee los recaps,
 debe, avisa que transfirió y adjunta el comprobante. Los cargos se generan solos. Nada de
 esto necesita el SQL Editor.
 
-**Lo que queda, en orden de tamaño:**
+**Lo que queda, en orden:**
 
 | Qué | Tamaño | Nota |
 |---|---|---|
+| **Publicar** | Mediano | Vercel, dominio, y los cinco ajustes de Supabase y Google Cloud de la sección "Dos apps, dos despliegues" |
+| Correr 0001 → 0042 en `aliado-prod` | Mediano | En orden, una por una, con `control_general.sql` después de cada una |
+| El nombre y el logo | Chico | "Aria" es provisorio desde el 9/10. Falta una tanda de nombres y decidir |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
-
+| Encender el borrado de `archivos_sueltos` | Chico | Alrededor del 6/11/2026: mirar la tabla y, si lo que anotó es lo esperable, re-agendar la tarea con `limpiar_archivos_sueltos(true)` |
+| El `limit` que le falta a `cambiar_forma_de_pago` | Chico | Si un alumno llegara a tener dos fichas reclamadas en la misma escuela, el `select` de la ficha devuelve dos filas y la función tira un error de Postgres sin explicación. No pasa hoy, pero no está atado |
 | Invitación por correo al alumno | Mediano | Necesita un servidor: la `service_role` no puede estar en el navegador |
 
 Las pantallas hechas, en `src/profe/`:
@@ -235,6 +349,32 @@ El botón **no lleva el logo de Google**. Es una marca ajena y no la dibujamos n
    a las *Redirect URLs*. Sin esto, Supabase devuelve al alumno al Site URL, y el Site URL
    es la raíz — o sea, **la app vieja de la comunidad**.
 4. **Antes del deploy:** sacar las direcciones de localhost de Google Cloud.
+
+### Probar desde el celular, y por qué Google no funciona ahí (29/10/2026)
+
+Para abrir la app desde el celular alcanza con levantar Vite escuchando en la red
+(`npm run dev -- --host`) y entrar a `http://<IP-de-la-Mac>:3000/alumno`. La app carga bien
+y el ingreso con correo y contraseña funciona.
+
+**El ingreso con Google no**, y el motivo no es configuración olvidada: **Supabase acepta
+redirecciones `http://` solamente para `localhost`.** Cualquier otro host tiene que ser
+`https://`. Una IP de la red local no puede ser ninguna de las dos cosas, así que Supabase
+descarta el `redirect_to` y manda al alumno al **Site URL** del proyecto — con el token
+colgando en la dirección, y en el producto equivocado si la raíz no es de la app nueva.
+
+Se perdió un rato buscándolo en las *Redirect URLs*, que estaban bien cargadas. Lo que lo
+destapó fue repetirlo desde la Mac: ahí también caía al Site URL, o sea que no era el
+celular.
+
+**Cómo probarlo igual:** apuntar el Site URL a la IP, y **devolverlo cuando se termina**
+(está en la lista de pendientes sueltos para no olvidarlo). Es manotazo de prueba, no una
+configuración que se deja puesta.
+
+De paso apareció otro bug de red local: `crypto.randomUUID()` **no existe fuera de un
+contexto seguro**, y una IP por `http://` no lo es. El aviso de transferencia se rompía con
+"`crypto.randomUUID is not a function`" solo desde el celular. `src/comun/id.ts` ahora prueba
+`randomUUID`, después arma el UUID v4 con `crypto.getRandomValues` (que sí funciona sin
+contexto seguro) y recién al final cae en `Math.random`.
 
 ### El riesgo que se verificó — y quedó descartado (6/10/2026)
 
@@ -321,9 +461,16 @@ llame.
 
 ## La paleta
 
-Nueve tokens en `src/index.css`, con **modo claro y oscuro** según la preferencia del
-sistema operativo. El profesor que administra de día en la computadora recibe el claro; el
-alumno que mira recaps de noche en el celular, el oscuro. Ninguno de los dos elige nada.
+Catorce tokens en `src/index.css`, con **modo claro y oscuro**.
+
+**Quién elige el modo cambió (octubre).** Antes mandaba el sistema operativo y nadie podía
+discutirlo: con el Mac en oscuro, la app era oscura siempre. Ahora manda la persona y el
+sistema es solo el valor por omisión, con el `SelectorDeTema` de `comun/ui.tsx`. El claro es
+el modo de la casa, y no por gusto: la paleta está construida sobre papel cálido y
+terracota, y eso es lo que la distingue de cualquier panel de administración. En oscuro ese
+papel desaparece. `data-tema` lo pone `main.tsx` **antes de dibujar nada**: si esperara a
+que monte un componente, la app aparecería un instante en el modo equivocado y daría un
+salto de color.
 
 | Token | Para qué |
 |---|---|
@@ -336,6 +483,8 @@ alumno que mira recaps de noche en el celular, el oscuro. Ninguno de los dos eli
 | `acento` | terracota: botones, enlaces, lo tocable |
 | `sobre-acento` | texto arriba del acento |
 | `ok` / `alerta` | pagado o confirmado / deuda o error |
+| `acento-suave` / `ok-suave` / `alerta-suave` | el mismo estado como **fondo** de una etiqueta o un aviso, donde el color pleno taparía el texto |
+| `contorno` | el borde apenas visible de un panel. No es `linea`: `linea` separa dos cosas, `contorno` encierra una |
 
 **Los nombres son por función y no por color.** `acento`, no `terracota`. El día que cambie
 el color, el nombre sigue siendo cierto y no hay que tocar ninguna pantalla.
@@ -346,9 +495,10 @@ se aclara, porque el terracota del modo claro sobre fondo oscuro queda apagado.
 ### Dos cosas que hubo que resolver
 
 **`index.css` es una sola hoja para las tres apps.** El `body` tenía `#111111` fijo. Si se
-cambiaba, se le rompía el fondo a la app de la comunidad, que vive en la raíz. Por eso el
-fondo cuelga de `html[data-app="sala"]`, que `main.tsx` pone solo en `/profe` y `/alumno`.
-Lo mismo con el `<title>`, que en `index.html` sigue siendo el de la comunidad.
+cambiaba, se le rompía el fondo a la app de la comunidad. Por eso el fondo cuelga de
+`html[data-app="nueva"]`, que `main.tsx` pone en la raíz, en `/profe` y en `/alumno`, y no
+en la app de la comunidad. Lo mismo con el `<title>`, que en `index.html` sigue siendo el
+de la comunidad.
 
 **Los 38 bordes `border-white/10` no eran cosméticos.** Sobre fondo oscuro se ven; sobre
 fondo claro un borde blanco es invisible. Todos pasaron a `border-linea`.
@@ -496,10 +646,108 @@ formularios que se abrían en el medio de la página. Ahora:
 
 Lo mismo en `Grupos` (nuevo grupo) y en el portal del alumno (avisar una transferencia).
 
-### Pendiente
+---
 
-Las listas del portal del alumno todavía son tarjetas sueltas: faltan pasarlas a
-`Lista`/`Fila`. Y falta una tanda de nombres.
+## La segunda pasada de diseño (29 y 30/10/2026)
+
+La referencia que trajo Tomás fue **airbnb.com.ar**, y lo que había que mirar ahí no eran
+los colores: eran las sombras, las formas, cómo se cortan los niveles de información y
+**cuántas cajas hay** (pocas).
+
+### Menos cajas, no más
+
+**`Tarjeta` se borró de `comun/ui.tsx`.** Era la pieza más usada de la app y era la que la
+hacía parecer un panel de administración: cada cosa adentro de un marco, con aire alrededor,
+y el marco repetido doce veces en una pantalla. Una caja dentro de otra caja no agrega
+jerarquía, agrega ruido.
+
+Lo que quedó en su lugar:
+
+| Pieza | Qué resuelve |
+|---|---|
+| `Portada` | El encabezado de cada pantalla: título, bajada, el dato principal grande y una acción. Reemplaza el "título suelto arriba de todo" |
+| `Onda` | El separador entre dos bandas de color. Una sola familia de separadores en toda la app, en vez de bordes, líneas y sombras conviviendo |
+| `Seccion` | Un bloque con **una** raya arriba, y nada más. `primera` para la que abre la pantalla, que no la lleva |
+| `BarraAccion` | La acción principal pegada abajo, con el dato al lado. El botón de "Agregar" dejó de flotar en el medio del contenido |
+| `Vacio` | La pantalla sin datos, con los pasos de qué hacer. Antes decía "No hay nada" y era el final del camino |
+| `Celebracion` | Cuando no hay nada que hacer **y eso es bueno**: el alumno al día. No es un vacío, es un logro |
+| `Desplegable` | Lo que es largo y no es urgente, cerrado por omisión: lo que pagó, lo que viene |
+
+### La onda necesita los dos colores
+
+La `Onda` se dibujó mal dos veces, y las dos por la misma razón de fondo: **un separador
+ondulado no es una forma, es el límite entre dos colores**. La tira tiene que llevar el
+color de la banda que termina y el `path` el de la banda que empieza. Con un solo color se
+ve una línea recta, que es justo lo que venía a evitar.
+
+La segunda vez el síntoma fue otro y la causa parecida: en `Portada`, la capa de las manchas
+difusas tenía un degradado al color del panel abajo, y ese degradado abarcaba todo el
+componente — así que **pintaba color pleno por encima de la onda**. La capa de manchas ahora
+está acotada al área del título.
+
+### Las rayas que no significaban nada
+
+Al poner una raya en cada `Seccion` aparecieron líneas dobles: el borde de abajo de una
+`Lista` chocaba con el borde de arriba de la sección siguiente, y quedaban dos rayas
+paralelas separadas por tres píxeles. `Lista` perdió su `border-y`.
+
+**La regla:** una raya es la frontera entre dos cosas, así que **la dibuja una sola de las
+dos**. En esta app la dibuja siempre la sección, nunca la lista.
+
+### La barra de navegación se despegó del fondo
+
+Tenía el mismo color que la página, así que no era una barra: era contenido que no se movía.
+Ahora usa `panel` con `--shadow-barra`, y el alto vive en `--alto-nav` para que el contenido
+sepa cuánto espacio dejarle sin que nadie copie un número a mano.
+
+### Los campos de fecha y hora se salían de su caja
+
+Apareció dos veces, porque tenía **dos causas** y la primera vez se arregló solo una:
+
+1. Un hijo de grid o de flex tiene `min-width: auto`, así que no se encoge por debajo de su
+   contenido. Se arregla con `min-w-0` en el campo.
+2. iOS le da a `input[type=date]` y `input[type=time]` el ancho de su propio control nativo,
+   y `width: 100%` no lo baja de ahí. Hace falta `appearance: none` más `max-width: 100%`.
+
+Las dos reglas están en `src/index.css`, colgadas de `html[data-app="nueva"]`, aplicadas a
+`date`, `time`, `datetime-local` y `month` de una vez — no al campo donde se vio el
+problema. Un arreglo puesto en un solo lugar reaparece en el próximo formulario.
+
+De paso se barrieron las otras inconsistencias del mismo tipo: cinco `<select>` escritos a
+mano que no eran el `Selector` del sistema, y dos estilos distintos de "chip" para elegir
+una opción, que ahora son `claseOpcion()` y nada más.
+
+---
+
+## La landing (29/10/2026)
+
+La raíz dejó de servir la app de la comunidad y ahora sirve `src/inicio/Inicio.tsx`.
+
+**Le habla a los dos.** El primer borrador le hablaba solo al profesor, y el alumno es quien
+más veces va a abrir la app: entra desde el enlace que le manda su profe, y si la primera
+pantalla le explica cómo cobrar cuotas, entendió que llegó al lugar equivocado. Hay dos
+bloques mellizos, uno para cada uno.
+
+**Cuatro bandas de color, separadas por ondas**, en vez de secciones apiladas sobre el mismo
+fondo: `fondo` → `panel` → `fondo` → `acento`. La última es de color pleno a propósito; una
+página que termina igual que empezó no termina.
+
+**Textos cortos.** Quien entra no viene a leer.
+
+**Las animaciones son dos:** las secciones aparecen al entrar en pantalla con
+`IntersectionObserver`, y en el encabezado hay tres manchas difusas que se mueven solas.
+Las manchas se vieron estáticas al principio: recorrían treinta píxeles en veinte segundos
+detrás de un `blur` de 64, o sea un píxel y medio por segundo. Ahora cada una recorre entre
+un tercio y la mitad de su propio tamaño, en ciclos de 11, 13 y 15 segundos, y además
+cambian de escala y de opacidad.
+
+Todo se apaga con `prefers-reduced-motion`, con una excepción deliberada: `.revelar` queda
+en `opacity: 1`. Si se apagara la animación sin eso, el contenido que aparece al hacer
+scroll se quedaría invisible para siempre.
+
+**Se animan solo `transform` y `opacity`.** Son las dos propiedades que el navegador puede
+mover sin volver a calcular el layout; animar `top` o `height` es la forma más común de
+hacer que una página linda vaya a tirones en un celular.
 
 ---
 
@@ -1180,6 +1428,127 @@ y cargos, así que no se toca sin decidirlo a propósito.
 
 ---
 
+### 19. Tres formas de sacar a alguien, y no son lo mismo (29/10/2026)
+
+En el listado de alumnos convivían "Quitar" y "Dar de baja" sin que nada explicara la
+diferencia, y faltaba la tercera.
+
+| Acción | Qué hace | Cuándo |
+|---|---|---|
+| **Quitar** | Borra la inscripción como si no hubiera existido | Se anotó mal. No hay historia que conservar |
+| **Dar de baja** | Cierra la inscripción con fecha: deja de generar clases y cargos, y lo cobrado queda | Dejó ese grupo. Sigue siendo alumno de la escuela |
+| **Dejar la escuela** | `dejar_la_escuela()` (0040): cierra **todas** sus inscripciones activas y archiva la ficha | Se va del todo. Deja de aparecer en los listados |
+
+`volver_a_la_escuela()` desarchiva la ficha y **no reabre ninguna inscripción**, a propósito:
+que alguien vuelva no quiere decir que vuelva a los mismos grupos con los mismos precios.
+Eso se anota de nuevo, y es información que solo tiene el profesor.
+
+### 20. Las particulares son dos cosas distintas (29/10/2026)
+
+"Particular" juntaba dos acuerdos que no se parecen:
+
+- **Fijas:** todos los martes a las 19, mes a mes. Las clases se generan solas, como un
+  grupo regular.
+- **Por pedido:** "quiero cuatro clases". Las fechas las escribe el profesor una por una y
+  **no se genera nada más** después de esas cuatro. El precio es el del paquete.
+
+Son ramas distintas del formulario, no un campo opcional. Un paquete de cuatro clases que
+sigue generando clases el mes que viene no es un detalle de configuración mal puesto: es
+plata que el alumno no acordó.
+
+**Y una particular puede ser de varios.** Un grupo reducido de tres personas que arreglan
+entre ellas sigue siendo una particular, así que el formulario pide una **lista** de
+participantes y no un alumno. El cupo no se pregunta: en una particular el cupo **es** la
+gente que anotaste.
+
+En los grupos sí se pregunta, y la ayuda dice la verdad: *"Al anotar a alguien con el grupo
+lleno, la app te avisa."* Antes el campo existía y no hacía absolutamente nada — ni avisaba,
+ni impedía. **El cupo es del profesor, no una regla del sistema:** si en la sala entra uno
+más, el aviso no bloquea nada.
+
+### 21. Un martes por medio no es medio martes (29/10/2026, migración 0036)
+
+Cada día del horario dice ahora si es todas las semanas o 1, 2, 3 o 4 veces por mes. Antes
+todo era semanal, así que al alumno que viene cada quince días **se le generaba el doble de
+clases y se le cobraba el doble**.
+
+Las opciones están escritas como las dice el profesor:
+
+> Todas las semanas (incluso si hay 5ª) · 4 por mes · 3 por mes · 2 por mes (1ª y 3ª semana) · 1 por mes
+
+Dos detalles que se discutieron y valen la pena:
+
+- **"4 por mes" y "todas las semanas" no son lo mismo**, aunque casi siempre coincidan: el
+  mes con cinco martes los tiene cinco en una y cuatro en la otra. Que las dos opciones
+  existan y digan eso en voz alta es mejor que elegir por el profesor.
+- **"2 por mes" es la 1ª y la 3ª semana, no la 1ª y la 2ª.** Dos semanas seguidas y después
+  veinte días sin verse no es lo que nadie acuerda cuando dice "un martes por medio".
+
+La cuenta en `asegurar_clases()`: el número de ese día dentro del mes es
+`((día - 1) / 7) + 1`, y los permitidos salen de `(i - 1) * 4 / N + 1` para `i` de 1 a N.
+N=1 → {1}; N=2 → {1,3}; N=3 → {1,2,3}; N=4 → {1,2,3,4}.
+
+### 22. La app le decía al profesor que bajara un precio que ya era barato (29/10/2026)
+
+Un grupo de dos días por semana a $15.000 la clase, con cuota mensual de $100.000: la app le
+avisaba que la cuota le salía **más caro** al alumno. Ocho clases al mes son $120.000, así
+que la cuota era un 17% más barata.
+
+El error era de aritmética: dividía la cuota por cuatro semanas sin mirar **cuántos días por
+semana** tiene el grupo. Y el arreglo correcto no era multiplicar por los días: es trabajar
+en clases **por año**.
+
+Un mes no tiene cuatro semanas. Tiene 4,33. Un año tiene 52 semanas, y repartirlas en doce
+meses de cuatro deja un mes de clases afuera — que es, justamente, el margen que el profesor
+estaba a punto de regalar porque la app se lo pedía. `clasesPorAnioDe()` cuenta 52 por cada
+día semanal y `por_mes * 12` por cada día con frecuencia. La misma cuenta la ve el alumno de
+su lado.
+
+**Una cuenta que se muestra a las dos personas tiene que vivir en un solo archivo.** Está en
+`src/comun/precios.ts`, con sus casos en `npm run prueba:fechas`.
+
+### 23. Qué enseña cada escuela (29/10/2026, migraciones 0037 a 0039)
+
+La escuela dice qué enseña, eligiendo de un catálogo de 32 actividades, y **puede enseñar más
+de una**. El día que el alumno pueda buscar clases, la búsqueda necesita que "Bachata" sea el
+mismo dato en todas las escuelas y no texto libre.
+
+**Nada de subcategorías.** Apareció una escuela cargada como "Bachata Influence", y eso es
+abrir una discusión que el producto no necesita hoy: sensual, dominicana, moderna, influence,
+y cada profesor con su criterio. Se elige **Bachata** del catálogo y se aclara el estilo en un
+campo libre de hasta 40 caracteres. La búsqueda ordena por la categoría; la aclaración es
+para que la lea una persona.
+
+El backfill de la 0037 no descartó lo que no supo mapear: convirtió el texto libre en una
+entrada del catálogo con `orden = 800` para que se vea que entró por ahí. Perder el dato de
+lo que un profesor ya había escrito, para que la migración quede limpia, es el intercambio
+equivocado.
+
+**Y el grupo también dice de qué es** (0039): una escuela de Bachata puede tener un grupo de
+Salsa. El alumno lo ve en su clase, que es donde importa: él no eligió la escuela, eligió la
+clase.
+
+### 24. Las tareas nocturnas eran de cualquiera (30/10/2026, migraciones 0041 y 0042)
+
+La 0041 agregó el barrido de fotos que nadie usa, y al escribir su prueba apareció que las
+**tres** tareas nocturnas las podía ejecutar cualquier usuario logueado. Está contado en
+"Una prueba que aceptaba cualquier error", más arriba.
+
+El barrido en sí es deliberadamente lento: una foto huérfana se anota, y se borra solo
+después de **siete noches seguidas** de seguir huérfana. Una foto que parece suelta porque la
+subida quedó a mitad de camino, o porque la ficha se está editando justo ahora, aparece una
+noche y no la siguiente. Siete noches es la diferencia entre limpiar y perder.
+
+**Arranca en modo mirar.** La tarea está agendada llamando a `limpiar_archivos_sueltos()` sin
+argumento, o sea sin borrar: anota en `public.archivos_sueltos` lo que *habría* borrado.
+Alrededor del 6/11/2026 hay que mirar esa tabla y, si lo que anotó es lo esperable,
+re-agendarla con `limpiar_archivos_sueltos(true)`. Es una migración de dos líneas.
+
+Una tarea que borra archivos y se enciende el mismo día que se escribe no tiene forma de
+equivocarse barato.
+
+---
+
 ## Errores encontrados y qué enseñaron
 
 ### `create or replace` no puede cambiar lo que una función devuelve (16/9/2026)
@@ -1324,6 +1693,12 @@ que dice estar probando es peor que no tener prueba**, porque da tranquilidad fa
 ## Pendientes sueltos
 
 - [x] Instalar Node.js — hecho (v24.20.0, npm 11.19.0)
+- [x] Resetear la contraseña de la base — hecha el 30/10/2026, después de haberla pegado en un chat
+- [x] Devolver el Site URL de Supabase a su valor — hecho el 30/10/2026 (se había apuntado a una IP de la red local para probar desde el celular)
+- [ ] Mirar `public.archivos_sueltos` alrededor del 6/11/2026 y decidir si se enciende el borrado
+- [ ] `cambiar_forma_de_pago` busca la ficha sin `limit`: con dos fichas reclamadas en la misma escuela tira un error de Postgres sin explicación
+- [ ] Hay dos espacios llamados "Escuela de Prueba 1" en `aliado-dev`. Borrar uno arrastra en cascada sus grupos, alumnos y cargos
+- [ ] Falta una tanda de nombres para decidir el definitivo, y el logo
 - [ ] Cambiar la contraseña del admin en la app vieja (hoy es `admin`, en texto plano)
 - [ ] No tocar el proyecto Supabase `axzyhjprterixsgqhddv` — sirve los videos de la app en producción
 - [ ] La app vieja tiene `firestore.rules` con `allow read, write: if true` (base abierta). Se resuelve solo con la migración a Supabase
