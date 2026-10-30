@@ -191,7 +191,7 @@ publica.
 | `supabase/tests/grupo_online.sql` | Una clase online (0032) en cualquier formato: que el enlace y la dirección no convivan, y que el alumno vea el enlace de su grupo y no el de otro. En una transacción que se deshace. Repetible |
 | `supabase/tests/dejar_la_escuela.sql` | `dejar_la_escuela()` (0040): que cierre todas las inscripciones activas, que no toque las ya cerradas, que el alumno archivado no aparezca en el listado, que volver **no** reabra las inscripciones, y que nadie archive una ficha de un espacio ajeno. En una transacción que se deshace. Repetible |
 | `supabase/tests/archivos_sueltos.sql` | El barrido de fotos (0041): que anote la huérfana, que no anote la que está en uso, que contar de nuevo sume sin duplicar la fila, que no borre antes de los siete días, y que ningún profesor pueda ejecutarla. Correr como `postgres`. Repetible |
-| `npm run prueba:fechas` | Las cuentas de fechas y de precios del front (`src/comun/fechas.ts`, `src/comun/precios.ts`). **49 casos.** No toca la base ni el navegador. Correr después de cualquier cambio ahí |
+| `npm run prueba:fechas` | Las cuentas de fechas y de precios del front (`src/comun/fechas.ts`, `src/comun/precios.ts`). **56 casos.** No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 | **`npm run prueba:base`** | **Corre las veinticuatro de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
 Últimos resultados (30 de octubre de 2026) — **la batería completa, 24 de 24 en verde**,
@@ -716,6 +716,32 @@ problema. Un arreglo puesto en un solo lugar reaparece en el próximo formulario
 De paso se barrieron las otras inconsistencias del mismo tipo: cinco `<select>` escritos a
 mano que no eran el `Selector` del sistema, y dos estilos distintos de "chip" para elegir
 una opción, que ahora son `claseOpcion()` y nada más.
+
+### Tres cosas que estaban y no se encontraban (30/10/2026)
+
+Las tres son el mismo error con distinta cara: **algo importante dibujado con el
+peso de algo secundario.** Ninguna faltaba; las tres estaban ahí y no se veían.
+
+| Qué | Cómo estaba | Cómo quedó |
+|---|---|---|
+| Cambiar de escuela | La bajada del encabezado, en el gris de 14px con el que la app escribe fechas y aclaraciones, diciendo "tocá para cambiar de escuela". La única forma de descubrir que se podía tocar era leer la letra más chica de la pantalla | Una pastilla en color de acento con flecha, que dice "Cambiar de escuela". La forma ya dice que es un botón, sin leerla |
+| Sacar la foto | Dos bloques del mismo tamaño y del mismo color apilados —"Cambiar la foto" y "Sacar la foto"— que juntos ocupaban más alto que la foto | La acción común es una pastilla compacta; las otras, texto tranquilo al lado. `claseAccionTenue`, en `ui.tsx` |
+| El pago en revisión | Una línea de 14px del color de los enlaces, **adentro** del número grande, entre la cifra y la lista de cargos | `EnEspera`: bloque propio con reloj, borde y fondo de acento, afuera del número |
+
+Dos cosas que salieron de ahí y valen más que los tres arreglos:
+
+**Dos acciones del mismo peso visual obligan a leer las dos.** Cambiar la foto lo
+hace todo el mundo; sacarla, uno de cada veinte. Dibujarlas iguales no es neutral:
+le cobra a los veinte el trabajo de encontrar la suya.
+
+**El mismo bloque mal resuelto estaba en dos lados** —la foto del alumno y el logo
+de la escuela—, porque son la misma operación con otro archivo. Se arreglaron los
+dos juntos y la clase compartida vive una sola vez. Un arreglo puesto donde se vio
+el problema reaparece en el próximo formulario.
+
+El `scale-150` con el que los dos agrandaban su avatar se fue: agrandaba también
+el aro de 1px del borde, que quedaba el doble de grueso que en el resto de la app.
+Ahora `Avatar` tiene un tamaño `grande` de verdad.
 
 ---
 
@@ -1687,6 +1713,60 @@ descartar un molde.
 
 Es pariente del error de las invitaciones: **una prueba que no puede fallar por el motivo
 que dice estar probando es peor que no tener prueba**, porque da tranquilidad falsa.
+
+### Una función que recibía dos formas y sabía leer una sola (30/10/2026)
+
+El alumno que avisaba una transferencia leía esto en su cuenta:
+
+> Lo avisaste el **30T22:43:56.720398+00:00/10/2026**.
+
+`fecha()` partía el texto por los guiones y devolvía `d/m/a`. Eso es correcto
+para una fecha sola —`2026-10-30`, como `due_date` o `paid_on`— y basura para una
+marca de tiempo con huso —`2026-10-30T22:43:56.720398+00:00`, como `declared_at`
+o `confirmed_at`—, que es la otra cosa que la base guarda con la misma pinta de
+texto.
+
+**No falló: dibujó basura.** Una excepción se ve en el acto; esto se ve cuando lo
+mira una persona, y solo si mira la pantalla correcta.
+
+**Lo importante no es el error, es lo que destapó.** Tres pantallas ya resolvían
+esto cada una por su cuenta, recortando el texto a mano antes de pasarlo:
+
+| Dónde | Qué hacía |
+|---|---|
+| `Pagos.tsx` | `fecha(p.declared_at.slice(0, 10))` |
+| `datos.ts`, lo cobrado | `paid_on ?? String(confirmed_at).slice(0, 10)` |
+| `MiEscuela.tsx`, lo que pagaste | `paid_on ?? confirmed_at?.slice(0, 10) ?? declared_at.slice(0, 10)` |
+
+O sea que la regla *"a esto hay que recortarlo antes"* existía, se aplicaba tres
+veces, y no estaba escrita en ningún lado. El cuarto que llegara se la iba a
+comer. Y el recorte, además, **estaba mal**: los primeros diez caracteres son el
+día **en UTC**. Un pago avisado a las 21:30 del 31 en Buenos Aires son las 00:30
+del 1 en UTC, así que la app le decía al alumno **1/11** por algo que hizo el 31 —
+y la lista agrupada por mes lo mandaba a noviembre.
+
+Cómo quedó: `diaLocal(iso)` devuelve el día de una marca de tiempo **según el
+reloj de quien mira**, igual que ya hacía `hoyISO()`. `fecha()` acepta las dos
+formas y manda las marcas de tiempo por ahí. Los tres recortes a mano la llaman.
+
+**La fecha sola se sigue partiendo a mano, a propósito**, y conviene dejar escrito
+por qué, porque las dos trampas son opuestas y es fácil "arreglar" una rompiendo
+la otra:
+
+- `new Date('2026-10-30')` se lee como **medianoche UTC**, que en Buenos Aires es
+  el 29 a las 21. Pasar una fecha sola por `Date` es cómo una app termina
+  mostrando el día anterior al que dice la base.
+- Partir por los guiones una marca de tiempo da el texto crudo de arriba.
+
+**La lección:** cuando una función de formato recibe dos formas distintas del
+mismo dato, no alcanza con que cada pantalla se acuerde de normalizar antes de
+llamarla. Lo que hay que normalizar vive adentro de la función, una vez. Una
+regla que depende de que todos se acuerden es una regla que ya falló, solo que
+todavía no sabés dónde.
+
+Los casos están en `npm run prueba:fechas`, incluido el borde de medianoche. Las
+dos filas del día local comparan contra `Date` y no contra un texto fijo: un
+texto fijo solo pasaría corriendo la prueba en Argentina.
 
 ---
 
