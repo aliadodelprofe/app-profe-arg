@@ -17,9 +17,33 @@
 // solo "Confirmar" es lo que evita el toque distraído.
 // ============================================================================
 import { useState } from 'react';
-import { confirmarPago, rechazarPago, fecha, plata } from '../datos';
+import { confirmarPago, rechazarPago, fecha, diaLocal, plata } from '../datos';
 import type { PagoPorConfirmar, ResultadoConfirmacion } from '../datos';
 import { Aviso, Vacio, Lista, Fila, Esqueleto, Boton, BotonSecundario } from '../../comun/ui';
+
+// LAS DOS FECHAS DE UN AVISO, Y CUÁNDO VALE LA PENA MOSTRAR LAS DOS.
+//
+// Un pago tiene dos fechas que no significan lo mismo y casi siempre son la
+// misma:
+//
+//   · paid_on     — el día que el alumno dice que transfirió. Lo escribe él.
+//   · declared_at — el día que tocó el botón en la app. Lo pone la app sola.
+//
+// Como el campo del formulario viene con hoy puesto, el caso normal es que
+// coincidan. Y ahí la lista decía "declaró el 30/10 · transfirió el 30/10":
+// el mismo dato dos veces con dos nombres distintos. Eso es peor que no decir
+// nada, porque obliga al profesor a buscarle una diferencia que no existe.
+//
+// La fecha que le sirve es cuándo salió la plata: es la que va a buscar en el
+// resumen del banco. La otra solo importa cuando NO coinciden —transfirió el
+// viernes y avisó el lunes—, y ahí sí hay algo que entender, así que se
+// nombra el hueco en vez de esconderlo.
+function cuandoDice(p: { declared_at: string; paid_on: string | null }): string {
+  const aviso = diaLocal(p.declared_at);
+  if (!p.paid_on) return `avisó el ${fecha(aviso)}`;
+  if (p.paid_on === aviso) return `transfirió el ${fecha(p.paid_on)}`;
+  return `transfirió el ${fecha(p.paid_on)} · avisó el ${fecha(aviso)}`;
+}
 
 export default function ParaConfirmar({
   pagos: datos,
@@ -90,10 +114,7 @@ export default function ParaConfirmar({
               avatar={p.alumno}
               foto={p.foto}
               titulo={p.alumno}
-              detalle={
-                `declaró el ${fecha(p.declared_at)}` +
-                (p.paid_on ? ` · transfirió el ${fecha(p.paid_on)}` : '')
-              }
+              detalle={cuandoDice(p)}
               valor={plata(p.amount)}
             >
               {p.note && <p className="mb-2 text-sm text-tenue">{p.note}</p>}

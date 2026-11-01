@@ -215,7 +215,14 @@ function FormularioAviso({
         />
       </Campo>
 
-      <Campo etiqueta="Cuándo">
+      {/* "Cuándo" a secas no dice cuándo QUÉ: el alumno podía entenderlo como
+          "cuándo estás avisando", que es un dato que la app ya tiene sola. Es
+          la fecha que su profe va a buscar en el resumen del banco, así que
+          tiene que preguntar por la transferencia y no por el aviso. */}
+      <Campo
+        etiqueta="Cuándo transferiste"
+        ayuda="La fecha que figura en tu comprobante. Si fue hoy, dejalo como está."
+      >
         <Texto type="date" value={cuando} onChange={(e) => setCuando(e.target.value)} />
       </Campo>
 
