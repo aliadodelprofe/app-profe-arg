@@ -310,6 +310,14 @@ function FormularioAviso({
 // ----------------------------------------------------------------------------
 const PAGOS_DE_A = 5;
 
+// QUÉ DÍA REPRESENTA A UN PAGO.
+//
+// El de la transferencia (paid_on), que es el que figura en el comprobante y
+// el que la persona se acuerda. El del aviso (declared_at) es el respaldo:
+// los pagos viejos, de antes de que el formulario pidiera la fecha, no tienen
+// el otro. Se usa para ordenar y para mostrar, así que vive una sola vez.
+const diaDelAviso = (p: MiPago): string => p.paid_on ?? diaLocal(p.declared_at);
+
 function MiCuenta({
   ficha,
   clases,
@@ -356,6 +364,11 @@ function MiCuenta({
 
   // Lo que ya está confirmado, del más nuevo al más viejo. Es la respuesta a
   // "¿yo no había pagado marzo?", que hasta ahora la app no podía dar.
+  //
+  // La fecha que representa a un pago es SIEMPRE la de la transferencia: es
+  // la que figura en el comprobante y la que la persona se acuerda. La del
+  // aviso es el respaldo para los pagos viejos, de antes de que el formulario
+  // pidiera la fecha.
   const confirmados = (pagos?.filter((p) => p.status === 'confirmed') ?? [])
     .map((p) => ({
       ...p,
@@ -433,9 +446,36 @@ function MiCuenta({
           casos: podés haber avisado un pago y no deber nada vencido. */}
       {declarados.length > 0 && (
         <div className="mt-5">
-          <EnEspera titulo={`Avisaste ${plata(totalDeclarado)}: tu profe lo está revisando`}>
+          <EnEspera
+            titulo={`Avisaste ${plata(totalDeclarado)}: tu profe lo está revisando`}
+            // Con un solo aviso, el resumen ya lo dice todo y abrir una lista
+            // de un renglón para repetirlo sería trabajo sin premio. Con dos o
+            // más, la suma esconde de qué está hecha: "$40.000" no te dice si
+            // son los dos que mandaste o si uno se perdió en el camino.
+            detalle={declarados.length > 1 ? (
+              <ul>
+                {[...declarados]
+                  .sort((a, b) => (diaDelAviso(a) < diaDelAviso(b) ? 1 : -1))
+                  .map((p) => (
+                    <li
+                      key={p.id}
+                      className="flex items-baseline justify-between gap-3 border-t border-acento/20 py-1.5 first:border-t-0"
+                    >
+                      <span className="text-sm text-tenue">
+                        {p.paid_on
+                          ? `transferiste el ${fecha(p.paid_on)}`
+                          : `avisaste el ${fecha(diaLocal(p.declared_at))}`}
+                      </span>
+                      <span className="plata shrink-0 text-sm font-semibold text-tinta">
+                        {plata(p.amount)}
+                      </span>
+                    </li>
+                  ))}
+              </ul>
+            ) : undefined}
+          >
             {declarados.length === 1
-              ? `Lo avisaste el ${fecha(declarados[0].declared_at)}. Cuando lo confirme, se descuenta de lo que debés.`
+              ? `Lo avisaste el ${fecha(diaLocal(declarados[0].declared_at))}. Cuando lo confirme, se descuenta de lo que debés.`
               : `Son ${declarados.length} avisos sin confirmar. Cuando los confirme, se descuentan de lo que debés.`}
           </EnEspera>
         </div>

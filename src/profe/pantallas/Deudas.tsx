@@ -10,7 +10,9 @@
 // ============================================================================
 import { plata } from '../datos';
 import type { FilaDeuda } from '../datos';
-import { Aviso, Vacio, Seccion, Dato, Lista, Fila, Esqueleto } from '../../comun/ui';
+import {
+  Aviso, Vacio, Seccion, Dato, Lista, Fila, Esqueleto, EnEspera,
+} from '../../comun/ui';
 
 export default function QuienDebe({
   deudas: datos,
@@ -29,6 +31,7 @@ export default function QuienDebe({
   const totalCredito = conCredito.reduce((s, f) => s + f.aFavor, 0);
   const total = deudores.reduce((s, f) => s + f.saldo, 0);
   const porConfirmar = deudores.reduce((s, f) => s + f.pendiente, 0);
+  const cuantosEsperan = deudores.filter((f) => f.pendiente > 0).length;
 
   return (
     <>
@@ -46,14 +49,28 @@ export default function QuienDebe({
               valor={plata(total)}
               al={`${deudores.length} ${deudores.length === 1 ? 'alumno debe' : 'alumnos deben'}${alDia > 0 ? ` · ${alDia} al día` : ''}`}
               tono="alerta"
-            >
-              {porConfirmar > 0 && (
-                <p className="mt-2 text-sm text-acento">
-                  {plata(porConfirmar)} esperando que confirmes
-                </p>
-              )}
-            </Dato>
+            />
           </div>
+
+          {/* ESTO NO ES UNA ACLARACIÓN, ES UNA TAREA.
+              
+              Era una línea de 14px colgada abajo del número, del mismo tamaño
+              que cualquier nota al pie. Y dice algo que le cambia el sentido a
+              la cifra grande de arriba: parte de esa deuda no es deuda, es
+              plata que ya está y que falta que el profesor dé por buena.
+              
+              Mismo bloque que ve el alumno de su lado, a propósito. Es el
+              mismo hecho mirado desde las dos puntas: él espera que vos
+              confirmes, vos tenés que confirmar. */}
+          {porConfirmar > 0 && (
+            <div className="mb-4">
+              <EnEspera titulo={`${plata(porConfirmar)} esperando que los confirmes`}>
+                {cuantosEsperan === 1
+                  ? 'De un alumno. Hasta que lo confirmes, esa plata sigue contando como deuda acá arriba.'
+                  : `De ${cuantosEsperan} alumnos. Hasta que los confirmes, esa plata sigue contando como deuda acá arriba.`}
+              </EnEspera>
+            </div>
+          )}
 
           <Lista>
             {[...deudores]

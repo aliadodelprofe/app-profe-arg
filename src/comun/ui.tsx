@@ -279,10 +279,18 @@ export function Aviso({ children }: { children: ReactNode }) {
 export function EnEspera({
   titulo,
   children,
+  detalle,
 }: {
   titulo: string;
   children?: ReactNode;
+  // Lo que hay detrás del resumen, si hay algo que mirar. Cerrado al
+  // principio: el bloque está para contestar "¿llegó lo que mandé?" de un
+  // vistazo, y una lista abierta todo el tiempo convierte la respuesta de un
+  // vistazo en algo para leer. Abierto solo cuando lo pedís.
+  detalle?: ReactNode;
 }) {
+  const [abierto, setAbierto] = useState(false);
+
   return (
     <div className="anim-aparecer flex items-start gap-3 rounded-2xl border border-acento/25 bg-acento-suave px-4 py-3.5">
       <svg
@@ -292,10 +300,34 @@ export function EnEspera({
         <circle cx="12" cy="12" r="9" />
         <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-[0.9375rem] font-semibold leading-snug text-acento">{titulo}</p>
         {children && (
           <p className="mt-0.5 text-sm leading-snug text-tenue">{children}</p>
+        )}
+
+        {detalle && (
+          <>
+            <button
+              type="button"
+              onClick={() => setAbierto((v) => !v)}
+              aria-expanded={abierto}
+              className="mt-2 inline-flex min-h-9 items-center gap-1 text-sm font-medium text-acento transition active:scale-[0.97]"
+            >
+              {abierto ? 'Ocultar el detalle' : 'Ver el detalle'}
+              <svg
+                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                aria-hidden="true"
+                className={
+                  'h-3.5 w-3.5 shrink-0 transition-transform duration-150 '
+                  + (abierto ? 'rotate-180' : '')
+                }
+              >
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {abierto && <div className="anim-aparecer mt-1">{detalle}</div>}
+          </>
         )}
       </div>
     </div>
