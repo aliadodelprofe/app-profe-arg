@@ -38,6 +38,7 @@ do $$
 declare
   v_enc int;
   v_ped int;
+  v_reales int;
 begin
   select encontrados, pedidos into v_enc, v_ped
     from public.limpiar_archivos_sueltos();
@@ -82,11 +83,36 @@ begin
   -- 6. Con el borrado encendido, igual NO toca la que lleva dos noches: hacen
   --    falta siete. Es el freno que hace que una corrida rara no se lleve
   --    puesto nada.
+  --
+  --    OJO CON COMO SE MIDE. `pedidos` cuenta los borrados de TODA la tabla,
+  --    no los de esta prueba. Mientras la tarea de la noche estuvo en modo
+  --    observacion, los archivos sueltos de verdad fueron sumando noches; en
+  --    cuanto alguno pasa las siete, esta llamada lo pide —que es exactamente
+  --    lo que tiene que hacer— y la prueba lo leia como un fallo propio.
+  --
+  --    Asi que la condicion se mira sobre lo propio: lo que esta prueba
+  --    promete es que el archivo con DOS noches sigue sin marca de borrado.
+  --    Los reales se cuentan aparte, y se informan, porque saber que ya hay
+  --    candidatos es justo lo que hay que ver antes de encender el borrado.
+  select count(*) into v_reales
+    from public.archivos_sueltos
+   where borrado_en is null
+     and veces >= 7
+     and nombre <> 'prueba-suelto/viejo-sin-duenio.jpg';
+
   select encontrados, pedidos into v_enc, v_ped
     from public.limpiar_archivos_sueltos(true);
+
   perform set_config('prueba.v6',
-    case when v_ped = 0 then 'PASA - espera las siete noches'
-         else 'FALLA - borro una de dos noches' end, false);
+    case
+      when (select borrado_en from public.archivos_sueltos
+             where nombre = 'prueba-suelto/viejo-sin-duenio.jpg') is not null
+        then 'FALLA - borro el de dos noches'
+      when v_reales > 0
+        then 'PASA - espera las siete noches (y hay ' || v_reales
+             || ' archivo(s) real(es) con las siete cumplidas)'
+      else 'PASA - espera las siete noches'
+    end, false);
 end $$;
 
 -- ----------------------------------------------------------------------------
