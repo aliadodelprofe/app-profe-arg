@@ -115,14 +115,39 @@ export async function rechazarInvitacion(studentId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// ---------------------------------------------------------------------------
+// LO MIO NO ES LO QUE PUEDO VER
+//
+// Todas las consultas de esta app filtran por ESCUELA Y POR FICHA. Pedir solo
+// por escuela y dejar que RLS recorte el resto parece alcanzar —y alcanza,
+// mientras quien mira sea nada más que alumno— pero se rompe con la persona
+// para la que esta app existe: el profesor que además toma clases.
+//
+// RLS le deja ver todo lo de SU escuela, porque lo necesita para Cobros. Si
+// esta app pide "los cargos de la escuela X" y suma lo que vuelve, a ese
+// profesor le muestra la deuda de sus seis alumnos como si fuera propia. No es
+// una fuga —tiene derecho a ver esos datos— es que la pantalla del alumno los
+// lee como suyos.
+//
+// RLS contesta "qué tenés permitido ver". Acá hay que preguntar otra cosa:
+// "qué es tuyo". Son dos preguntas distintas y la segunda se hace explícita,
+// con el id de la ficha.
+// ---------------------------------------------------------------------------
 export async function misFichas(): Promise<MiFicha[]> {
+  // Las fichas de ESTA persona. Sin esto, un profesor ve una tarjeta por cada
+  // alumno de su escuela, todas de la misma escuela.
+  const { data: usuario } = await supabase.auth.getUser();
+  const uid = usuario.user?.id;
+  if (!uid) return [];
+
   const { data, error } = await supabase
     .from('students')
     .select(
       'id, full_name, avatar_url, tenant_id, ' +
       'escuela:tenants(name, avatar_url, ' +
       'disciplinas:tenant_disciplines(nota, disciplina:disciplines(name, orden)))',
-    );
+    )
+    .eq('user_id', uid);
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiFicha[];
 }
@@ -142,7 +167,23 @@ export function queEnsena(ficha: MiFicha): string | null {
   return ds.length > 0 ? ds.join(' · ') : null;
 }
 
-export async function misClases(tenantId: string): Promise<MiClase[]> {
+// Los grupos donde esta ficha esta o estuvo anotada. Sin filtrar por estado:
+// alguien que dejo un grupo igual quiere poder repasar lo que vio ahi.
+async function misGrupos(ficha: MiFicha): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('enrollments')
+    .select('group_id')
+    .eq('student_id', ficha.id);
+  if (error) throw new Error(error.message);
+  const ids = (data ?? []).map((r) => String((r as Record<string, unknown>).group_id));
+  return Array.from(new Set(ids));
+}
+
+export async function misClases(ficha: MiFicha): Promise<MiClase[]> {
+  // Las clases del alumno son las de SUS grupos, no las de la escuela.
+  const grupos = await misGrupos(ficha);
+  if (grupos.length === 0) return [];
+
   const { data, error } = await supabase
     .from('sessions')
     .select(
@@ -150,17 +191,19 @@ export async function misClases(tenantId: string): Promise<MiClase[]> {
       'grupo:groups(name, venue, address, online, meeting_url, ' +
       'disciplina:disciplines(name))',
     )
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', ficha.tenant_id)
+    .in('group_id', grupos)
     .order('date', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as unknown as MiClase[];
 }
 
-export async function misCargos(tenantId: string): Promise<MiCargo[]> {
+export async function misCargos(ficha: MiFicha): Promise<MiCargo[]> {
   const { data, error } = await supabase
     .from('charges')
     .select('id, concept, amount, due_date, period, imputaciones:payment_allocations(amount)')
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', ficha.tenant_id)
+    .eq('student_id', ficha.id)
     .eq('status', 'active')
     .order('due_date', { nullsFirst: false });
   if (error) throw new Error(error.message);
@@ -187,11 +230,12 @@ export async function misCargos(tenantId: string): Promise<MiCargo[]> {
 // leía como deuda el precio de clases que no habían pasado.
 export type MiSaldo = { debe: number; aFavor: number; porVencer: number };
 
-export async function miSaldo(tenantId: string): Promise<MiSaldo> {
+export async function miSaldo(ficha: MiFicha): Promise<MiSaldo> {
   const { data, error } = await supabase
     .from('student_account')
     .select('saldo, a_favor, por_vencer')
-    .eq('tenant_id', tenantId);
+    .eq('tenant_id', ficha.tenant_id)
+    .eq('student_id', ficha.id);
   if (error) throw new Error(error.message);
   return (data ?? []).reduce(
     (acc, f) => {
@@ -206,11 +250,12 @@ export async function miSaldo(tenantId: string): Promise<MiSaldo> {
   );
 }
 
-export async function misPagos(tenantId: string): Promise<MiPago[]> {
+export async function misPagos(ficha: MiFicha): Promise<MiPago[]> {
   const { data, error } = await supabase
     .from('payments')
     .select('id, amount, status, declared_at, paid_on, confirmed_at, note')
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', ficha.tenant_id)
+    .eq('student_id', ficha.id)
     .order('declared_at', { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map((p) => {
@@ -304,7 +349,7 @@ export type MiArreglo = {
   } | null;
 };
 
-export async function misArreglos(tenantId: string): Promise<MiArreglo[]> {
+export async function misArreglos(ficha: MiFicha): Promise<MiArreglo[]> {
   const { data, error } = await supabase
     .from('enrollments')
     .select(
@@ -313,7 +358,8 @@ export async function misArreglos(tenantId: string): Promise<MiArreglo[]> {
       'price_per_session, price_per_period, ' +
       'horarios:group_schedule(id, por_mes))',
     )
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', ficha.tenant_id)
+    .eq('student_id', ficha.id)
     .eq('status', 'active')
     .order('start_date');
   if (error) throw new Error(error.message);
@@ -413,11 +459,15 @@ export type ResumenEscuela = {
   aFavor: number;
 };
 
-async function miProximaClase(tenantId: string): Promise<MiClase | null> {
+async function miProximaClase(ficha: MiFicha): Promise<MiClase | null> {
+  const grupos = await misGrupos(ficha);
+  if (grupos.length === 0) return null;
+
   const { data, error } = await supabase
     .from('sessions')
     .select('id, date, start_time, title, recap, status, venue, address, grupo:groups(name, venue, address, online, meeting_url)')
-    .eq('tenant_id', tenantId)
+    .eq('tenant_id', ficha.tenant_id)
+    .in('group_id', grupos)
     .eq('status', 'scheduled')
     .gte('date', new Date().toISOString().slice(0, 10))
     .order('date')
@@ -432,8 +482,8 @@ export async function resumenDeMisEscuelas(fichas: MiFicha[]): Promise<ResumenEs
   return Promise.all(
     fichas.map(async (ficha) => {
       const [proxima, saldo] = await Promise.all([
-        miProximaClase(ficha.tenant_id),
-        miSaldo(ficha.tenant_id),
+        miProximaClase(ficha),
+        miSaldo(ficha),
       ]);
       return { ficha, proxima, debe: saldo.debe, aFavor: saldo.aFavor };
     }),

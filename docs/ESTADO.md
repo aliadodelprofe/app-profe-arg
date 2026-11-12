@@ -1587,6 +1587,47 @@ equivocarse barato.
 
 ---
 
+### 25. "Lo mío" no es "lo que puedo ver" (12/11/2026)
+
+La pantalla del alumno le mostraba a un profesor la deuda de toda su escuela como si
+fuera propia: $724.600 bajo la palabra **debés**, que es exactamente lo que la pantalla
+de Cobros le muestra como lo que le deben a él. El mismo número, con el significado dado
+vuelta. Y "Mis escuelas" dibujaba seis tarjetas de la misma escuela, una por cada alumno.
+
+**La causa era una sola, repetida en seis funciones.** Todas las consultas de
+`src/alumno/datos.ts` filtraban por escuela y nada más, confiando en que RLS recortara el
+resto:
+
+```ts
+.from('student_account').select('saldo, a_favor, por_vencer').eq('tenant_id', tenantId)
+```
+
+y después sumaban todo lo que volvía. Para un alumno común, RLS devuelve una fila: la
+suya. Para un profesor que mira su propia escuela, RLS devuelve las seis —y hace bien,
+porque las necesita para Cobros—. `misFichas()` era peor: no filtraba por nada, así que
+devolvía un alumno por cada ficha visible.
+
+**No era una fuga de datos.** RLS funcionaba exactamente como tiene que funcionar. El
+error era de lectura: la app preguntaba "¿qué tengo permitido ver?" y trataba la
+respuesta como si fuera "¿qué es mío?". Son dos preguntas distintas.
+
+**Por qué las pruebas no lo agarraron:** `aislamiento_alumno.sql` corre como
+`alumno1@prueba.com`, que es alumno y nada más. Para esa persona las dos preguntas tienen
+la misma respuesta, así que todo pasaba. El caso roto es el de alguien que es las dos
+cosas a la vez, que es justo la persona para la que la app tiene `tambienDoyClases()` y
+el botón de cambiar de escuela.
+
+**La corrección:** el scope se hace explícito, con el id de la ficha, en las seis.
+`misFichas()` filtra por `user_id`; `misCargos`, `miSaldo`, `misPagos` y `misArreglos`
+por `student_id`; y `misClases` y `miProximaClase` por los grupos donde esa ficha está
+anotada, porque `sessions` no tiene columna de alumno. `misMediosDePago` queda como
+estaba: el CBU es de la escuela, no del alumno.
+
+**Lo que hay que recordar:** RLS define el techo de lo visible, no la pertenencia. Cuando
+una misma persona puede entrar con dos sombreros, la pregunta "¿de quién es esto?" hay
+que hacerla en la consulta.
+
+
 ## Errores encontrados y qué enseñaron
 
 ### `create or replace` no puede cambiar lo que una función devuelve (16/9/2026)

@@ -38,11 +38,13 @@ export default function MiEscuela({
   // contexto, no una acción de esta pantalla.
   alCambiarEscuela?: () => void;
 }) {
-  const clases = useCarga(() => misClases(ficha.tenant_id), [ficha.tenant_id]);
-  const cargos = useCarga(() => misCargos(ficha.tenant_id), [ficha.tenant_id]);
-  const saldo = useCarga(() => miSaldo(ficha.tenant_id), [ficha.tenant_id]);
-  const pagos = useCarga(() => misPagos(ficha.tenant_id), [ficha.tenant_id]);
-  const arreglos = useCarga(() => misArreglos(ficha.tenant_id), [ficha.tenant_id]);
+  // Van con la ficha y no con la escuela: ver abajo, en datos.ts, por que la
+  // escuela sola no alcanza para decir "lo mio".
+  const clases = useCarga(() => misClases(ficha), [ficha.id]);
+  const cargos = useCarga(() => misCargos(ficha), [ficha.id]);
+  const saldo = useCarga(() => miSaldo(ficha), [ficha.id]);
+  const pagos = useCarga(() => misPagos(ficha), [ficha.id]);
+  const arreglos = useCarga(() => misArreglos(ficha), [ficha.id]);
   const destinos = useCarga(() => misMediosDePago(ficha.tenant_id), [ficha.tenant_id]);
   // Dos pestañas y no cinco secciones apiladas. El alumno abre la app por una
   // de dos razones muy distintas —ver qué viene y repasar lo que vio, o mirar
