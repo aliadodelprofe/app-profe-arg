@@ -29,7 +29,7 @@
 // ============================================================================
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Boton, BotonSecundario, Onda } from '../comun/ui';
+import { Boton, BotonSecundario, Marca, Onda } from '../comun/ui';
 import { NOMBRE } from '../comun/marca';
 
 function ir(donde: string) {
@@ -227,12 +227,7 @@ export default function Inicio() {
               Cada pieza un pelito después que la anterior, así la página se
               arma a la vista en vez de aparecer entera de golpe. */}
           <Aparece>
-            <div className="flex items-center gap-2.5">
-              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-acento text-lg font-bold text-sobre-acento shadow-apoyo">
-                {NOMBRE.slice(0, 1)}
-              </span>
-              <span className="text-lg font-bold tracking-tight text-tinta">{NOMBRE}</span>
-            </div>
+            <Marca tam="grande" margen="ninguno" />
           </Aparece>
 
           <Aparece demora={120}>

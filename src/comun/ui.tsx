@@ -828,9 +828,9 @@ export function Confirmacion({
 //
 // La regla es por contexto, no por pantalla:
 //
-//   · Donde NO hay una escuela de por medio —la entrada, "Mis escuelas",
-//     "Mis espacios"— manda Tadán. Nadie más es dueño de esas pantallas y
-//     hasta ahora estaban anónimas.
+//   · Donde NO hay una escuela de por medio —la portada, la entrada, "Mis
+//     escuelas", "Mis espacios"— manda Tadán. Nadie más es dueño de esas
+//     pantallas, y las dos del medio estaban anónimas.
 //
 //   · ADENTRO de una escuela manda la escuela. Ahí arriba va su nombre y su
 //     logo, y Tadán se calla: para el alumno la relación es con su profe, y
@@ -841,18 +841,35 @@ export function Confirmacion({
 // mobile no fue una decisión: fue un efecto de la barra responsiva.)
 //
 // El cuadrado con la inicial es provisorio y sale de `marca.ts`: cuando haya
-// isotipo, se cambia acá y aparece en los tres lugares a la vez.
+// isotipo, se cambia ACÁ ADENTRO y aparece en los cuatro lugares a la vez.
+// Por eso la portada también usa este componente en vez de dibujar el suyo:
+// tenía una copia con otro tamaño y otro radio, y dos copias de una marca son
+// dos marcas que se van separando.
 // ----------------------------------------------------------------------------
-export function Marca({ ajustada }: { ajustada?: boolean } = {}) {
+export function Marca({
+  tam = 'normal',
+  margen = 'normal',
+}: {
+  tam?: 'chico' | 'normal' | 'grande';  // chico: la barra; grande: la portada
+  margen?: 'normal' | 'ajustado' | 'ninguno';
+} = {}) {
+  const abajo = margen === 'ninguno' ? '' : margen === 'ajustado' ? 'mb-5 ' : 'mb-8 ';
+  const cuadrado =
+    tam === 'grande' ? 'h-10 w-10 rounded-2xl text-lg'
+    : tam === 'chico' ? 'h-7 w-7 rounded-lg text-sm'
+    : 'h-9 w-9 rounded-xl text-lg';
   return (
-    <div className={(ajustada ? 'mb-5' : 'mb-8') + ' flex items-center gap-2.5'}>
+    <div className={abajo + 'flex items-center ' + (tam === 'chico' ? 'gap-2' : 'gap-2.5')}>
       {/* Un cuadrado con la inicial. No es un logo —todavía no hay— pero es
           una marca: algo que ocupa lugar y se reconoce de lejos. Un nombre
           suelto en texto se lee como el título de un documento. */}
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-acento text-lg font-bold text-sobre-acento shadow-apoyo">
+      <span className={cuadrado + ' flex items-center justify-center bg-acento font-bold text-sobre-acento'
+        + (tam === 'chico' ? '' : ' shadow-apoyo')}>
         {NOMBRE.slice(0, 1)}
       </span>
-      <span className="text-lg font-bold tracking-tight text-tinta">{NOMBRE}</span>
+      <span className={'font-bold tracking-tight text-tinta' + (tam === 'chico' ? '' : ' text-lg')}>
+        {NOMBRE}
+      </span>
     </div>
   );
 }
@@ -1135,11 +1152,8 @@ export function Navegacion<T extends string>({
         aria-label="Secciones"
       >
         <div className="mx-auto flex max-w-2xl items-center gap-1 px-5">
-          <span className="mr-5 flex items-center gap-2 py-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-acento text-sm font-bold text-sobre-acento">
-              {NOMBRE.slice(0, 1)}
-            </span>
-            <span className="font-bold tracking-tight text-tinta">{NOMBRE}</span>
+          <span className="mr-5 py-3">
+            <Marca tam="chico" margen="ninguno" />
           </span>
           {pestanas.map((p) => boton(p, false))}
         </div>

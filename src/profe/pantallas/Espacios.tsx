@@ -45,7 +45,7 @@ export default function Espacios({
         {/* La primera pantalla de un profesor nuevo, y la que menos marca
             tenía: decía "App del profesor" y nada más. Si hay un momento para
             que sepa con qué se metió, es éste. */}
-        <Marca ajustada />
+        <Marca margen="ajustado" />
         <Encabezado titulo="App del profesor" bajada={email} derecha={<Salir />} />
 
         {alumno.error && <Aviso>{alumno.error}</Aviso>}
@@ -94,7 +94,7 @@ export default function Espacios({
     <Marco>
       {/* Igual que "Mis escuelas" del alumno: esta pantalla está por encima de
           cualquier escuela, así que la marca es nuestra. Ver `Marca`. */}
-      <Marca ajustada />
+      <Marca margen="ajustado" />
       <Encabezado titulo="Mis espacios" bajada={email} derecha={<Salir />} />
 
       <Lista>

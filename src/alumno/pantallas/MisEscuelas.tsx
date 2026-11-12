@@ -64,7 +64,7 @@ export default function MisEscuelas({
         {/* Acá no hay ninguna escuela de por medio: esta pantalla es de Tadán,
             y es la única que el alumno ve por encima de sus profes. Ver la
             regla completa en `Marca`, en comun/ui.tsx. */}
-        <Marca ajustada />
+        <Marca margen="ajustado" />
         <Titulo>{tab === 'escuelas' ? 'Mis escuelas' : 'Mi perfil'}</Titulo>
         <p className="mb-4 text-sm text-tenue">{correo}</p>
 
