@@ -148,7 +148,7 @@ publica.
 | `0041_fotos_que_no_usa_nadie.sql` | `archivos_sueltos` y `limpiar_archivos_sueltos()`: las fotos que nadie usa se anotan todas las noches, y se borran solo después de siete días seguidos de no usarse. **Arranca en modo mirar, sin borrar** | Aplicada |
 | `0042_las_tareas_son_de_la_noche.sql` | Les quita el `execute` a `anon` y `authenticated` sobre las tres tareas nocturnas. Supabase se lo da solo a toda función nueva de `public`, y `revoke … from public` **no** lo saca | Aplicada |
 | `0043_el_catalogo_en_grupos.sql` | `discipline_groups` con 14 familias y la columna `grupo` en `disciplines`. Suma 81 actividades: artes marciales, circo, más instrumentos, escena, idiomas desagregados, artes visuales, oficios y apoyo escolar. Ninguna de las 32 anteriores cambia de `orden` | Aplicada |
-| `0044_el_reggaeton_es_urbano.sql` | Mueve el reggaetón de "Baile social" a "Baile urbano" y su `orden` de 60 a 105, para que quede en la banda de su grupo | **Falta correrla** |
+| `0044_el_reggaeton_es_urbano.sql` | Mueve el reggaetón de "Baile social" a "Baile urbano" y su `orden` de 60 a 105, para que quede en la banda de su grupo | Aplicada |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
