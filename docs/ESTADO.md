@@ -276,7 +276,7 @@ esto necesita el SQL Editor.
 |---|---|---|
 | **Publicar** | Mediano | Vercel, dominio, y los cinco ajustes de Supabase y Google Cloud de la sección "Dos apps, dos despliegues" |
 | Correr 0001 → 0042 en `aliado-prod` | Mediano | En orden, una por una, con `control_general.sql` después de cada una |
-| El nombre y el logo | Chico | "Aria" es provisorio desde el 9/10. Falta una tanda de nombres y decidir |
+| El logo y la paleta | Chico | El nombre ya está: **Tadán**, desde el 11/11/2026. Falta la identidad visual, que trabaja Astrid, y presentar la marca en INPI |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
 | Encender el borrado de `archivos_sueltos` | Chico | Alrededor del 6/11/2026: mirar la tabla y, si lo que anotó es lo esperable, re-agendar la tarea con `limpiar_archivos_sueltos(true)` |
 | El `limit` que le falta a `cambiar_forma_de_pago` | Chico | Si un alumno llegara a tener dos fichas reclamadas en la misma escuela, el `select` de la ficha devuelve dos filas y la función tira un error de Postgres sin explicación. No pasa hoy, pero no está atado |
@@ -408,54 +408,64 @@ confirmado, o una identidad de un proveedor que ya verifica el correo.
 
 ---
 
-## El nombre: ARIA, provisorio
+## El nombre: TADÁN
 
-Elegido el 9/10/2026 **para probarlo**, no como decisión final. Está en
-`src/comun/marca.ts`, en una constante, y cambiarlo toca ese archivo y nada más.
+Elegido el 11/11/2026 después de revisar unos 350 candidatos. Vive en
+`src/comun/marca.ts`, en una constante: cambiarlo toca ese archivo y nada más. Reemplazó a
+*Aria*, que era provisorio desde el 9/10.
 
-**Aria** — la pieza que canta una sola voz. Conocida sin traducción en castellano,
-italiano e inglés. Cálida, con música adentro sin atarse a un instrumento ni a una
-disciplina.
+**Tadán** — la onomatopeya del momento en que algo se revela o sale bien. Dos sílabas,
+funciona igual en castellano, italiano, portugués e inglés, y no significa nada en ningún
+rubro, así que el significado se lo damos nosotros.
 
-**La colisión que hay que tener presente:** *Aria Systems* es un SaaS de **facturación
-recurrente en la nube**. Es enterprise y telecom, otro segmento, pero facturación
-recurrente es lo más cerca de este producto que ninguna de las otras colisiones que
-aparecieron. No bloquea —mercados distintos— pero es el dato a mirar si el nombre se
-confirma.
+### Lo verificado, al 12/11/2026
 
-### Los criterios que fueron apareciendo, en orden
+| Chequeo | Resultado |
+|---|---|
+| INPI Argentina, "TADÁN" exacto | 0 resultados |
+| INPI, "contiene TADAN" | 16, casi todas TADANO (grúas japonesas) |
+| INPI, en clases 9/35/41/42 | una sola: T TADANO cl 35, **vencida en 2019** |
+| WIPO mundial, "contiene tadan" | 9 marcas |
+| Corrector de Google | limpio: no lo corrige a otra palabra |
 
-1. Corto, dos sílabas, que suene a marca y no describa el producto.
-2. Que signifique lo mismo en **castellano, italiano y portugués** (por el plan de
-   expansión). Esto descartó *pulso* (en italiano *polso* es muñeca) y *nido* (en Italia
-   *asilo nido* es guardería).
-3. **Que se pueda decir en inglés al primer intento** — el mercado incluye Estados Unidos,
-   Canadá y Europa. Esto descartó toda una tanda: *Camada*, *Peña*, *Barra*. Nada de ñ, rr
-   ni ll; mejor si termina en vocal.
-4. Que no exista **en la misma categoría**. Este filtro se aplicó mal al principio: que
-   haya un software dental llamado Marea no bloquea nada. Lo que bloquea es un vecino de
-   rubro.
+**El dato a tener presente:** *TADAN srl* (Italia) tiene la marca registrada en clases
+**35, 39 y 42**. Por territorialidad no bloquea el registro en Argentina, pero marca el
+techo si alguna vez el plan incluye Europa.
 
-### Descartados y por qué
+### Los dominios, comprados
+
+`tadanapp.com` · `tadan.app` · `tadan.com.ar` · `tadan.ar`
+
+El `.com` exacto está tomado desde 2002 y no se va a conseguir.
+
+### Por qué se cayeron los finalistas anteriores
 
 | Nombre | Motivo |
 |---|---|
-| Sala, Aula | Describen el lugar, y el lugar es alquilado: es lo circunstancial del negocio |
-| Tanda | Ya es un SaaS de gestión de personal — rubro vecino, colisión real |
-| Vela, Faro | Vela Software y FARO Technologies, las dos en software |
-| Lumo, Corso | Muy ocupados: el asistente de Proton, una ferroviaria, una app de Shopify |
-| Pulso, Nido | No viajan al italiano |
-| Camada, Peña, Barra | No se pronuncian en inglés |
-| Marea, Siena | Colisionan en otros rubros; no bloquean pero complican el dominio |
-| Trama | Sobrevivió todo, quedó como alternativa viva |
-| Orla | Sobrevivió todo. "La orla" es la foto de la camada que se recibe — el producto dicho sin describirlo. Alternativa viva |
+| Aria | *Aria Systems* es un SaaS de facturación recurrente: rubro vecino, demasiado cerca |
+| Clasear | Google lo trata como error de tipeo de *glasear* y devuelve recetas de glaseado. Además existe como palabra en Colombia y Ecuador |
+| Clasita | El `.com` tomado, y el diminutivo no transmite la seriedad que pide una herramienta que maneja plata ajena |
+| Tadaan | La doble "a" no resuelve nada: ese `.com` también está tomado, y en castellano no hay regla que haga leer /ta-DÁN/ |
+| Entrenivel, Entrepaso | Limpios en los tres filtros y con `.com` libre. Alternativas vivas si Tadán se cayera |
+
+### Los criterios, en orden de aparición
+
+1. Corto, dos sílabas, que suene a marca y no describa el producto.
+2. Que signifique lo mismo en castellano, italiano y portugués.
+3. Que se pueda decir en inglés al primer intento. Nada de ñ, rr ni ll.
+4. Que no exista **en la misma categoría**: lo que bloquea es un vecino de rubro.
+5. **Que Google no lo corrija a otra palabra.** Este filtro se sumó al final, después de
+   descubrir el problema de Clasear, y es el que más candidatos mató.
 
 ### Lo que falta
 
-El logo, y confirmar o cambiar el nombre. **Nada está bloqueado por esto:** los tokens de
-color se llaman `acento` y `tinta`, no "el naranja de Aria", y el marcador del CSS dice
-`data-app="nueva"` y no el nombre del producto. La identidad visual no depende de cómo se
-llame.
+Presentar la marca en INPI en clases **9, 41 y 42** (35 opcional, y conviene incluirla si
+el buscador de escuelas se va a hacer). El logo y la paleta los trabaja Astrid; el brief y
+el dossier para el agente de marcas están fuera del repo.
+
+**Nada está bloqueado por esto:** los tokens de color se llaman `acento` y `tinta`, no "el
+naranja de Tadán", y el marcador del CSS dice `data-app="nueva"` y no el nombre del
+producto. La identidad visual no depende de cómo se llame.
 
 ---
 

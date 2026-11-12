@@ -41,6 +41,21 @@ export type Disciplina = {
   slug: string;
   name: string;
   orden: number;
+  // En qué familia cae (migración 0043). Es lo que arma el menú por grupos.
+  grupo: string;
+};
+
+// Las familias del catálogo: "Baile social", "Artes marciales", "Música".
+export type GrupoDeDisciplinas = {
+  slug: string;
+  name: string;
+  orden: number;
+};
+
+// El catálogo entero, que son las dos listas y no una.
+export type Catalogo = {
+  grupos: GrupoDeDisciplinas[];
+  disciplinas: Disciplina[];
 };
 
 export type Formato = 'cycle' | 'regular' | 'private';
@@ -1344,14 +1359,20 @@ export async function editarEspacio(
 // Nadie lo escribe desde acá — se cambia con una migración— así que no hay
 // función para eso.
 // ---------------------------------------------------------------------------
-export async function traerDisciplinas(): Promise<Disciplina[]> {
-  const { data, error } = await supabase
-    .from('disciplines')
-    .select('slug, name, orden')
-    .order('orden')
-    .order('name');
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Disciplina[];
+export async function traerDisciplinas(): Promise<Catalogo> {
+  // Dos consultas y no un join. Son dos tablas chicas y fijas, y pedirlas por
+  // separado evita que el nombre del grupo viaje repetido en cada una de las
+  // cien actividades. Van juntas, así la pantalla espera una sola vez.
+  const [g, d] = await Promise.all([
+    supabase.from('discipline_groups').select('slug, name, orden').order('orden').order('name'),
+    supabase.from('disciplines').select('slug, name, orden, grupo').order('orden').order('name'),
+  ]);
+  if (g.error) throw new Error(g.error.message);
+  if (d.error) throw new Error(d.error.message);
+  return {
+    grupos: (g.data ?? []) as GrupoDeDisciplinas[],
+    disciplinas: (d.data ?? []) as Disciplina[],
+  };
 }
 
 // Se guarda la lista entera: borrar lo que ya no está y agregar lo nuevo.

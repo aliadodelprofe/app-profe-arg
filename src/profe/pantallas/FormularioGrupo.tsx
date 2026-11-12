@@ -37,7 +37,7 @@ export default function FormularioGrupo({
   // al que da bachata y nada más, preguntárselo en cada grupo es hacerle
   // repetir lo que ya dijo una vez.
   const catalogo = useCarga(() => traerDisciplinas(), []);
-  const deLaEscuela = (catalogo.datos ?? []).filter((d) =>
+  const deLaEscuela = (catalogo.datos?.disciplinas ?? []).filter((d) =>
     espacio.disciplinas.some((a) => a.slug === d.slug));
   const [actividad, setActividad] = useState(
     grupo?.discipline_slug ?? (espacio.disciplinas.length === 1 ? espacio.disciplinas[0].slug : ''),

@@ -12,12 +12,12 @@
 // de esto es una tarea diaria; todo esto es la escuela.
 // ============================================================================
 import { useState } from 'react';
-import type { FormEvent } from 'react';
+import type { Dispatch, FormEvent, SetStateAction } from 'react';
 import {
   editarEspacio, traerMediosDePago, soyAlumnoDeAlguien, subirLogo, LOGO_MAX_MB,
   traerDisciplinas, guardarDisciplinas,
 } from '../datos';
-import type { Espacio, ActividadDelEspacio } from '../datos';
+import type { Espacio, ActividadDelEspacio, Catalogo, Disciplina } from '../datos';
 import {
   Marco, Aviso, Titulo, Seccion, Campo, Texto, Boton, BotonSecundario,
   Esqueleto, useCarga, Avatar, Hoja, SelectorDeTema, claseOpcion, claseAccionTenue,
@@ -189,6 +189,10 @@ function Datos({
           Botones y no un desplegable con selección múltiple: en el celular esa
           cosa es una lista gris donde no se ve qué quedó marcado, y acá lo que
           importa es ver de un vistazo lo que ya elegiste.
+
+          Después fueron todos sueltos y todos a la vez. Con treinta entraba;
+          con las más de cien que trae la 0043, no. Ahora el menú viene
+          agrupado y plegado, en `Actividades`, acá abajo.
          ------------------------------------------------------------------ */}
       <div className="flex flex-col gap-2">
         <p className="text-sm font-medium text-tinta">Qué enseñás</p>
@@ -197,28 +201,11 @@ function Datos({
           <p className="text-sm text-tenue">Buscando…</p>
         )}
         {catalogo.datos && (
-          <div className="flex flex-wrap gap-2">
-            {catalogo.datos.map((d) => {
-              const puesta = elegidas.some((x) => x.slug === d.slug);
-              return (
-                <button
-                  key={d.slug}
-                  type="button"
-                  aria-pressed={puesta}
-                  onClick={() =>
-                    setElegidas((xs) =>
-                      puesta
-                        ? xs.filter((x) => x.slug !== d.slug)
-                        : [...xs, { slug: d.slug, nota: null }],
-                    )
-                  }
-                  className={claseOpcion(puesta)}
-                >
-                  {d.name}
-                </button>
-              );
-            })}
-          </div>
+          <Actividades
+            catalogo={catalogo.datos}
+            elegidas={elegidas}
+            alCambiar={setElegidas}
+          />
         )}
         <p className="text-xs leading-relaxed text-tenue">
           Marcá todas las que des. Es lo que ven tus alumnos debajo del nombre, y
@@ -239,7 +226,7 @@ function Datos({
         {catalogo.datos && elegidas.length > 0 && (
           <div className="mt-2 flex flex-col gap-2">
             {elegidas.map((a) => {
-              const nombre = catalogo.datos?.find((d) => d.slug === a.slug)?.name ?? a.slug;
+              const nombre = catalogo.datos?.disciplinas.find((d) => d.slug === a.slug)?.name ?? a.slug;
               return (
                 <div key={a.slug} className="flex items-center gap-3">
                   <span className="w-28 shrink-0 text-sm text-tenue">{nombre}</span>
@@ -274,6 +261,161 @@ function Datos({
         {guardado && <span className="text-sm text-acento">Guardado.</span>}
       </div>
     </form>
+  );
+}
+
+
+// ----------------------------------------------------------------------------
+// EL MENÚ DE ACTIVIDADES
+//
+// Con treinta alcanzaba con mostrarlas todas. Con más de cien no: la pantalla
+// se vuelve una pared de botones donde "Pilates" está en algún lado. El
+// catálogo viene agrupado de la base (migración 0043) y acá se muestra de dos
+// maneras, según lo que la persona esté haciendo.
+//
+// ESCRIBIENDO: el que ya sabe qué da no quiere navegar nada. Escribe "tae" y
+// aparece Taekwondo, venga del grupo que venga.
+//
+// MIRANDO: el que no sabe qué hay abre el grupo que le suena. Los grupos
+// arrancan plegados —si no, volvemos a la pared— menos aquellos donde ya hay
+// algo marcado, que arrancan abiertos para que el profe vea en qué quedó.
+//
+// Y lo elegido va arriba de todo, siempre visible. Es lo único que necesita
+// confirmar de un vistazo, y es lo primero que se perdía cuando la lista se
+// hizo larga: si una actividad marcada queda dentro de un grupo plegado, sin
+// esa fila no hay forma de sacarla.
+// ----------------------------------------------------------------------------
+
+// Para buscar. Nadie escribe "música" con tilde en el buscador de una app, y
+// hacerle escribir "Taekwondo" tal cual para encontrarlo es perder al que lo
+// escribió sin la k.
+function sinTildes(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function Actividades({
+  catalogo,
+  elegidas,
+  alCambiar,
+}: {
+  catalogo: Catalogo;
+  elegidas: ActividadDelEspacio[];
+  alCambiar: Dispatch<SetStateAction<ActividadDelEspacio[]>>;
+}) {
+  const [busqueda, setBusqueda] = useState('');
+  // Los grupos abiertos. Arrancan los que ya tienen algo elegido.
+  const [abiertos, setAbiertos] = useState<string[]>(() => {
+    const puestas = new Set(elegidas.map((x) => x.slug));
+    const con = catalogo.disciplinas.filter((d) => puestas.has(d.slug)).map((d) => d.grupo);
+    return Array.from(new Set(con));
+  });
+
+  const alterna = (slug: string) =>
+    alCambiar((xs) =>
+      xs.some((x) => x.slug === slug)
+        ? xs.filter((x) => x.slug !== slug)
+        : [...xs, { slug, nota: null }],
+    );
+
+  const Boton_ = (d: Disciplina) => {
+    const puesta = elegidas.some((x) => x.slug === d.slug);
+    return (
+      <button
+        key={d.slug}
+        type="button"
+        aria-pressed={puesta}
+        onClick={() => alterna(d.slug)}
+        className={claseOpcion(puesta)}
+      >
+        {d.name}
+      </button>
+    );
+  };
+
+  const q = sinTildes(busqueda.trim());
+  const encontradas = q
+    ? catalogo.disciplinas.filter((d) => sinTildes(d.name).includes(q))
+    : [];
+
+  return (
+    <div className="flex flex-col gap-3">
+      {elegidas.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {elegidas.map((a) => {
+            const nombre = catalogo.disciplinas.find((d) => d.slug === a.slug)?.name ?? a.slug;
+            return (
+              <button
+                key={a.slug}
+                type="button"
+                onClick={() => alterna(a.slug)}
+                className={claseOpcion(true)}
+                aria-label={`Sacar ${nombre}`}
+              >
+                {nombre}
+                <span aria-hidden className="ml-1.5 opacity-70">×</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      <Texto
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        placeholder="Buscar una actividad…"
+      />
+
+      {q ? (
+        encontradas.length > 0 ? (
+          <div className="flex flex-wrap gap-2">{encontradas.map(Boton_)}</div>
+        ) : (
+          <p className="text-sm text-tenue">
+            No encontramos nada con «{busqueda.trim()}». Si lo que das no está en
+            la lista, marcá «Otra» y escribilo al lado.
+          </p>
+        )
+      ) : (
+        <div className="divide-y divide-linea overflow-hidden rounded-xl border border-linea">
+          {catalogo.grupos.map((g) => {
+            const suyas = catalogo.disciplinas.filter((d) => d.grupo === g.slug);
+            if (suyas.length === 0) return null;
+            const abierto = abiertos.includes(g.slug);
+            const cuantas = suyas.filter(
+              (d) => elegidas.some((x) => x.slug === d.slug),
+            ).length;
+            return (
+              <div key={g.slug}>
+                <button
+                  type="button"
+                  aria-expanded={abierto}
+                  onClick={() =>
+                    setAbiertos((xs) =>
+                      abierto ? xs.filter((x) => x !== g.slug) : [...xs, g.slug],
+                    )
+                  }
+                  className="flex min-h-12 w-full items-center justify-between gap-3 px-3.5 text-left text-sm font-medium text-tinta transition hover:bg-acento-suave/40"
+                >
+                  <span className="flex items-center gap-2">
+                    {g.name}
+                    {cuantas > 0 && (
+                      <span className="rounded-full bg-acento-suave px-2 py-0.5 text-xs font-semibold text-acento">
+                        {cuantas}
+                      </span>
+                    )}
+                  </span>
+                  <span aria-hidden className="text-lg leading-none text-tenue">
+                    {abierto ? '−' : '+'}
+                  </span>
+                </button>
+                {abierto && (
+                  <div className="flex flex-wrap gap-2 px-3.5 pb-3.5">{suyas.map(Boton_)}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 

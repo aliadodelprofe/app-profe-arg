@@ -812,7 +812,7 @@ export function Confirmacion({
 // EL NOMBRE ES PROVISORIO. Está acá, en un solo lugar, justamente porque
 // todavía se está decidiendo: cambiarlo es editar esta línea y una más en
 // main.tsx. Ninguna pantalla lo escribe a mano, y los tokens de color se
-// llaman `acento` y `tinta` y no "el naranja de Aria", así que la identidad
+// llaman `acento` y `tinta` y no "el naranja de Tadán", así que la identidad
 // visual tampoco depende del nombre.
 //
 // Por ahora es la palabra sola, sin logo.
