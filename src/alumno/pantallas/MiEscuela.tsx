@@ -673,16 +673,27 @@ function FilaCargo({
   return (
     <Fila
       titulo={cargo.concept}
-      // Texto corrido y no un contenedor flex. En flex, los pedazos no se
-      // pueden partir entre renglones: en un teléfono la línea entera se
-      // iba de ancho y la fecha quedaba cortada. Así fluye como cualquier
-      // párrafo y el separador se queda pegado a lo que viene antes.
+      // UN RENGLÓN POR IDEA.
+      //
+      // Era un contenedor flex, que no se puede partir entre líneas: en un
+      // teléfono la fila se iba de ancho y la fecha quedaba cortada a la
+      // mitad ("venció el 01/11/"), que es justo el dato que el alumno vino
+      // a buscar.
+      //
+      // Dejarlo como texto corrido lo arreglaba, pero el corte caía donde
+      // entrara: podía quedar "venció el" arriba y la fecha abajo. Así que
+      // los dos pedazos son bloques y cada uno se queda en lo suyo —cuánto
+      // falta arriba, cuándo venció abajo— y la fecha no se parte nunca.
       detalle={
         <>
           {cargo.pagado > 0 && (
-            <>pagaste {plata(cargo.pagado)} · falta {plata(falta)}{cuando ? ' · ' : ''}</>
+            <span className="block">
+              pagaste {plata(cargo.pagado)} · falta {plata(falta)}
+            </span>
           )}
-          {cuando && <span className={colorFecha}>{cuando}</span>}
+          {cuando && (
+            <span className={['block', colorFecha].filter(Boolean).join(' ')}>{cuando}</span>
+          )}
         </>
       }
       valor={
