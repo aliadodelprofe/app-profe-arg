@@ -21,7 +21,7 @@ import type { MiFicha, ResumenEscuela } from '../datos';
 import type { Pestana } from '../../comun/ui';
 import {
   Marco, Aviso, Vacio, Titulo, Lista, Fila, Esqueleto, Avatar,
-  Navegacion, IconoEscuela,
+  Navegacion, IconoEscuela, Marca,
 } from '../../comun/ui';
 import Perfil from './Perfil';
 
@@ -61,6 +61,10 @@ export default function MisEscuelas({
       <Navegacion<Tab> activa={tab} alElegir={setTab} pestanas={pestanas} />
 
       <Marco conBarra>
+        {/* Acá no hay ninguna escuela de por medio: esta pantalla es de Tadán,
+            y es la única que el alumno ve por encima de sus profes. Ver la
+            regla completa en `Marca`, en comun/ui.tsx. */}
+        <Marca ajustada />
         <Titulo>{tab === 'escuelas' ? 'Mis escuelas' : 'Mi perfil'}</Titulo>
         <p className="mb-4 text-sm text-tenue">{correo}</p>
 

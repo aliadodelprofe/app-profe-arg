@@ -817,14 +817,35 @@ export function Confirmacion({
 //
 // Por ahora es la palabra sola, sin logo.
 //
-// Aparece únicamente en las pantallas de entrada. Adentro de la app el
-// encabezado lo ocupa el nombre de la escuela del profesor, que es lo que le
-// importa a quien está mirando: la marca del producto ya cumplió su función
-// cuando la persona entró.
+// DÓNDE VA Y DÓNDE NO.
+//
+// Decía acá que alcanzaba con mostrarla en la entrada, porque "la marca ya
+// cumplió su función cuando la persona entró". Eso es verdad para el profesor,
+// que eligió la herramienta. Es falso para el alumno: él no eligió nada, le
+// llegó un link de su profe. Para él la marca nunca cumplió ninguna función
+// porque nunca la vio, y el día que empiece a dar clases no va a poder
+// acordarse de cómo se llamaba esto.
+//
+// La regla es por contexto, no por pantalla:
+//
+//   · Donde NO hay una escuela de por medio —la entrada, "Mis escuelas",
+//     "Mis espacios"— manda Tadán. Nadie más es dueño de esas pantallas y
+//     hasta ahora estaban anónimas.
+//
+//   · ADENTRO de una escuela manda la escuela. Ahí arriba va su nombre y su
+//     logo, y Tadán se calla: para el alumno la relación es con su profe, y
+//     poner nuestra marca por encima invierte lo que es cierto.
+//
+// (En escritorio la barra superior ya la lleva, pero esa barra es `sm:block` y
+// se esconde en el teléfono, que es donde se usa la app. Que no apareciera en
+// mobile no fue una decisión: fue un efecto de la barra responsiva.)
+//
+// El cuadrado con la inicial es provisorio y sale de `marca.ts`: cuando haya
+// isotipo, se cambia acá y aparece en los tres lugares a la vez.
 // ----------------------------------------------------------------------------
-export function Marca() {
+export function Marca({ ajustada }: { ajustada?: boolean } = {}) {
   return (
-    <div className="mb-8 flex items-center gap-2.5">
+    <div className={(ajustada ? 'mb-5' : 'mb-8') + ' flex items-center gap-2.5'}>
       {/* Un cuadrado con la inicial. No es un logo —todavía no hay— pero es
           una marca: algo que ocupa lugar y se reconoce de lejos. Un nombre
           suelto en texto se lee como el título de un documento. */}
