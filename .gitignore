@@ -35,3 +35,11 @@ yarn-error.log*
 cookie.txt
 _para_borrar/
 _tmp_lock/
+
+# Entregables que no son la app
+#
+# El brief de marca, el dossier para el agente de marcas y lo que venga.
+# Son documentos para terceros, no código: .docx y .pdf que git no puede
+# comprimir ni diferenciar, así que cada revisión guardaría el archivo
+# entero de nuevo. Viven acá para tenerlos a mano, no versionados.
+Claude outputs/
