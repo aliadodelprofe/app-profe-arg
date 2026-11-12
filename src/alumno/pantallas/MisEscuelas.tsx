@@ -16,7 +16,7 @@
 // contexto que no importa.
 // ============================================================================
 import { useState } from 'react';
-import { fecha, plata } from '../formato';
+import { fecha, hoyISO, plata } from '../formato';
 import type { MiFicha, ResumenEscuela } from '../datos';
 import type { Pestana } from '../../comun/ui';
 import {
@@ -84,18 +84,37 @@ export default function MisEscuelas({
 
             {resumenes && resumenes.length > 0 && (
               <Lista>
-                {resumenes.map((r) => (
+                {resumenes.map((r) => {
+                  // HOY NO ES UNA FECHA MÁS.
+                  //
+                  // Quien cursa en tres escuelas abre esta pantalla con una
+                  // pregunta sola: ¿hoy tengo que ir a algún lado? Antes se
+                  // contestaba leyendo tres fechas y comparándolas con la de
+                  // hoy mentalmente. Ahora la escuela donde hay clase hoy
+                  // viene con fondo propio y lo dice con todas las letras:
+                  // "hoy a las 20:30" en vez de "próxima: 12/11/2026".
+                  const esHoy = r.proxima?.date === hoyISO();
+                  const hora = r.proxima?.start_time?.slice(0, 5);
+                  const grupo = r.proxima?.grupo?.name;
+                  return (
                   <Fila
                     key={r.ficha.id}
                     avatar={r.ficha.escuela?.name ?? 'Escuela'}
                     foto={r.ficha.escuela?.avatar_url}
                     titulo={r.ficha.escuela?.name ?? 'Escuela'}
+                    destacada={esHoy}
                     detalle={
-                      r.proxima
-                        ? `próxima: ${fecha(r.proxima.date)}` +
-                          (r.proxima.start_time ? ` · ${r.proxima.start_time.slice(0, 5)}` : '') +
-                          (r.proxima.grupo?.name ? ` · ${r.proxima.grupo.name}` : '')
-                        : 'sin clases cargadas'
+                      !r.proxima
+                        ? 'sin clases cargadas'
+                        : esHoy
+                          ? (
+                            <span className="font-medium text-acento">
+                              hoy{hora ? ` a las ${hora}` : ''}{grupo ? ` · ${grupo}` : ''}
+                            </span>
+                          )
+                          : `próxima: ${fecha(r.proxima.date)}`
+                            + (hora ? ` · ${hora}` : '')
+                            + (grupo ? ` · ${grupo}` : '')
                     }
                     valor={
                       r.debe > 0 ? (
@@ -109,7 +128,8 @@ export default function MisEscuelas({
                     bajoValor={r.debe > 0 ? 'debés' : r.aFavor > 0 ? 'a favor' : undefined}
                     alTocar={() => alElegir(r.ficha.id)}
                   />
-                ))}
+                  );
+                })}
               </Lista>
             )}
           </>

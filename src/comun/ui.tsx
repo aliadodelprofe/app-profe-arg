@@ -1406,6 +1406,7 @@ export function Fila({
   valor,
   bajoValor,
   alTocar,
+  destacada,
   children,
 }: {
   avatar?: string;              // el nombre del que sale la inicial
@@ -1416,6 +1417,7 @@ export function Fila({
   valor?: ReactNode;            // lo que va a la derecha: un monto, una hora
   bajoValor?: ReactNode;
   alTocar?: () => void;
+  destacada?: boolean;          // la que hay que mirar primero, con fondo propio
   children?: ReactNode;         // lo que cuelga abajo: botones, avisos
 }) {
   const cuerpo = (
@@ -1428,8 +1430,15 @@ export function Fila({
               "Bachata Influence – Regulares – Juev…", que es justo donde
               estaba el dato que lo distingue de los otros tres grupos. */}
           <div className="line-clamp-2 font-medium leading-snug text-tinta">{titulo}</div>
+          {/* Hasta dos renglones, igual que el título y por lo mismo. Con
+              `truncate` entraba uno solo, y cuando el detalle era un
+              contenedor flex el navegador ni siquiera ponía los puntos
+              suspensivos: cortaba a lo bruto. Un cargo que decía "pagaste
+              $21.000 · falta $11.000 · venció el 01/11/2026" se leía
+              "...venció el 01/11/" y el alumno perdía justo el dato que
+              fue a buscar. */}
           {detalle && (
-            <div className="truncate text-sm leading-snug text-tenue">{detalle}</div>
+            <div className="line-clamp-2 text-sm leading-snug text-tenue">{detalle}</div>
           )}
         </div>
         {(valor || bajoValor) && (
@@ -1456,7 +1465,7 @@ export function Fila({
   );
 
   return (
-    <li>
+    <li className={destacada ? 'bg-acento-suave/60' : undefined}>
       {alTocar ? (
         <button
           onClick={alTocar}

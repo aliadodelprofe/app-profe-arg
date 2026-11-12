@@ -673,14 +673,17 @@ function FilaCargo({
   return (
     <Fila
       titulo={cargo.concept}
+      // Texto corrido y no un contenedor flex. En flex, los pedazos no se
+      // pueden partir entre renglones: en un teléfono la línea entera se
+      // iba de ancho y la fecha quedaba cortada. Así fluye como cualquier
+      // párrafo y el separador se queda pegado a lo que viene antes.
       detalle={
-        <span className="flex items-baseline gap-1.5">
+        <>
           {cargo.pagado > 0 && (
-            <span>pagaste {plata(cargo.pagado)} · falta {plata(falta)}</span>
+            <>pagaste {plata(cargo.pagado)} · falta {plata(falta)}{cuando ? ' · ' : ''}</>
           )}
-          {cargo.pagado > 0 && cuando && <span aria-hidden="true">·</span>}
           {cuando && <span className={colorFecha}>{cuando}</span>}
-        </span>
+        </>
       }
       valor={
         <span className={atrasado ? 'text-alerta' : esHoy ? 'text-acento' : undefined}>
