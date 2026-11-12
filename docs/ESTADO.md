@@ -96,7 +96,7 @@ publica.
 | Poner el Site URL en el dominio nuevo | Supabase, mismo lugar |
 | Agregar `https://<dominio>` a *Authorized JavaScript origins* | Google Cloud → Clients |
 | **Sacar `http://localhost:3000`** de esos orígenes | Google Cloud, mismo lugar |
-| Correr las migraciones 0001 → 0042 en `aliado-prod` | SQL Editor |
+| Correr las migraciones 0001 → 0044 en `aliado-prod` | SQL Editor |
 | Encender `Confirm email` en `aliado-prod` | Supabase → Authentication |
 
 ---
@@ -147,6 +147,8 @@ publica.
 | `0040_dejar_la_escuela.sql` | `dejar_la_escuela()` y `volver_a_la_escuela()`: archivar a un alumno de la escuela entera, distinto de darlo de baja de un grupo. Más el check de `students.status` | Aplicada |
 | `0041_fotos_que_no_usa_nadie.sql` | `archivos_sueltos` y `limpiar_archivos_sueltos()`: las fotos que nadie usa se anotan todas las noches, y se borran solo después de siete días seguidos de no usarse. **Arranca en modo mirar, sin borrar** | Aplicada |
 | `0042_las_tareas_son_de_la_noche.sql` | Les quita el `execute` a `anon` y `authenticated` sobre las tres tareas nocturnas. Supabase se lo da solo a toda función nueva de `public`, y `revoke … from public` **no** lo saca | Aplicada |
+| `0043_el_catalogo_en_grupos.sql` | `discipline_groups` con 14 familias y la columna `grupo` en `disciplines`. Suma 81 actividades: artes marciales, circo, más instrumentos, escena, idiomas desagregados, artes visuales, oficios y apoyo escolar. Ninguna de las 32 anteriores cambia de `orden` | Aplicada |
+| `0044_el_reggaeton_es_urbano.sql` | Mueve el reggaetón de "Baile social" a "Baile urbano" y su `orden` de 60 a 105, para que quede en la banda de su grupo | **Falta correrla** |
 
 **Nada se aplicó todavía en `aliado-prod`.**
 
@@ -190,7 +192,7 @@ publica.
 | `supabase/tests/lo_que_ensena.sql` | Las actividades (0037, 0038, 0039): que el catálogo se lea y no se escriba, que cada escuela solo toque las suyas, que el alumno vea las de su escuela y no las de otra, que la nota no entre vacía ni larga, y que un grupo no apunte a una actividad que no existe. En una transacción que se deshace. Repetible |
 | `supabase/tests/grupo_online.sql` | Una clase online (0032) en cualquier formato: que el enlace y la dirección no convivan, y que el alumno vea el enlace de su grupo y no el de otro. En una transacción que se deshace. Repetible |
 | `supabase/tests/dejar_la_escuela.sql` | `dejar_la_escuela()` (0040): que cierre todas las inscripciones activas, que no toque las ya cerradas, que el alumno archivado no aparezca en el listado, que volver **no** reabra las inscripciones, y que nadie archive una ficha de un espacio ajeno. En una transacción que se deshace. Repetible |
-| `supabase/tests/archivos_sueltos.sql` | El barrido de fotos (0041): que anote la huérfana, que no anote la que está en uso, que contar de nuevo sume sin duplicar la fila, que no borre antes de los siete días, y que ningún profesor pueda ejecutarla. Correr como `postgres`. Repetible |
+| `supabase/tests/archivos_sueltos.sql` | El barrido de fotos (0041): que anote la huérfana, que no anote la que está en uso, que contar de nuevo sume sin duplicar la fila, que no borre antes de los siete días, y que ningún profesor pueda ejecutarla. Correr como `postgres`. Repetible. El paso de los siete días se mide sobre el archivo propio y no sobre `pedidos`, que cuenta toda la tabla: los sueltos reales van sumando noches y en cuanto alguno pasa las siete, esa cuenta deja de medir lo que la prueba quiere medir |
 | `npm run prueba:fechas` | Las cuentas de fechas y de precios del front (`src/comun/fechas.ts`, `src/comun/precios.ts`). **56 casos.** No toca la base ni el navegador. Correr después de cualquier cambio ahí |
 | **`npm run prueba:base`** | **Corre las veinticuatro de la base, en orden, y dice al final si algo falló.** Necesita `DATABASE_URL` en `.env.local` (Session pooler, puerto 5432). El orden está fijo en `supabase/tests/correr.mjs`: una prueba nueva se agrega ahí |
 
@@ -275,7 +277,7 @@ esto necesita el SQL Editor.
 | Qué | Tamaño | Nota |
 |---|---|---|
 | **Publicar** | Mediano | Vercel, dominio, y los cinco ajustes de Supabase y Google Cloud de la sección "Dos apps, dos despliegues" |
-| Correr 0001 → 0042 en `aliado-prod` | Mediano | En orden, una por una, con `control_general.sql` después de cada una |
+| Correr 0001 → 0044 en `aliado-prod` | Mediano | En orden, una por una, con `control_general.sql` después de cada una |
 | El logo y la paleta | Chico | El nombre ya está: **Tadán**, desde el 11/11/2026. Falta la identidad visual, que trabaja Astrid, y presentar la marca en INPI |
 | Imputación dirigida | Chico | Elegir a qué cuota va un pago, en vez del orden automático |
 | Encender el borrado de `archivos_sueltos` | Chico | Alrededor del 6/11/2026: mirar la tabla y, si lo que anotó es lo esperable, re-agendar la tarea con `limpiar_archivos_sueltos(true)` |
